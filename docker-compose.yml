@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=pulse_secret
+      - DB_NAME=club_pulse
+      - DB_PORT=5432
+      - JWT_SECRET=super_secret_dev_key
+      - PORT=8080
+    depends_on:
+      - postgres
+    networks:
+      - pulse_network
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+    depends_on:
+      - api
+    networks:
+      - pulse_network
+
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pulse_secret
+      POSTGRES_DB: club_pulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pulse_network
+
+networks:
+  pulse_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
