@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -308,4 +309,76 @@ func (r *PostgresFacilityRepository) toDomainEquipment(m EquipmentModel) *domain
 		CreatedAt:    m.CreatedAt,
 		UpdatedAt:    m.UpdatedAt,
 	}
+}
+
+// SemanticSearch performs vector similarity search using pgvector
+func (r *PostgresFacilityRepository) SemanticSearch(embedding []float32, limit int) ([]*domain.FacilityWithSimilarity, error) {
+	// Convert embedding to PostgreSQL vector format
+	vectorStr := float32SliceToVectorString(embedding)
+
+	// Query using pgvector cosine distance operator <=>
+	query := `
+		SELECT 
+			id, name, type, status, capacity, hourly_rate, 
+			specifications, location, created_at, updated_at,
+			1 - (embedding <=> $1::vector) as similarity
+		FROM facilities 
+		WHERE embedding IS NOT NULL AND status = 'active'
+		ORDER BY embedding <=> $1::vector
+		LIMIT $2
+	`
+
+	rows, err := r.db.Raw(query, vectorStr, limit).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*domain.FacilityWithSimilarity
+	for rows.Next() {
+		var m FacilityModel
+		var similarity float32
+
+		if err := rows.Scan(
+			&m.ID, &m.Name, &m.Type, &m.Status, &m.Capacity, &m.HourlyRate,
+			&m.Specifications, &m.Location, &m.CreatedAt, &m.UpdatedAt,
+			&similarity,
+		); err != nil {
+			return nil, err
+		}
+
+		results = append(results, &domain.FacilityWithSimilarity{
+			Facility:   r.toDomain(m),
+			Similarity: similarity,
+		})
+	}
+
+	return results, nil
+}
+
+// UpdateEmbedding stores the embedding vector for a facility
+func (r *PostgresFacilityRepository) UpdateEmbedding(facilityID string, embedding []float32) error {
+	vectorStr := float32SliceToVectorString(embedding)
+
+	return r.db.Exec(
+		"UPDATE facilities SET embedding = $1::vector WHERE id = $2",
+		vectorStr, facilityID,
+	).Error
+}
+
+// float32SliceToVectorString converts a []float32 to PostgreSQL vector string format [1.2,3.4,5.6]
+func float32SliceToVectorString(v []float32) string {
+	if len(v) == 0 {
+		return "[]"
+	}
+
+	result := "["
+	for i, val := range v {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf("%f", val)
+	}
+	result += "]"
+	return result
 }

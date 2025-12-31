@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/domain"
 	facilityDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	membershipDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/domain"
@@ -28,7 +29,9 @@ func main() {
 	// Reset Tables for clean seed (MVP)
 	log.Println("Resetting Tables...")
 	db.Migrator().DropTable(&domain.User{}, &facilityDom.Facility{}, &membershipDom.MembershipTier{})
-	db.AutoMigrate(&domain.User{}, &facilityDom.Facility{}, &membershipDom.MembershipTier{})
+	db.AutoMigrate(&domain.User{})
+	db.AutoMigrate(&facilityDom.Facility{})
+	db.AutoMigrate(&membershipDom.MembershipTier{})
 
 	// 1. Seed Users
 	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
@@ -146,7 +149,7 @@ func main() {
 			Description: "Entry level access for casual players",
 			MonthlyFee:  decimal.NewFromFloat(29.99),
 			Colors:      "bg-amber-100 text-amber-800",
-			Benefits:    membershipDom.StringArray{"Access to Gym", "10% Off Court Booking"},
+			Benefits:    pq.StringArray{"Access to Gym", "10% Off Court Booking"},
 			IsActive:    true,
 		},
 		{
@@ -155,7 +158,7 @@ func main() {
 			Description: "Perfect for regular members",
 			MonthlyFee:  decimal.NewFromFloat(59.99),
 			Colors:      "bg-slate-200 text-slate-800",
-			Benefits:    membershipDom.StringArray{"Access to Gym", "Unlimited Sauna", "20% Off Court Booking", "1 Free Guest Pass/mo"},
+			Benefits:    pq.StringArray{"Access to Gym", "Unlimited Sauna", "20% Off Court Booking", "1 Free Guest Pass/mo"},
 			IsActive:    true,
 		},
 		{
@@ -164,7 +167,7 @@ func main() {
 			Description: "The ultimate VIP experience",
 			MonthlyFee:  decimal.NewFromFloat(99.99),
 			Colors:      "bg-yellow-100 text-yellow-800",
-			Benefits:    membershipDom.StringArray{"All Facilities Access", "Priority Booking", "Free Court Rentals (Off-peak)", "5 Free Guest Passes/mo"},
+			Benefits:    pq.StringArray{"All Facilities Access", "Priority Booking", "Free Court Rentals (Off-peak)", "5 Free Guest Passes/mo"},
 			IsActive:    true,
 		},
 	}

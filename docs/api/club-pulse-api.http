@@ -1,0 +1,207 @@
+### Club Pulse API - HTTP Test File
+### Usar con la extensión REST Client de VS Code
+
+@baseUrl = http://localhost:8080/api/v1
+@token = {{login.response.body.access_token}}
+
+### ============================================
+### HEALTH CHECK
+### ============================================
+
+### Health Check (Público - Sin Auth)
+GET http://localhost:8080/health
+Accept: application/json
+
+### ============================================
+### AUTH MODULE
+### ============================================
+
+### Login - Admin User
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@clubpulse.com",
+  "password": "admin123"
+}
+
+### Login - Test User
+# @name loginTest
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "password123"
+}
+
+### Register - Nuevo Usuario
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Nuevo Usuario",
+  "email": "nuevo@example.com",
+  "password": "password123"
+}
+
+### Refresh Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "{{login.response.body.refresh_token}}"
+}
+
+### Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{token}}
+
+### Listar Sesiones Activas
+GET {{baseUrl}}/auth/sessions
+Authorization: Bearer {{token}}
+
+### Revocar Sesión por ID
+DELETE {{baseUrl}}/auth/sessions/:sessionId
+Authorization: Bearer {{token}}
+
+### ============================================
+### USER MODULE
+### ============================================
+
+### Obtener Mi Perfil
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+
+### Listar Usuarios (Admin)
+GET {{baseUrl}}/users?limit=10&offset=0
+Authorization: Bearer {{token}}
+
+### Obtener Usuario por ID
+GET {{baseUrl}}/users/:userId
+Authorization: Bearer {{token}}
+
+### Actualizar Mi Perfil
+PUT {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Nombre Actualizado"
+}
+
+### ============================================
+### FACILITIES MODULE
+### ============================================
+
+### Listar Instalaciones
+GET {{baseUrl}}/facilities?limit=10&offset=0
+Authorization: Bearer {{token}}
+
+### Obtener Instalación por ID
+GET {{baseUrl}}/facilities/:facilityId
+Authorization: Bearer {{token}}
+
+### Crear Nueva Instalación (Admin)
+POST {{baseUrl}}/facilities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Nueva Cancha de Tenis",
+  "type": "court",
+  "status": "active",
+  "capacity": 4,
+  "hourly_rate": 45.00,
+  "location": {
+    "name": "Sector Norte",
+    "description": "Al lado del estacionamiento"
+  },
+  "specifications": {
+    "surface_type": "Clay Court",
+    "lighting": true,
+    "covered": false,
+    "equipment": ["net", "balls"]
+  }
+}
+
+### Actualizar Instalación
+PUT {{baseUrl}}/facilities/:facilityId
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "maintenance"
+}
+
+### ============================================
+### MEMBERSHIP MODULE
+### ============================================
+
+### Listar Tiers de Membresía
+GET {{baseUrl}}/memberships/tiers
+Authorization: Bearer {{token}}
+
+### Obtener Tier por ID
+GET {{baseUrl}}/memberships/tiers/:tierId
+Authorization: Bearer {{token}}
+
+### Crear Membresía para Usuario
+POST {{baseUrl}}/memberships
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "user_id": "{{loginTest.response.body.user.id}}",
+  "membership_tier_id": ":tierId",
+  "billing_cycle": "MONTHLY"
+}
+
+### Obtener Membresías de Usuario
+GET {{baseUrl}}/memberships/user/:userId
+Authorization: Bearer {{token}}
+
+### ============================================
+### BOOKING MODULE
+### ============================================
+
+### Listar Reservas
+GET {{baseUrl}}/bookings
+Authorization: Bearer {{token}}
+
+### Crear Reserva
+POST {{baseUrl}}/bookings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "facility_id": ":facilityId",
+  "start_time": "2025-01-15T10:00:00Z",
+  "end_time": "2025-01-15T11:00:00Z"
+}
+
+### Obtener Reserva por ID
+GET {{baseUrl}}/bookings/:bookingId
+Authorization: Bearer {{token}}
+
+### Cancelar Reserva
+PUT {{baseUrl}}/bookings/:bookingId/cancel
+Authorization: Bearer {{token}}
+
+### Consultar Disponibilidad
+GET {{baseUrl}}/bookings/availability?facility_id=:facilityId&date=2025-01-15
+Authorization: Bearer {{token}}
+
+### ============================================
+### RATE LIMITING TEST
+### ============================================
+
+### Test Rate Limit (ejecutar múltiples veces rápidamente)
+GET http://localhost:8080/health
+Accept: application/json
+
+# Observar headers:
+# X-RateLimit-Limit: 100
+# X-RateLimit-Remaining: 99
+# X-RateLimit-Reset: 1735587600

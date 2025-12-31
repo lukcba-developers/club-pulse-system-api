@@ -78,8 +78,17 @@ type Facility struct {
 	Specifications Specifications `json:"specifications"` // Stored as JSONB
 	Location       Location       `json:"location"`       // Stored as JSONB
 
+	// Semantic Search (pgvector)
+	Embedding []float32 `json:"-"` // Not exposed in JSON, stored as vector(256) in DB
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// FacilityWithSimilarity represents a facility with its search similarity score
+type FacilityWithSimilarity struct {
+	Facility   *Facility
+	Similarity float32
 }
 
 // Repository Interface
@@ -92,4 +101,8 @@ type FacilityRepository interface {
 
 	// Maintenance Extensions
 	HasConflict(facilityID string, startTime, endTime time.Time) (bool, error)
+
+	// Semantic Search Extensions
+	SemanticSearch(embedding []float32, limit int) ([]*FacilityWithSimilarity, error)
+	UpdateEmbedding(facilityID string, embedding []float32) error
 }

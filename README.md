@@ -1,64 +1,64 @@
 # Club Pulse System API
 
-## Introduction
-Club Pulse is a robust, modular monolith designed to manage sports club operations. It serves as a modern replacement for the legacy microservices architecture, consolidating logic into a single, efficient, and easy-to-deploy backend API with a Next.js frontend.
+## Introducción
+Club Pulse es un monolito modular y robusto diseñado para gestionar las operaciones de un club deportivo. Sirve como un reemplazo moderno a la arquitectura de microservicios heredada, consolidando la lógica en una única API de backend eficiente y fácil de desplegar, junto con un frontend en Next.js.
 
-## 🚀 Features
-- **Modular Architecture**: Clean separation of concerns (Auth, User, Facilities, Membership).
-- **High Performance**: Built with Go 1.23+ and Gin.
-- **Modern Frontend**: Next.js 14 App Router with Tailwind CSS.
-- **Easy Deployment**: Dockerized stack (API + Frontend + Postgres) managed via Docker Compose.
+## 🚀 Características
+- **Arquitectura Modular**: Clara separación de responsabilidades (Autenticación, Usuarios, Instalaciones, Membresías).
+- **Alto Rendimiento**: Construido con Go 1.23+ y Gin.
+- **Frontend Moderno**: Next.js 14 con App Router y Tailwind CSS.
+- **Despliegue Sencillo**: Stack dockerizado (API + Frontend + Postgres) gestionado a través de Docker Compose.
 
-## 🛠 Tech Stack
+## 🛠️ Tecnologías
 - **Backend**: Go, Gin, GORM, PostgreSQL.
 - **Frontend**: Next.js (TypeScript), Tailwind CSS, Lucide Icons.
-- **Infrastructure**: Docker, Docker Compose.
+- **Infraestructura**: Docker, Docker Compose.
 
-## 🏁 Getting Started
+## 🏁 Primeros Pasos
 
-### Prerequisites
+### Prerrequisitos
 - Docker & Docker Compose
-- Go 1.23+ (optional, for local dev without Docker)
-- Node.js 20+ (optional, for local frontend dev)
+- Go 1.23+ (opcional, para desarrollo local sin Docker)
+- Node.js 20+ (opcional, para desarrollo local del frontend)
 
-### Quick Start (Recommended)
-1. **Clone the repository**:
+### Inicio Rápido (Recomendado)
+1. **Clona el repositorio**:
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/lukcba-developers/club-pulse-system-api.git
    cd club-pulse-system-api
    ```
 
-2. **Run with Docker Compose**:
+2. **Ejecuta con Docker Compose**:
    ```bash
    docker-compose up --build
    ```
-   - Legacy command: `docker-compose up --build` works for both backend and frontend.
+   - El comando `docker-compose up --build` levanta tanto el backend como el frontend.
    - **Frontend**: `http://localhost:3000`
    - **Backend API**: `http://localhost:8080`
 
-3. **Verify Installation**:
-   - Visit `http://localhost:3000` to see the login page.
-   - Default test user (auto-created if seed runs): `testuser@example.com` / `password123`.
+3. **Verifica la Instalación**:
+   - Visita `http://localhost:3000` para ver la página de inicio de sesión.
+   - Usuario de prueba por defecto (creado automáticamente si se ejecuta el seeder): `testuser@example.com` / `password123`.
 
-## 📂 Project Structure
+## 📂 Estructura del Proyecto
 ```
 .
-├── backend/                # Go Monolith API
-│   ├── cmd/api/            # Entrypoint
-│   └── internal/modules/   # Domain logic (Auth, User, Facilities, Membership)
-├── frontend/               # Next.js Application
-├── docs/                   # Documentation & Plans
-├── scripts/                # Utility scripts (Integration tests, etc.)
-└── docker-compose.yml      # Orchestration
+├── backend/                # API Monolítica en Go
+│   ├── cmd/api/            # Punto de entrada
+│   └── internal/modules/   # Lógica de dominio (Auth, User, Facilities, Membership)
+├── frontend/               # Aplicación Next.js
+├── docs/                   # Documentación y planes
+├── scripts/                # Scripts de utilidad (pruebas de integración, etc.)
+└── docker-compose.yml      # Orquestación de servicios
 ```
 
-## 🧪 Testing
-Run the integration test suite to verify the backend health and workflows:
+## 🧪 Pruebas
+Ejecuta la suite de pruebas de integración para verificar el estado y los flujos de trabajo del backend:
 ```bash
 ./scripts/integration_test.sh
 ```
 
-## 📚 Documentation
-- [MVP Analysis & Plan](docs/MVP_ANALYSIS_AND_PLAN.md)
-- [Migration Context](docs/MIGRATION_CONTEXT.md)
-- [API Documentation](docs/API_DOCUMENTATION.md) (See for endpoints)
+## 📚 Documentación
+- [Análisis y Plan del MVP](docs/MVP_ANALYSIS_AND_PLAN.md)
+- [Contexto de la Migración](docs/MIGRATION_CONTEXT.md)
+- [Documentación de la API](docs/API_DOCUMENTATION.md) (Ver para los endpoints)
