@@ -20,13 +20,15 @@ func NewPostgresUserRepository(db *gorm.DB) *PostgresUserRepository {
 // In a larger system, we might use a shared kernel, or duplicate/map.
 // We duplicate here to keep modules decoupled in code, even if coupling in DB.
 type UserModel struct {
-	ID        string `gorm:"primaryKey"`
-	Name      string
-	Email     string
-	Role      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID                string `gorm:"primaryKey"`
+	Name              string
+	Email             string
+	Role              string
+	DateOfBirth       *time.Time             `gorm:"type:date"`
+	SportsPreferences map[string]interface{} `gorm:"serializer:json"` // Requires GORM JSON serializer
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         gorm.DeletedAt `gorm:"index"`
 }
 
 func (UserModel) TableName() string {
@@ -44,22 +46,31 @@ func (r *PostgresUserRepository) GetByID(id string) (*domain.User, error) {
 	}
 
 	return &domain.User{
-		ID:        model.ID,
-		Name:      model.Name,
-		Email:     model.Email,
-		Role:      model.Role,
-		CreatedAt: model.CreatedAt,
-		UpdatedAt: model.UpdatedAt,
+		ID:                model.ID,
+		Name:              model.Name,
+		Email:             model.Email,
+		Role:              model.Role,
+		DateOfBirth:       model.DateOfBirth,
+		SportsPreferences: model.SportsPreferences,
+		CreatedAt:         model.CreatedAt,
+		UpdatedAt:         model.UpdatedAt,
 	}, nil
 }
 
 func (r *PostgresUserRepository) Update(user *domain.User) error {
-	// We only update fields allowed by this module (e.g. Name).
-	// Email/Password are Auth responsibilities usually, but simple profile update might allow Name change.
-	result := r.db.Model(&UserModel{ID: user.ID}).Updates(map[string]interface{}{
+	// We only update fields allowed by this module (e.g. Name, DoB, Preferences).
+	updates := map[string]interface{}{
 		"name":       user.Name,
 		"updated_at": user.UpdatedAt,
-	})
+	}
+	if user.DateOfBirth != nil {
+		updates["date_of_birth"] = user.DateOfBirth
+	}
+	if user.SportsPreferences != nil {
+		updates["sports_preferences"] = user.SportsPreferences
+	}
+
+	result := r.db.Model(&UserModel{ID: user.ID}).Updates(updates)
 
 	return result.Error
 }
@@ -75,6 +86,13 @@ func (r *PostgresUserRepository) List(limit, offset int, filters map[string]inte
 	if search, ok := filters["search"].(string); ok && search != "" {
 		// PostgreSQL ILIKE
 		query = query.Where("name ILIKE ? OR email ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	if category, ok := filters["category"].(string); ok && category != "" {
+		// Filter by Year of DateOfBirth
+		// SQLite/Postgres syntax might differ slightly, but standard SQL is EXTRACT(YEAR FROM ...)
+		// GORM: datatypes might be sensitive.
+		query = query.Where("EXTRACT(YEAR FROM date_of_birth) = ?", category)
 	}
 
 	result := query.Find(&models)

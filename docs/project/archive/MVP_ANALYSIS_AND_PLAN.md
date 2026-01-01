@@ -9,6 +9,11 @@ El proyecto actual (`club-management-system-api`) utiliza una arquitectura de mi
 - **Latencia**: Saltos de red entre BFF y servicios.
 - **Dificultad de Desarrollo**: Mantener contratos entre múltiples servicios ralentiza la iteración rápida necesaria en un MVP.
 
+> [!NOTE]
+> **Estado del MVP:** Completado.
+> Para la siguiente fase de desarrollo y migración de funcionalidades restantes, consultar [POST_MVP_MIGRATION_PLAN.md](../technical/POST_MVP_MIGRATION_PLAN.md).
+
+
 ## 2. Estrategia de Solución: MVP Robusto (Monolito Modular)
 Para cumplir con los objetivos de "fácil de desplegar", "económico" y "robusto", adoptaremos una arquitectura de **Monolito Modular**.
 
@@ -58,7 +63,7 @@ Trabajaremos migrando la lógica esencial de los microservicios actuales al nuev
 - [x] **Facilities Module**: Definición de canchas/espacios.
 
 ### Fase 3: Lógica de Negocio (Días 6-10)
-- [/] **Booking Module**: Motor de reservas (validación de conflictos) (En Progreso).
+- [x] **Booking Module**: Motor de reservas (validación de conflictos) (Completado para MVP).
 - [x] **Membership Module**: Planes y suscripciones básicas.
 
 ### Fase 4: Integración Frontend

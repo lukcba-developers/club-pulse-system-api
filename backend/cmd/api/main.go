@@ -41,6 +41,19 @@ import (
 	bookingHTTP "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
 
+	// Access Module Imports
+	accessApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/application"
+	accessHTTP "github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/infrastructure/http"
+	accessRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/infrastructure/repository"
+
+	// Attendance Module Imports
+	attendanceApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/application"
+	attendanceHTTP "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/http"
+	attendanceRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/repository"
+
+	// Notification Module
+	notificationService "github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
+
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 )
 
@@ -122,11 +135,26 @@ func main() {
 	membershipHTTP.RegisterRoutes(api, membershipHandler, authMiddleware)
 
 	// --- Module: Booking ---
+	notifier := notificationService.NewConsoleNotificationSender()
 	bookingRepository := bookingRepo.NewPostgresBookingRepository(db)
-	bookingUseCase := bookingApplication.NewBookingUseCases(bookingRepository, facilityRepository)
+	bookingUseCase := bookingApplication.NewBookingUseCases(bookingRepository, facilityRepository, notifier)
 	bookingHandler := bookingHTTP.NewBookingHandler(bookingUseCase)
 
 	bookingHTTP.RegisterRoutes(api, bookingHandler, authMiddleware)
+
+	// --- Module: Access (New) ---
+	accessRepository := accessRepo.NewPostgresAccessRepository(db)
+	accessUseCase := accessApp.NewAccessUseCases(accessRepository, userRepository, membershipRepository)
+	accessHandler := accessHTTP.NewAccessHandler(accessUseCase)
+
+	accessHTTP.RegisterRoutes(api, accessHandler, authMiddleware)
+
+	// --- Module: Attendance (New) ---
+	attendanceRepository := attendanceRepo.NewPostgresAttendanceRepository(db)
+	attendanceUseCase := attendanceApp.NewAttendanceUseCases(attendanceRepository, userRepository)
+	attendanceHandler := attendanceHTTP.NewAttendanceHandler(attendanceUseCase)
+
+	attendanceHTTP.RegisterRoutes(api, attendanceHandler, authMiddleware)
 
 	// --- Health Endpoints ---
 	router.GET("/health", func(c *gin.Context) {

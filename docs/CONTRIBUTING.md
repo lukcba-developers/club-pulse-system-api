@@ -18,7 +18,7 @@
 
 2.  **Iniciar Infraestructura (Base de Datos)**:
     ```bash
-    docker-compose up -d postgres
+    docker-compose up -d postgres redis
     ```
 
 3.  **Ejecutar Backend**:

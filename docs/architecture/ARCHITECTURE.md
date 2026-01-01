@@ -39,7 +39,8 @@ graph TD
     API --> User
     API --> Facilities
     API --> Membership
-    API --> Booking
+    API --> Payment
+    API --> Access
 
     subgraph "Core Business Modules"
         Auth
@@ -47,10 +48,16 @@ graph TD
         Facilities
         Membership
         Booking
+        Payment
+        Access
+        Notification
     end
 
     Booking -->|Consulta conflictos| DB[(PostgreSQL)]
     Membership -->|Valida tiers| DB
+    Payment -->|Actualiza deuda| Membership
+    Access -->|Valida entrada| Membership
+    Booking -->|Envia confirmacion| Notification
 ```
 
 ## Decisiones Técnicas Clave

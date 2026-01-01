@@ -55,9 +55,32 @@ Obtiene los detalles del usuario autenticado actual.
     "email": "user@example.com",
     "name": "John Doe",
     "role": "MEMBER",
+    "category": "1990 (Master)",
+    "date_of_birth": "1990-01-01T00:00:00Z",
+    "sports_preferences": {
+      "main_sport": "tennis",
+      "level": "intermediate"
+    },
     "created_at": "..."
   }
   ```
+
+### Actualizar Perfil
+Actualiza la información personal del usuario.
+- **Endpoint**: `PUT /users/me`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+  ```json
+  {
+    "name": "John Doe Updated",
+    "date_of_birth": "1990-01-01T00:00:00Z",
+    "sports_preferences": {
+      "main_sport": "tennis",
+      "hand": "right"
+    }
+  }
+  ```
+- **Respuesta**: `200 OK` (Devuelve el objeto User actualizado)
 
 ## 3. Módulo de Instalaciones (Facilities)
 
@@ -151,3 +174,83 @@ Obtiene los slots de tiempo bloqueados por reservas o mantenimiento para una fec
     ]
   }
   ```
+
+## 6. Módulo de Pagos (Payments)
+
+### Integración Webhook (MercadoPago)
+Endpoint para recibir notificaciones de estado de pagos.
+- **Endpoint**: `POST /payments/webhook`
+- **Público** (Debe validar firma en producción)
+- **Query Params**:
+  - `type`: Tipo de evento (ej. `payment`).
+- **Body**: Payload del proveedor de pagos.
+- **Respuesta**: `200 OK`
+
+## 7. Módulo de Control de Acceso (Access)
+
+### Registrar Ingreso/Egreso
+Valida y registra el acceso de un usuario (Simulación QR).
+- **Endpoint**: `POST /access/entry`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+  ```json
+  {
+    "user_id": "uuid-del-usuario",
+    "facility_id": "uuid-instalacion-opcional",
+    "direction": "IN" // IN o OUT
+  }
+  ```
+- **Respuesta Exitoso (200)**:
+  ```json
+  {
+    "status": "GRANTED",
+    "user_id": "...",
+    "timestamp": "..."
+  }
+  ```
+- **Respuesta Denegado (403)**:
+  ```json
+  {
+    "status": "DENIED",
+    "reason": "Membership Inactive / Debt"
+  }
+  ```
+
+## 8. Módulo de Asistencia (Attendance)
+
+### Obtener Lista de Asistencia (Vista Coach)
+Obtiene o crea la lista de asistencia para un grupo/categoría en una fecha.
+- **Endpoint**: `GET /attendance/groups/:group`
+- **Headers**: `Authorization: Bearer <token>`
+- **Query Params**:
+  - `date`: YYYY-MM-DD (Opcional, default hoy)
+- **Ejemplo**: `GET /attendance/groups/2012?date=2025-10-20`
+- **Respuesta**:
+  ```json
+  {
+    "id": "list-uuid",
+    "group": "2012",
+    "date": "2025-10-20T00:00:00Z",
+    "records": [
+      {
+        "user_id": "student-uuid",
+        "status": "ABSENT",
+        "user": { "name": "..." } // Si se incluye
+      }
+    ]
+  }
+  ```
+
+### Marcar Asistencia
+Actualiza el estado de un alumno en la lista.
+- **Endpoint**: `POST /attendance/:listID/records`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+  ```json
+  {
+    "user_id": "student-uuid",
+    "status": "PRESENT", // PRESENT, ABSENT, LATE, EXCUSED
+    "notes": "Llegó tarde por tráfico"
+  }
+  ```
+- **Respuesta**: `200 OK`

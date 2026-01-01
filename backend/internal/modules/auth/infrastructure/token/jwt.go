@@ -23,7 +23,7 @@ func NewJWTService(secret string) *JWTService {
 }
 
 func (s *JWTService) GenerateToken(user *domain.User) (*domain.Token, error) {
-	expiration := time.Now().Add(15 * time.Minute) // Access Token 15 min expiry standard
+	expiration := time.Now().Add(24 * time.Hour) // Access Token 24h expiry for MVP/Dev
 
 	claims := jwt.MapClaims{
 		"sub":  user.ID,
@@ -47,7 +47,7 @@ func (s *JWTService) GenerateToken(user *domain.User) (*domain.Token, error) {
 	return &domain.Token{
 		AccessToken:  signedToken,
 		RefreshToken: refreshToken,
-		ExpiresIn:    900, // 15 min
+		ExpiresIn:    86400, // 24h
 	}, nil
 }
 

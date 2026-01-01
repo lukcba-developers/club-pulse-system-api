@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 )
 
 type CreateBookingDTO struct {
@@ -19,12 +20,14 @@ type CreateBookingDTO struct {
 type BookingUseCases struct {
 	repo         bookingDomain.BookingRepository
 	facilityRepo facilityDomain.FacilityRepository
+	notifier     service.NotificationSender
 }
 
-func NewBookingUseCases(repo bookingDomain.BookingRepository, facilityRepo facilityDomain.FacilityRepository) *BookingUseCases {
+func NewBookingUseCases(repo bookingDomain.BookingRepository, facilityRepo facilityDomain.FacilityRepository, notifier service.NotificationSender) *BookingUseCases {
 	return &BookingUseCases{
 		repo:         repo,
 		facilityRepo: facilityRepo,
+		notifier:     notifier,
 	}
 }
 
@@ -87,6 +90,14 @@ func (uc *BookingUseCases) CreateBooking(dto CreateBookingDTO) (*bookingDomain.B
 	if err := uc.repo.Create(booking); err != nil {
 		return nil, err
 	}
+
+	// Send Notification (Async)
+	go func() {
+		// Verify email fetching? For MVP assuming ID is enough or we fetch user.
+		// notifier.SendNotification(dto.UserID, "Booking Confirmed!")
+		// Ideally we fetch user to get email, but mock sender just logs.
+		uc.notifier.SendNotification(dto.UserID, "Booking Confirmed: "+booking.ID.String())
+	}()
 
 	return booking, nil
 }

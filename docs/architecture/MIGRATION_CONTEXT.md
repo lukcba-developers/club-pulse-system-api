@@ -33,6 +33,10 @@ El proyecto sigue una estructura de capas estricta:
     - Motor de reservas completo.
     - Detección de conflictos (Overlap).
     - Estado de reserva (CONFIRMED/CANCELLED).
+6.  **Payment Module**:
+    - Procesamiento de pagos (Mock MercadoPago).
+    - Webhooks y conciliación.
+    - Repositorio independiente.
 
 ## 3. Análisis de Legacy (club-management-system-api)
 Se ha analizado el código fuente original para extraer la lógica de negocio y replicarla con mejoras.
@@ -42,6 +46,8 @@ Se ha analizado el código fuente original para extraer la lógica de negocio y 
 
 ## 4. Próximos Pasos (Completados)
 - [x] Migración del módulo de **Booking** (Último bloque crítico).
+- [x] **Fase 1**: Core de Usuarios (Categorías y Perfil Deportivo).
+- [x] **Fase 2**: Integración de Pagos y Membresías Avanzadas.
 - [x] Integración final del Frontend (PricingCards y Facilities funcionan con datos reales).
 - [x] Pruebas E2E completas:
     - [x] Conflicto de reservas validado.

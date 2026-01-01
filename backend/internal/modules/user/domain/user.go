@@ -9,7 +9,17 @@ type User struct {
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	// Future fields: Bio, Phone, AvatarURL, etc.
+	// Financial fields
+	DateOfBirth       *time.Time             `json:"date_of_birth,omitempty"`
+	SportsPreferences map[string]interface{} `json:"sports_preferences,omitempty"`
+}
+
+// CalculateCategory returns the user's category based on birth year (e.g., "2012")
+func (u *User) CalculateCategory() string {
+	if u.DateOfBirth == nil {
+		return "Files" // Default category if unknown
+	}
+	return u.DateOfBirth.Format("2006")
 }
 
 type UserRepository interface {

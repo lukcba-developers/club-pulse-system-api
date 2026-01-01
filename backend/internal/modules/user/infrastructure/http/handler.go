@@ -3,6 +3,8 @@ package http
 import (
 	"net/http"
 
+	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
+
 	"github.com/gin-gonic/gin"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/application"
 )
@@ -15,6 +17,11 @@ func NewUserHandler(useCases *application.UserUseCases) *UserHandler {
 	return &UserHandler{
 		useCases: useCases,
 	}
+}
+
+type UserResponse struct {
+	*domain.User
+	Category string `json:"category"`
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
@@ -34,7 +41,12 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	response := UserResponse{
+		User:     user,
+		Category: user.CalculateCategory(),
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {

@@ -25,7 +25,9 @@ func (uc *UserUseCases) GetProfile(userID string) (*domain.User, error) {
 }
 
 type UpdateProfileDTO struct {
-	Name string `json:"name"`
+	Name              string                 `json:"name"`
+	DateOfBirth       *time.Time             `json:"date_of_birth"`
+	SportsPreferences map[string]interface{} `json:"sports_preferences"`
 }
 
 func (uc *UserUseCases) UpdateProfile(userID string, dto UpdateProfileDTO) (*domain.User, error) {
@@ -40,6 +42,12 @@ func (uc *UserUseCases) UpdateProfile(userID string, dto UpdateProfileDTO) (*dom
 	// Update fields
 	if dto.Name != "" {
 		user.Name = dto.Name
+	}
+	if dto.DateOfBirth != nil {
+		user.DateOfBirth = dto.DateOfBirth
+	}
+	if dto.SportsPreferences != nil {
+		user.SportsPreferences = dto.SportsPreferences
 	}
 
 	// Update timestamp
