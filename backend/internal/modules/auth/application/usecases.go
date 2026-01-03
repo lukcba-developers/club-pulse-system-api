@@ -3,6 +3,8 @@ package application
 import (
 	"time"
 
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/core/errors"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/domain"
@@ -12,12 +14,14 @@ import (
 type AuthUseCases struct {
 	repo         domain.AuthRepository
 	tokenService domain.TokenService
+	googleAuth   domain.GoogleAuthService
 }
 
-func NewAuthUseCases(repo domain.AuthRepository, tokenService domain.TokenService) *AuthUseCases {
+func NewAuthUseCases(repo domain.AuthRepository, tokenService domain.TokenService, googleAuth domain.GoogleAuthService) *AuthUseCases {
 	return &AuthUseCases{
 		repo:         repo,
 		tokenService: tokenService,
+		googleAuth:   googleAuth,
 	}
 }
 
@@ -58,7 +62,7 @@ func (uc *AuthUseCases) Register(dto RegisterDTO) (*domain.Token, error) {
 		Name:      dto.Name,
 		Email:     dto.Email,
 		Password:  string(hashedBytes),
-		Role:      "USER", // Default role
+		Role:      domain.RoleMember, // Default role
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -85,12 +89,6 @@ func (uc *AuthUseCases) Login(dto LoginDTO) (*domain.Token, error) {
 	// 1. Find User
 	user, err := uc.repo.FindUserByEmail(dto.Email)
 	if err != nil || user == nil {
-		// Log Failure (Generic)
-		// We define a nil user ID context if user not found, or maybe just email?
-		// For MVP, minimal log on failure to avoid leaking user existence via timing, though simple log is fine.
-		return nil, errors.New(errors.ErrorTypeUnauthorized, "Invalid credentials")
-	}
-	if user == nil {
 		return nil, errors.New(errors.ErrorTypeUnauthorized, "Invalid credentials")
 	}
 
@@ -212,4 +210,56 @@ func (uc *AuthUseCases) RevokeSession(sessionID, userID string) error {
 	// For MVP: JUST CALL REVOKE.
 	// Improvements: Add GetRefreshTokenByID to repo.
 	return uc.repo.RevokeRefreshToken(sessionID)
+}
+
+func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code string) (*domain.Token, error) {
+	// 1. Get User Info from Google
+	googleUser, err := uc.googleAuth.GetUserInfo(ctx, code)
+	if err != nil {
+		return nil, errors.New(errors.ErrorTypeUnauthorized, "Failed to authenticate with Google")
+	}
+
+	// 2. Find or Create User
+	user, err := uc.repo.FindUserByEmail(googleUser.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	if user == nil {
+		// Create new user (Signup via Google)
+		user = &domain.User{
+			ID:        uuid.New().String(),
+			Name:      googleUser.Name,
+			Email:     googleUser.Email,
+			Role:      domain.RoleMember,
+			GoogleID:  googleUser.ID,
+			AvatarURL: googleUser.Picture,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := uc.repo.SaveUser(user); err != nil {
+			return nil, err
+		}
+	} else if user.GoogleID == "" {
+		// Link Google ID if not present
+		user.GoogleID = googleUser.ID
+		user.AvatarURL = googleUser.Picture
+		user.UpdatedAt = time.Now()
+		if err := uc.repo.SaveUser(user); err != nil {
+			return nil, err
+		}
+	}
+
+	// 3. Generate Token
+	token, err := uc.tokenService.GenerateToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. Save Refresh Token
+	if err := uc.saveRefreshToken(user.ID, token.RefreshToken); err != nil {
+		return nil, err
+	}
+
+	return token, nil
 }

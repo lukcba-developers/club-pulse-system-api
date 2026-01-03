@@ -35,16 +35,16 @@ type EntryRequest struct {
 	Direction  string     `json:"direction"` // IN, OUT
 }
 
-func (uc *AccessUseCases) RequestEntry(ctx context.Context, req EntryRequest) (*domain.AccessLog, error) {
+func (uc *AccessUseCases) RequestEntry(ctx context.Context, clubID string, req EntryRequest) (*domain.AccessLog, error) {
 	// 1. Validate Input
 	if req.UserID == "" {
 		return nil, errors.New("user_id required")
 	}
 
 	// 2. Validate User Exists
-	user, err := uc.userRepo.GetByID(req.UserID)
+	user, err := uc.userRepo.GetByID(clubID, req.UserID)
 	if err != nil || user == nil {
-		return uc.logAccess(ctx, req, domain.AccessStatusDenied, "User not found")
+		return uc.logAccess(ctx, clubID, req, domain.AccessStatusDenied, "User not found")
 	}
 
 	// 3. For Entry (IN), validate Membership
@@ -52,12 +52,12 @@ func (uc *AccessUseCases) RequestEntry(ctx context.Context, req EntryRequest) (*
 		// Convert String ID to UUID for Membership Repo
 		userUUID, err := uuid.Parse(req.UserID)
 		if err != nil {
-			return uc.logAccess(ctx, req, domain.AccessStatusDenied, "Invalid User ID format")
+			return uc.logAccess(ctx, clubID, req, domain.AccessStatusDenied, "Invalid User ID format")
 		}
 
-		memberships, err := uc.membershipRepo.GetByUserID(ctx, userUUID)
+		memberships, err := uc.membershipRepo.GetByUserID(ctx, clubID, userUUID)
 		if err != nil {
-			return uc.logAccess(ctx, req, domain.AccessStatusDenied, "Error fetching memberships")
+			return uc.logAccess(ctx, clubID, req, domain.AccessStatusDenied, "Error fetching memberships")
 		}
 
 		hasActive := false
@@ -73,18 +73,18 @@ func (uc *AccessUseCases) RequestEntry(ctx context.Context, req EntryRequest) (*
 		}
 
 		if !hasActive {
-			return uc.logAccess(ctx, req, domain.AccessStatusDenied, "No active membership")
+			return uc.logAccess(ctx, clubID, req, domain.AccessStatusDenied, "No active membership")
 		}
 		if hasDebt {
-			return uc.logAccess(ctx, req, domain.AccessStatusDenied, "Outstanding debt")
+			return uc.logAccess(ctx, clubID, req, domain.AccessStatusDenied, "Outstanding debt")
 		}
 	}
 
 	// 4. Grant Access
-	return uc.logAccess(ctx, req, domain.AccessStatusGranted, "Access Granted")
+	return uc.logAccess(ctx, clubID, req, domain.AccessStatusGranted, "Access Granted")
 }
 
-func (uc *AccessUseCases) logAccess(ctx context.Context, req EntryRequest, status domain.AccessStatus, reason string) (*domain.AccessLog, error) {
+func (uc *AccessUseCases) logAccess(ctx context.Context, clubID string, req EntryRequest, status domain.AccessStatus, reason string) (*domain.AccessLog, error) {
 	dir := domain.AccessDirectionIn
 	if req.Direction == "OUT" {
 		dir = domain.AccessDirectionOut
@@ -92,6 +92,7 @@ func (uc *AccessUseCases) logAccess(ctx context.Context, req EntryRequest, statu
 
 	log := &domain.AccessLog{
 		ID:         uuid.New(),
+		ClubID:     clubID,
 		UserID:     req.UserID,
 		FacilityID: req.FacilityID,
 		Direction:  dir,
@@ -101,6 +102,8 @@ func (uc *AccessUseCases) logAccess(ctx context.Context, req EntryRequest, statu
 		CreatedAt:  time.Now(),
 	}
 
-	uc.accessRepo.Create(ctx, log)
+	if err := uc.accessRepo.Create(ctx, log); err != nil {
+		return nil, err
+	}
 	return log, nil
 }

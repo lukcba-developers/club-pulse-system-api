@@ -24,7 +24,7 @@ func InitDB() {
 			"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
 			getEnv("DB_HOST", "localhost"),
 			getEnv("DB_USER", "postgres"),
-			getEnv("DB_PASSWORD", "postgres"),
+			getEnv("DB_PASSWORD", "pulse_secret"),
 			getEnv("DB_NAME", "club_pulse"),
 			getEnv("DB_PORT", "5432"),
 		)

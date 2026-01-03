@@ -177,6 +177,29 @@ Obtiene los slots de tiempo bloqueados por reservas o mantenimiento para una fec
 
 ## 6. Módulo de Pagos (Payments)
 
+### Iniciar Pago (Checkout)
+Genera una preferencia de pago y devuelve la URL para redirigir al usuario.
+- **Endpoint**: `POST /payments/checkout`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+  ```json
+  {
+    "amount": 5000.00,
+    "currency": "ARS",
+    "description": "Cuota Mensual - Enero",
+    "payer_email": "user@example.com",
+    "reference_id": "membership-uuid", // ID de lo que se paga
+    "reference_type": "MEMBERSHIP"
+  }
+  ```
+- **Respuesta**:
+  ```json
+  {
+    "init_point": "https://www.mercadopago.com.ar/checkout/v1/redirect/...",
+    "preference_id": "..."
+  }
+  ```
+
 ### Integración Webhook (MercadoPago)
 Endpoint para recibir notificaciones de estado de pagos.
 - **Endpoint**: `POST /payments/webhook`

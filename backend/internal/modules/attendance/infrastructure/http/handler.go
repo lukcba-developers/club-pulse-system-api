@@ -44,9 +44,46 @@ func (h *AttendanceHandler) GetGroupAttendance(c *gin.Context) {
 	}
 
 	// Logic: Get or Create List
-	list, err := h.useCases.GetOrCreateList(group, date, coachID.(string))
+	clubID := c.GetString("clubID")
+	list, err := h.useCases.GetOrCreateList(clubID, group, date, coachID.(string))
 	if err != nil {
 		log.Printf("Error getting attendance list: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, list)
+}
+
+func (h *AttendanceHandler) GetTrainingGroupAttendance(c *gin.Context) {
+	idStr := c.Param("id")
+	groupID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID"})
+		return
+	}
+
+	dateStr := c.Query("date")
+	groupName := c.DefaultQuery("group_name", "Training Group")
+	category := c.Query("category")
+
+	date := time.Now()
+	if dateStr != "" {
+		parsed, err := time.Parse("2006-01-02", dateStr)
+		if err == nil {
+			date = parsed
+		}
+	}
+
+	coachID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	list, err := h.useCases.GetOrCreateListByTrainingGroup(clubID, groupID, groupName, category, date, coachID.(string))
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -70,7 +107,8 @@ func (h *AttendanceHandler) SubmitAttendance(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCases.MarkAttendance(listID, dto); err != nil {
+	clubID := c.GetString("clubID")
+	if err := h.useCases.MarkAttendance(clubID, listID, dto); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -78,11 +116,12 @@ func (h *AttendanceHandler) SubmitAttendance(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func RegisterRoutes(r *gin.RouterGroup, handler *AttendanceHandler, authMiddleware gin.HandlerFunc) {
+func RegisterRoutes(r *gin.RouterGroup, handler *AttendanceHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
 	g := r.Group("/attendance")
-	g.Use(authMiddleware)
+	g.Use(authMiddleware, tenantMiddleware)
 	{
 		g.GET("/groups/:group", handler.GetGroupAttendance)
+		g.GET("/training-groups/:id", handler.GetTrainingGroupAttendance)
 		g.POST("/:listID/records", handler.SubmitAttendance)
 	}
 }

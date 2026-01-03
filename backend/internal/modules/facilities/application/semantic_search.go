@@ -27,7 +27,7 @@ func NewSemanticSearchUseCase(repo domain.FacilityRepository) *SemanticSearchUse
 
 // Search performs a semantic search for facilities matching the query
 // Example queries: "canchas techadas para lluvia", "piscina climatizada", "tenis noche"
-func (uc *SemanticSearchUseCase) Search(query string, limit int) ([]*SemanticSearchResult, error) {
+func (uc *SemanticSearchUseCase) Search(clubID, query string, limit int) ([]*SemanticSearchResult, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -36,7 +36,7 @@ func (uc *SemanticSearchUseCase) Search(query string, limit int) ([]*SemanticSea
 	queryEmbedding := uc.embedder.GenerateEmbedding(query)
 
 	// Search in database using pgvector
-	results, err := uc.repo.SemanticSearch(queryEmbedding, limit)
+	results, err := uc.repo.SemanticSearch(clubID, queryEmbedding, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +66,8 @@ func (uc *SemanticSearchUseCase) GenerateAndStoreEmbedding(facility *domain.Faci
 }
 
 // GenerateAllEmbeddings generates embeddings for all facilities (batch operation)
-func (uc *SemanticSearchUseCase) GenerateAllEmbeddings() (int, error) {
-	facilities, err := uc.repo.List(1000, 0)
+func (uc *SemanticSearchUseCase) GenerateAllEmbeddings(clubID string) (int, error) {
+	facilities, err := uc.repo.List(clubID, 1000, 0)
 	if err != nil {
 		return 0, err
 	}

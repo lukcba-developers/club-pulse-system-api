@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
@@ -17,11 +18,11 @@ func NewUserUseCases(repo domain.UserRepository) *UserUseCases {
 	}
 }
 
-func (uc *UserUseCases) GetProfile(userID string) (*domain.User, error) {
+func (uc *UserUseCases) GetProfile(clubID, userID string) (*domain.User, error) {
 	if userID == "" {
 		return nil, errors.New("invalid user ID")
 	}
-	return uc.repo.GetByID(userID)
+	return uc.repo.GetByID(clubID, userID)
 }
 
 type UpdateProfileDTO struct {
@@ -30,8 +31,8 @@ type UpdateProfileDTO struct {
 	SportsPreferences map[string]interface{} `json:"sports_preferences"`
 }
 
-func (uc *UserUseCases) UpdateProfile(userID string, dto UpdateProfileDTO) (*domain.User, error) {
-	user, err := uc.repo.GetByID(userID)
+func (uc *UserUseCases) UpdateProfile(clubID, userID string, dto UpdateProfileDTO) (*domain.User, error) {
+	user, err := uc.repo.GetByID(clubID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -60,14 +61,14 @@ func (uc *UserUseCases) UpdateProfile(userID string, dto UpdateProfileDTO) (*dom
 	return user, nil
 }
 
-func (uc *UserUseCases) DeleteUser(id string, requesterID string) error {
+func (uc *UserUseCases) DeleteUser(clubID, id string, requesterID string) error {
 	if id == requesterID {
 		return errors.New("cannot delete yourself")
 	}
-	return uc.repo.Delete(id)
+	return uc.repo.Delete(clubID, id)
 }
 
-func (uc *UserUseCases) ListUsers(limit, offset int, search string) ([]domain.User, error) {
+func (uc *UserUseCases) ListUsers(clubID string, limit, offset int, search string) ([]domain.User, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -80,5 +81,76 @@ func (uc *UserUseCases) ListUsers(limit, offset int, search string) ([]domain.Us
 		filters["search"] = search
 	}
 
-	return uc.repo.List(limit, offset, filters)
+	return uc.repo.List(clubID, limit, offset, filters)
+}
+
+func (uc *UserUseCases) ListChildren(clubID, parentID string) ([]domain.User, error) {
+	if parentID == "" {
+		return nil, errors.New("parent ID required")
+	}
+	return uc.repo.FindChildren(clubID, parentID)
+}
+
+type RegisterChildDTO struct {
+	Name        string     `json:"name"`
+	Email       string     `json:"email"` // Optional for very young children? Let's say required for uniqueness or consistency.
+	DateOfBirth *time.Time `json:"date_of_birth"`
+}
+
+func (uc *UserUseCases) RegisterChild(clubID, parentID string, dto RegisterChildDTO) (*domain.User, error) {
+	if parentID == "" {
+		return nil, errors.New("parent ID required")
+	}
+	if dto.Name == "" {
+		return nil, errors.New("name is required")
+	}
+
+	// Email Logic:
+	// If email is provided, check uniqueness (repo check or constraint).
+	// If not provided, maybe generate a dummy one? email column is unique not null usually.
+	// For now, require email or generate one like child.UUID@placeholder.club
+	email := dto.Email
+	if email == "" {
+		email = "child." + uuid.New().String() + "@placeholder.com"
+	}
+
+	child := &domain.User{
+		ID:          uuid.New().String(),
+		ClubID:      clubID,
+		Name:        dto.Name,
+		Email:       email,
+		Role:        "USER", // Or "CHILD" if we had that role
+		DateOfBirth: dto.DateOfBirth,
+		ParentID:    &parentID,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	if err := uc.repo.Create(child); err != nil {
+		return nil, err
+	}
+
+	return child, nil
+}
+
+func (uc *UserUseCases) GetStats(clubID, userID string) (*domain.UserStats, error) {
+	user, err := uc.repo.GetByID(clubID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	return user.Stats, nil
+}
+
+func (uc *UserUseCases) GetWallet(clubID, userID string) (*domain.Wallet, error) {
+	user, err := uc.repo.GetByID(clubID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	return user.Wallet, nil
 }

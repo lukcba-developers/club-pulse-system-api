@@ -1,0 +1,11 @@
+.git
+.env
+.DS_Store
+**/*.md
+tests/
+scripts/
+bin/
+tmp/
+coverage/
+doc/
+docs/

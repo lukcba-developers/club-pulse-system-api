@@ -25,14 +25,18 @@ func TestPaymentWebhookFlow(t *testing.T) {
 	database.InitDB() // Use local DB (ensure it's running)
 	db := database.GetDB()
 
+	// Clean state
+	_ = db.Migrator().DropTable(&domain.Payment{})
+	_ = db.AutoMigrate(&domain.Payment{})
+
 	// Repositories & Services
 	repo := repository.NewPostgresPaymentRepository(db)
-	processor := gateways.NewMercadoPagoMockProcessor()
-	handler := paymentHttp.NewPaymentHandler(repo, processor)
+	gateway := gateways.NewMockGateway()
+	handler := paymentHttp.NewPaymentHandler(repo, gateway)
 
 	// Router
 	r := gin.Default()
-	paymentHttp.RegisterRoutes(r.Group("/api/v1"), handler)
+	paymentHttp.RegisterRoutes(r.Group("/api/v1"), handler, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
 
 	// 2. Prepare Data: Create a pending payment manually in DB to simulate initiation
 	// Convert float to Decimal

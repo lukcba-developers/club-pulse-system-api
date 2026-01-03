@@ -79,9 +79,12 @@ func (m *MockTokenService) GenerateToken(user *domain.User) (*domain.Token, erro
 	}
 	return args.Get(0).(*domain.Token), args.Error(1)
 }
-func (m *MockTokenService) ValidateToken(token string) (string, error) {
+func (m *MockTokenService) ValidateToken(token string) (*domain.UserClaims, error) {
 	args := m.Called(token)
-	return args.String(0), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.UserClaims), args.Error(1)
 }
 func (m *MockTokenService) GenerateRefreshToken(user *domain.User) (string, error) {
 	args := m.Called(user)
@@ -97,7 +100,7 @@ func TestListSessions(t *testing.T) {
 
 	mockRepo := new(MockAuthRepo)
 	mockTokenService := new(MockTokenService)
-	useCase := application.NewAuthUseCases(mockRepo, mockTokenService)
+	useCase := application.NewAuthUseCases(mockRepo, mockTokenService, nil)
 	handler := NewAuthHandler(useCase)
 
 	t.Run("Success", func(t *testing.T) {
@@ -140,7 +143,7 @@ func TestRevokeSession(t *testing.T) {
 
 	mockRepo := new(MockAuthRepo)
 	mockTokenService := new(MockTokenService)
-	useCase := application.NewAuthUseCases(mockRepo, mockTokenService)
+	useCase := application.NewAuthUseCases(mockRepo, mockTokenService, nil)
 	handler := NewAuthHandler(useCase)
 
 	t.Run("Success", func(t *testing.T) {

@@ -205,3 +205,31 @@ Accept: application/json
 # X-RateLimit-Limit: 100
 # X-RateLimit-Remaining: 99
 # X-RateLimit-Reset: 1735587600
+
+### ============================================
+### PAYMENT MODULE
+### ============================================
+
+### Iniciar Pago (Checkout)
+POST {{baseUrl}}/payments/checkout
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "amount": 5000.00,
+    "currency": "ARS",
+    "description": "Cuota Enero 2025",
+    "payer_email": "testuser@example.com",
+    "reference_id": "{{loginTest.response.body.user.id}}",
+    "reference_type": "MEMBERSHIP"
+}
+
+### Webhook (Simulación)
+POST {{baseUrl}}/payments/webhook?type=payment&data.id=123456
+Content-Type: application/json
+
+{
+    "id": 123456,
+    "type": "payment",
+    "data": { "id": "123456" }
+}

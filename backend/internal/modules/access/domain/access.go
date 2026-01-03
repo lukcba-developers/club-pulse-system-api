@@ -21,6 +21,7 @@ const (
 
 type AccessLog struct {
 	ID         uuid.UUID       `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	ClubID     string          `gorm:"type:varchar(255);index;not null" json:"club_id"`
 	UserID     string          `gorm:"type:text;not null" json:"user_id"`
 	FacilityID *uuid.UUID      `gorm:"type:uuid" json:"facility_id,omitempty"`
 	Direction  AccessDirection `gorm:"type:varchar(10);not null" json:"direction"`
@@ -33,5 +34,5 @@ type AccessLog struct {
 
 type AccessRepository interface {
 	Create(ctx context.Context, log *AccessLog) error
-	GetByUserID(ctx context.Context, userID string, limit int) ([]AccessLog, error)
+	GetByUserID(ctx context.Context, clubID string, userID string, limit int) ([]AccessLog, error)
 }

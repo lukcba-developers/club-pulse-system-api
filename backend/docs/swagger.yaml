@@ -1,0 +1,281 @@
+basePath: /api/v1
+definitions:
+  application.LoginDTO:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  application.SemanticSearchResult:
+    properties:
+      facility:
+        $ref: '#/definitions/domain.Facility'
+      similarity:
+        type: number
+    type: object
+  domain.Club:
+    properties:
+      created_at:
+        type: string
+      domain:
+        type: string
+      id:
+        description: Custom ID (slug) or UUID
+        type: string
+      name:
+        type: string
+      settings:
+        description: JSON settings
+        type: string
+      status:
+        $ref: '#/definitions/domain.ClubStatus'
+      updated_at:
+        type: string
+    type: object
+  domain.ClubStatus:
+    enum:
+    - ACTIVE
+    - INACTIVE
+    type: string
+    x-enum-varnames:
+    - ClubStatusActive
+    - ClubStatusInactive
+  domain.Facility:
+    properties:
+      capacity:
+        type: integer
+      club_id:
+        type: string
+      created_at:
+        type: string
+      hourly_rate:
+        type: number
+      id:
+        type: string
+      location:
+        allOf:
+        - $ref: '#/definitions/domain.Location'
+        description: Stored as JSONB
+      name:
+        type: string
+      specifications:
+        allOf:
+        - $ref: '#/definitions/domain.Specifications'
+        description: Stored as JSONB
+      status:
+        $ref: '#/definitions/domain.FacilityStatus'
+      type:
+        $ref: '#/definitions/domain.FacilityType'
+      updated_at:
+        type: string
+    type: object
+  domain.FacilityStatus:
+    enum:
+    - active
+    - maintenance
+    - closed
+    type: string
+    x-enum-varnames:
+    - FacilityStatusActive
+    - FacilityStatusMaintenance
+    - FacilityStatusClosed
+  domain.FacilityType:
+    enum:
+    - court
+    - pool
+    - gym
+    - field
+    type: string
+    x-enum-varnames:
+    - FacilityTypeCourt
+    - FacilityTypePool
+    - FacilityTypeGym
+    - FacilityTypeField
+  domain.Location:
+    properties:
+      description:
+        type: string
+      name:
+        description: e.g. "Main Building"
+        type: string
+    type: object
+  domain.Specifications:
+    properties:
+      covered:
+        type: boolean
+      equipment:
+        description: Basic inventory list
+        items:
+          type: string
+        type: array
+      lighting:
+        type: boolean
+      surface_type:
+        type: string
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: Management API for Club Pulse System.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Club Pulse API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return HttpOnly cookies
+      parameters:
+      - description: Login Credentials
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/application.LoginDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Login successful'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login user
+      tags:
+      - auth
+  /clubs:
+    get:
+      description: Lists all tenants
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Club'
+            type: array
+      summary: List all clubs (Super Admin only)
+      tags:
+      - clubs
+    post:
+      consumes:
+      - application/json
+      description: Creates a new tenant
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Club'
+      summary: Create a new club (Super Admin only)
+      tags:
+      - clubs
+  /clubs/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Updates tenant details
+      produces:
+      - application/json
+      responses: {}
+      summary: Update a club (Super Admin only)
+      tags:
+      - clubs
+  /facilities:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of facilities for the authenticated club
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Facility'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List facilities
+      tags:
+      - facilities
+  /facilities/embeddings/generate:
+    post:
+      description: Batch operation to generate and store embeddings for all facilities
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Generate embeddings for all facilities
+      tags:
+      - Facilities
+  /facilities/search:
+    get:
+      description: Search for facilities using semantic similarity (e.g., "canchas
+        para lluvia", "piscina nocturna")
+      parameters:
+      - description: Search query in natural language
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Maximum results (default 10)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/application.SemanticSearchResult'
+            type: array
+      summary: Search facilities using natural language
+      tags:
+      - Facilities
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

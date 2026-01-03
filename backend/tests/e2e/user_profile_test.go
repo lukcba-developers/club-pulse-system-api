@@ -22,6 +22,12 @@ func TestUserProfileCategory(t *testing.T) {
 	database.InitDB()
 	db := database.GetDB()
 
+	// Ensure clean state
+	_ = db.Migrator().DropTable(&repository.UserModel{}, &domain.UserStats{}, &domain.Wallet{})
+
+	// Migrate schema for test
+	_ = db.AutoMigrate(&repository.UserModel{}, &domain.UserStats{}, &domain.Wallet{})
+
 	repo := repository.NewPostgresUserRepository(db)
 	useCase := application.NewUserUseCases(repo)
 	handler := userHttp.NewUserHandler(useCase)
@@ -34,6 +40,7 @@ func TestUserProfileCategory(t *testing.T) {
 		birthDate := time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)
 		user := &domain.User{
 			ID:          "test-user-category-id",
+			ClubID:      "test-club-1",
 			Name:        "Kid Player",
 			Email:       "kid@test.com",
 			DateOfBirth: &birthDate,
@@ -42,15 +49,16 @@ func TestUserProfileCategory(t *testing.T) {
 		// Clean up before creating just in case (Hard Delete to allow re-insert of same ID)
 		db.Unscoped().Where("id = ?", user.ID).Delete(&repository.UserModel{})
 
-		err := repo.Update(user)
-		if err != nil {
+		if err := repo.Update(user); err != nil {
 			// Handle error or just ignore for test setup of mock
+			_ = err
 		}
 		// Actually relying on GORM to Upsert or create helper
 
 		// Let's manually create via GORM for test setup
 		if err := db.Create(&repository.UserModel{
 			ID:          user.ID,
+			ClubID:      user.ClubID,
 			Name:        user.Name,
 			Email:       user.Email,
 			DateOfBirth: user.DateOfBirth,
@@ -59,6 +67,7 @@ func TestUserProfileCategory(t *testing.T) {
 		}
 
 		c.Set("userID", user.ID)
+		c.Set("clubID", "test-club-1")
 		c.Next()
 	})
 

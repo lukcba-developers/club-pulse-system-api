@@ -57,7 +57,8 @@ func (h *SearchHandler) Search(c *gin.Context) {
 		limit = 10
 	}
 
-	results, err := h.searchUseCase.Search(query, limit)
+	clubID := c.GetString("clubID")
+	results, err := h.searchUseCase.Search(clubID, query, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Search failed",
@@ -81,7 +82,8 @@ func (h *SearchHandler) Search(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /facilities/embeddings/generate [post]
 func (h *SearchHandler) GenerateEmbeddings(c *gin.Context) {
-	count, err := h.searchUseCase.GenerateAllEmbeddings()
+	clubID := c.GetString("clubID")
+	count, err := h.searchUseCase.GenerateAllEmbeddings(clubID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to generate embeddings",

@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Configuration
-API_URL="http://localhost:8080/api/v1"
+# Configuration
+API_URL="http://localhost:8081/api/v1"
 EMAIL="testuser@example.com"
 PASSWORD="password123"
 NAME="Test User"
@@ -11,11 +12,12 @@ echo "---------------------------------------------------"
 
 # 1. Health Check
 echo "1. Checking System Health..."
-HEALTH_STATUS=$(curl -s "http://localhost:8080/health" | grep -o "UP")
-if [ "$HEALTH_STATUS" == "UP" ]; then
+HEALTH_RESPONSE=$(curl -s "http://localhost:8081/health")
+if [[ "$HEALTH_RESPONSE" == *"UP"* ]]; then
     echo "✅ Backend is UP"
 else
     echo "❌ Backend is DOWN"
+    echo "Response: $HEALTH_RESPONSE"
     exit 1
 fi
 

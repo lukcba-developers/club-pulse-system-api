@@ -22,14 +22,19 @@ func NewPostgresAuthRepository(db *gorm.DB) *PostgresAuthRepository {
 
 // UserModel is the Infrastructure representation of the User
 type UserModel struct {
-	ID        string `gorm:"primaryKey"`
-	Name      string `gorm:"not null"`
-	Email     string `gorm:"uniqueIndex;not null"`
-	Password  string `gorm:"not null"`
-	Role      string `gorm:"default:'USER'"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID          string `gorm:"primaryKey"`
+	Name        string `gorm:"not null"`
+	Email       string `gorm:"uniqueIndex;not null"`
+	Password    string `gorm:"not null"`
+	Role        string `gorm:"default:'USER'"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DateOfBirth *time.Time
+	ParentID    *string `gorm:"index"`
+	ClubID      string  `gorm:"index"`
+	GoogleID    string  `gorm:"index"`
+	AvatarURL   string
+	DeletedAt   gorm.DeletedAt `gorm:"index"`
 }
 
 // RefreshTokenModel represents the refresh token in DB
@@ -73,13 +78,18 @@ func (UserModel) TableName() string {
 
 func (r *PostgresAuthRepository) SaveUser(user *domain.User) error {
 	userModel := UserModel{
-		ID:        user.ID,
-		Name:      user.Name,
-		Email:     user.Email,
-		Password:  user.Password,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:          user.ID,
+		Name:        user.Name,
+		Email:       user.Email,
+		Password:    user.Password,
+		Role:        user.Role,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		DateOfBirth: user.DateOfBirth,
+		ParentID:    user.ParentID,
+		ClubID:      user.ClubID,
+		GoogleID:    user.GoogleID,
+		AvatarURL:   user.AvatarURL,
 	}
 
 	result := r.db.Create(&userModel)
@@ -100,13 +110,18 @@ func (r *PostgresAuthRepository) FindUserByEmail(email string) (*domain.User, er
 	}
 
 	return &domain.User{
-		ID:        userModel.ID,
-		Name:      userModel.Name,
-		Email:     userModel.Email,
-		Password:  userModel.Password,
-		Role:      userModel.Role,
-		CreatedAt: userModel.CreatedAt,
-		UpdatedAt: userModel.UpdatedAt,
+		ID:          userModel.ID,
+		Name:        userModel.Name,
+		Email:       userModel.Email,
+		Password:    userModel.Password,
+		Role:        userModel.Role,
+		CreatedAt:   userModel.CreatedAt,
+		UpdatedAt:   userModel.UpdatedAt,
+		DateOfBirth: userModel.DateOfBirth,
+		ParentID:    userModel.ParentID,
+		ClubID:      userModel.ClubID,
+		GoogleID:    userModel.GoogleID,
+		AvatarURL:   userModel.AvatarURL,
 	}, nil
 }
 
@@ -121,13 +136,16 @@ func (r *PostgresAuthRepository) FindUserByID(id string) (*domain.User, error) {
 	}
 
 	return &domain.User{
-		ID:        userModel.ID,
-		Name:      userModel.Name,
-		Email:     userModel.Email,
-		Password:  userModel.Password,
-		Role:      userModel.Role,
-		CreatedAt: userModel.CreatedAt,
-		UpdatedAt: userModel.UpdatedAt,
+		ID:          userModel.ID,
+		Name:        userModel.Name,
+		Email:       userModel.Email,
+		Password:    userModel.Password,
+		Role:        userModel.Role,
+		CreatedAt:   userModel.CreatedAt,
+		UpdatedAt:   userModel.UpdatedAt,
+		DateOfBirth: userModel.DateOfBirth,
+		ParentID:    userModel.ParentID,
+		ClubID:      userModel.ClubID,
 	}, nil
 }
 

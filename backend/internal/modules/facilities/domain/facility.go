@@ -70,6 +70,7 @@ func (l *Location) Scan(value interface{}) error {
 
 type Facility struct {
 	ID             string         `json:"id"`
+	ClubID         string         `json:"club_id" gorm:"index;not null"`
 	Name           string         `json:"name"`
 	Type           FacilityType   `json:"type"`
 	Status         FacilityStatus `json:"status"`
@@ -79,7 +80,7 @@ type Facility struct {
 	Location       Location       `json:"location"`       // Stored as JSONB
 
 	// Semantic Search (pgvector)
-	Embedding []float32 `json:"-"` // Not exposed in JSON, stored as vector(256) in DB
+	Embedding []float32 `json:"-" gorm:"-"` // Managed by 002_pgvector_indexes.sql
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -95,14 +96,14 @@ type FacilityWithSimilarity struct {
 
 type FacilityRepository interface {
 	Create(facility *Facility) error
-	GetByID(id string) (*Facility, error)
-	List(limit, offset int) ([]*Facility, error)
+	GetByID(clubID, id string) (*Facility, error)
+	List(clubID string, limit, offset int) ([]*Facility, error)
 	Update(facility *Facility) error
 
 	// Maintenance Extensions
-	HasConflict(facilityID string, startTime, endTime time.Time) (bool, error)
+	HasConflict(clubID, facilityID string, startTime, endTime time.Time) (bool, error)
 
 	// Semantic Search Extensions
-	SemanticSearch(embedding []float32, limit int) ([]*FacilityWithSimilarity, error)
+	SemanticSearch(clubID string, embedding []float32, limit int) ([]*FacilityWithSimilarity, error)
 	UpdateEmbedding(facilityID string, embedding []float32) error
 }

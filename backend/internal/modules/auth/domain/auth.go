@@ -5,13 +5,30 @@ import (
 )
 
 type User struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	Password  string    `json:"-"` // Hash
-	Name      string    `json:"name"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          string     `json:"id"`
+	Email       string     `json:"email"`
+	Password    string     `json:"-"` // Hash
+	Name        string     `json:"name"`
+	Role        string     `json:"role"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	DateOfBirth *time.Time `json:"date_of_birth,omitempty"`
+	ParentID    *string    `json:"parent_id,omitempty"`
+	ClubID      string     `json:"club_id"`
+	GoogleID    string     `json:"google_id,omitempty"`
+	AvatarURL   string     `json:"avatar_url,omitempty"`
+}
+
+const (
+	RoleSuperAdmin = "SUPER_ADMIN"
+	RoleAdmin      = "ADMIN"
+	RoleMember     = "MEMBER"
+)
+
+type UserClaims struct {
+	UserID string
+	Role   string
+	ClubID string
 }
 
 type RefreshToken struct {
@@ -61,7 +78,7 @@ type AuthRepository interface {
 
 type TokenService interface {
 	GenerateToken(user *User) (*Token, error)
-	ValidateToken(token string) (string, error) // Returns UserID
+	ValidateToken(token string) (*UserClaims, error)
 	GenerateRefreshToken(user *User) (string, error)
 	ValidateRefreshToken(token string) (string, error) // Returns UserID or TokenID?
 }

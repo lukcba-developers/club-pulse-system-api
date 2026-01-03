@@ -26,11 +26,12 @@ func (s *JWTService) GenerateToken(user *domain.User) (*domain.Token, error) {
 	expiration := time.Now().Add(24 * time.Hour) // Access Token 24h expiry for MVP/Dev
 
 	claims := jwt.MapClaims{
-		"sub":  user.ID,
-		"name": user.Name,
-		"role": user.Role,
-		"iss":  s.issuer,
-		"exp":  expiration.Unix(),
+		"sub":     user.ID,
+		"name":    user.Name,
+		"role":    user.Role,
+		"club_id": user.ClubID,
+		"iss":     s.issuer,
+		"exp":     expiration.Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -65,7 +66,7 @@ func (s *JWTService) ValidateRefreshToken(token string) (string, error) {
 	return token, nil
 }
 
-func (s *JWTService) ValidateToken(tokenString string) (string, error) {
+func (s *JWTService) ValidateToken(tokenString string) (*domain.UserClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -74,14 +75,22 @@ func (s *JWTService) ValidateToken(tokenString string) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if sub, ok := claims["sub"].(string); ok {
-			return sub, nil
+		sub, okSub := claims["sub"].(string)
+		role, _ := claims["role"].(string) // Optional or default to USER
+		clubID, _ := claims["club_id"].(string)
+
+		if okSub {
+			return &domain.UserClaims{
+				UserID: sub,
+				Role:   role,
+				ClubID: clubID,
+			}, nil
 		}
 	}
 
-	return "", fmt.Errorf("invalid token claims")
+	return nil, fmt.Errorf("invalid token claims")
 }

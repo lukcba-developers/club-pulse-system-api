@@ -27,9 +27,10 @@ type CreateFacilityDTO struct {
 	Location       domain.Location       `json:"location"`
 }
 
-func (uc *FacilityUseCases) CreateFacility(dto CreateFacilityDTO) (*domain.Facility, error) {
+func (uc *FacilityUseCases) CreateFacility(clubID string, dto CreateFacilityDTO) (*domain.Facility, error) {
 	facility := &domain.Facility{
 		ID:             uuid.New().String(),
+		ClubID:         clubID,
 		Name:           dto.Name,
 		Type:           dto.Type,
 		Status:         domain.FacilityStatusActive,
@@ -48,18 +49,18 @@ func (uc *FacilityUseCases) CreateFacility(dto CreateFacilityDTO) (*domain.Facil
 	return facility, nil
 }
 
-func (uc *FacilityUseCases) ListFacilities(limit, offset int) ([]*domain.Facility, error) {
+func (uc *FacilityUseCases) ListFacilities(clubID string, limit, offset int) ([]*domain.Facility, error) {
 	if limit <= 0 {
 		limit = 10
 	}
-	return uc.repo.List(limit, offset)
+	return uc.repo.List(clubID, limit, offset)
 }
 
-func (uc *FacilityUseCases) GetFacility(id string) (*domain.Facility, error) {
+func (uc *FacilityUseCases) GetFacility(clubID, id string) (*domain.Facility, error) {
 	if id == "" {
 		return nil, errors.New("invalid ID")
 	}
-	return uc.repo.GetByID(id)
+	return uc.repo.GetByID(clubID, id)
 }
 
 type UpdateFacilityDTO struct {
@@ -68,8 +69,8 @@ type UpdateFacilityDTO struct {
 	Specifications *domain.Specifications `json:"specifications,omitempty"`
 }
 
-func (uc *FacilityUseCases) UpdateFacility(id string, dto UpdateFacilityDTO) (*domain.Facility, error) {
-	facility, err := uc.repo.GetByID(id)
+func (uc *FacilityUseCases) UpdateFacility(clubID, id string, dto UpdateFacilityDTO) (*domain.Facility, error) {
+	facility, err := uc.repo.GetByID(clubID, id)
 	if err != nil {
 		return nil, err
 	}

@@ -25,6 +25,8 @@ import (
 
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 
+	accessDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/domain"
+
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -37,11 +39,20 @@ func TestAccessFlow(t *testing.T) {
 	database.InitDB()
 	db := database.GetDB()
 
+	// Ensure clean state for ALL related tables
+	_ = db.Migrator().DropTable(&membershipDomain.MembershipTier{}, &membershipDomain.Membership{}, &userRepo.UserModel{}, &accessDomain.AccessLog{})
+
+	// AutoMigrate test dependencies
+	// Note: Auth Repo typically migrates 'users' but might miss 'club_id' if using an older model definition.
+	// We force migration with UserRepo's model which has it.
+	_ = db.AutoMigrate(&userRepo.UserModel{})
+	_ = db.AutoMigrate(&accessDomain.AccessLog{})
+
 	// 2. Setup Dependencies
 	// Auth
 	authR := authRepo.NewPostgresAuthRepository(db)
 	tokenService := authToken.NewJWTService("secret")
-	authUC := authApp.NewAuthUseCases(authR, tokenService)
+	authUC := authApp.NewAuthUseCases(authR, tokenService, nil) // Google Auth not needed for this test
 
 	// User
 	userR := userRepo.NewPostgresUserRepository(db)
@@ -61,12 +72,13 @@ func TestAccessFlow(t *testing.T) {
 	authMiddleware := func(c *gin.Context) {
 		// Mock Auth for simplicity or use real one
 		c.Set("userID", "ignored_for_public_access_scan_usually")
+		c.Set("clubID", "test-club-1")
 		// Access Entry might be authenticated by an Admin/Device or Public with Token.
 		// In our plan: POST /access/entry checks the ID in body. Middleware protects the Endpoint itself?
 		// Let's assume the endpoint is valid for a "Gate" device token.
 		c.Next()
 	}
-	accessHttp.RegisterRoutes(r.Group("/api/v1"), accessH, authMiddleware)
+	accessHttp.RegisterRoutes(r.Group("/api/v1"), accessH, authMiddleware, func(c *gin.Context) { c.Next() })
 
 	// 3. Create Test Data
 	// Create User
@@ -82,6 +94,8 @@ func TestAccessFlow(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, user, "User should not be nil")
 	userID := user.ID
+	// Manually set ClubID for User
+	db.Model(&userRepo.UserModel{}).Where("id = ?", userID).Update("club_id", "test-club-1")
 
 	// 4. Test Case 1: Denied (No Membership)
 	reqBody := application.EntryRequest{
@@ -103,7 +117,7 @@ func TestAccessFlow(t *testing.T) {
 	if w.Code == http.StatusForbidden {
 		// Good
 		var resp gin.H
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		data := resp["data"].(map[string]interface{})
 		assert.Equal(t, "DENIED", data["status"])
 	} else {
@@ -114,6 +128,8 @@ func TestAccessFlow(t *testing.T) {
 	// 5. Test Case 2: Granted (Active Membership)
 	// Create Tier
 	tier := &membershipDomain.MembershipTier{
+		ID:         uuid.New(),
+		ClubID:     "test-club-1",
 		Name:       "Access Tier",
 		MonthlyFee: decimal.NewFromFloat(100),
 	}
@@ -121,6 +137,8 @@ func TestAccessFlow(t *testing.T) {
 
 	// Create Membership
 	membership := &membershipDomain.Membership{
+		ID:                 uuid.New(),
+		ClubID:             "test-club-1",
 		UserID:             uuid.MustParse(userID),
 		MembershipTierID:   tier.ID,
 		MembershipTier:     *tier,
@@ -129,7 +147,7 @@ func TestAccessFlow(t *testing.T) {
 		NextBillingDate:    time.Now().AddDate(0, 1, 0),
 		OutstandingBalance: decimal.NewFromFloat(0),
 	}
-	memR.Create(context.Background(), membership)
+	_ = memR.Create(context.Background(), membership)
 
 	w2 := httptest.NewRecorder()
 	req2, _ := http.NewRequest("POST", "/api/v1/access/entry", bytes.NewBuffer(jsonBody))
@@ -137,7 +155,7 @@ func TestAccessFlow(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w2.Code)
 	var resp2 gin.H
-	json.Unmarshal(w2.Body.Bytes(), &resp2)
+	_ = json.Unmarshal(w2.Body.Bytes(), &resp2)
 	data2 := resp2["data"].(map[string]interface{})
 	assert.Equal(t, "GRANTED", data2["status"])
 
@@ -151,7 +169,7 @@ func TestAccessFlow(t *testing.T) {
 
 	assert.Equal(t, http.StatusForbidden, w3.Code)
 	var resp3 gin.H
-	json.Unmarshal(w3.Body.Bytes(), &resp3)
+	_ = json.Unmarshal(w3.Body.Bytes(), &resp3)
 	data3 := resp3["data"].(map[string]interface{})
 	assert.Equal(t, "DENIED", data3["status"])
 	assert.Contains(t, data3["reason"], "debt")

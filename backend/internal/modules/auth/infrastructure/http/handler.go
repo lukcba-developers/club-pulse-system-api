@@ -34,6 +34,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, token)
 }
 
+// Login godoc
+// @Summary      Login user
+// @Description  Authenticate user and return HttpOnly cookies
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body application.LoginDTO true "Login Credentials"
+// @Success      200   {object}  map[string]string "message: Login successful"
+// @Failure      400   {object}  map[string]string
+// @Router       /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var dto application.LoginDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {
@@ -47,7 +57,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, token)
+	// Set HttpOnly Cookie
+	// MaxAge: 24 hours (86400 seconds)
+	// Path: "/"
+	// Domain: "" (localhost handles this)
+	// Secure: false (for dev, true in prod)
+	// HttpOnly: true
+	c.SetCookie("access_token", token.AccessToken, 86400, "/", "", false, true)
+
+	// We can also set refresh token if available
+	if token.RefreshToken != "" {
+		c.SetCookie("refresh_token", token.RefreshToken, 86400*7, "/", "", false, true)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
@@ -124,6 +147,32 @@ func (h *AuthHandler) RevokeSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Session revoked"})
 }
 
+func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	type GoogleLoginDTO struct {
+		Code string `json:"code" binding:"required"`
+	}
+	var dto GoogleLoginDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Code is required"})
+		return
+	}
+
+	token, err := h.useCase.GoogleLogin(c.Request.Context(), dto.Code)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	// Set HttpOnly Cookie
+	// MaxAge: 24 hours (86400 seconds)
+	c.SetCookie("access_token", token.AccessToken, 86400, "/", "", false, true)
+	if token.RefreshToken != "" {
+		c.SetCookie("refresh_token", token.RefreshToken, 86400*7, "/", "", false, true)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Google login successful"})
+}
+
 // Routes registration
 // Routes registration
 // Routes registration
@@ -134,6 +183,7 @@ func RegisterRoutes(r *gin.RouterGroup, h *AuthHandler, authMiddleware gin.Handl
 		authGroup.POST("/login", h.Login)
 		authGroup.POST("/refresh", h.RefreshToken)
 		authGroup.POST("/logout", h.Logout)
+		authGroup.POST("/google", h.GoogleLogin)
 	}
 
 	// Protected routes

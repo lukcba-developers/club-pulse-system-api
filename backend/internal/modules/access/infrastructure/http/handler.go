@@ -22,7 +22,8 @@ func (h *AccessHandler) ValidateEntry(c *gin.Context) {
 		return
 	}
 
-	log, err := h.useCases.RequestEntry(c.Request.Context(), req)
+	clubID := c.GetString("clubID")
+	log, err := h.useCases.RequestEntry(c.Request.Context(), clubID, req)
 	if err != nil {
 		// Even if error (e.g. denied), we might return 200 with Denied status,
 		// but RequestEntry returns error only on system failure or logging failure usually.
@@ -43,9 +44,9 @@ func (h *AccessHandler) ValidateEntry(c *gin.Context) {
 	c.JSON(statusCode, gin.H{"data": log})
 }
 
-func RegisterRoutes(r *gin.RouterGroup, handler *AccessHandler, authMiddleware gin.HandlerFunc) {
+func RegisterRoutes(r *gin.RouterGroup, handler *AccessHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
 	access := r.Group("/access")
-	access.Use(authMiddleware)
+	access.Use(authMiddleware, tenantMiddleware)
 	{
 		access.POST("/entry", handler.ValidateEntry)
 	}

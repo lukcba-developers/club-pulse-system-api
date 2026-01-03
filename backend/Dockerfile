@@ -1,19 +1,32 @@
 # Build Stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
+
+# Set env vars for optimization
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN go build -o main ./cmd/api/main.go
+# Build with ldflags to reduce size
+RUN go build -ldflags="-w -s" -o main ./cmd/api/main.go
 
 # Run Stage
 FROM alpine:latest
 
-WORKDIR /root/
+WORKDIR /app
+
+# Install certificates and timezone data
+RUN apk --no-cache add ca-certificates tzdata
+
+# Create non-root user for security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
 COPY --from=builder /app/main .
 

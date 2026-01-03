@@ -42,9 +42,17 @@ func CORSMiddleware() gin.HandlerFunc {
 		// }
 
 		// For MVP/Dev, we can be slightly permissive but strict on methods/headers
-		c.Header("Access-Control-Allow-Origin", "*")
+		origin := c.Request.Header.Get("Origin")
+		// fmt.Printf("DEBUG CORS: Origin=%s Method=%s Path=%s\n", origin, c.Request.Method, c.Request.URL.Path)
+
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin) // Dynamic allow for localhost:3000
+		} else {
+			// Fallback for tools or direct access?
+			// c.Header("Access-Control-Allow-Origin", "*") // Don't do this with Credentials=true
+		}
 		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Club-ID")
 		c.Header("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method == "OPTIONS" {

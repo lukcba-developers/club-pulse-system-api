@@ -1,0 +1,11 @@
+package domain
+
+import "context"
+
+type PaymentGateway interface {
+	// CreatePreference creates a payment preference and returns the checkout URL (init_point)
+	CreatePreference(ctx context.Context, payment *Payment, payerEmail string, description string) (string, error)
+
+	// ProcessWebhook handles the notification from the provider
+	ProcessWebhook(ctx context.Context, payload interface{}) (*Payment, error)
+}

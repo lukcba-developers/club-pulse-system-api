@@ -17,19 +17,21 @@ func NewMembershipHandler(useCases *application.MembershipUseCases) *MembershipH
 	return &MembershipHandler{useCases: useCases}
 }
 
-func RegisterRoutes(r *gin.RouterGroup, h *MembershipHandler, authMiddleware gin.HandlerFunc) {
+func RegisterRoutes(r *gin.RouterGroup, h *MembershipHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
 	memberships := r.Group("/memberships")
-	memberships.Use(authMiddleware)
+	memberships.Use(authMiddleware, tenantMiddleware)
 	{
 		memberships.POST("", h.CreateMembership)
 		memberships.GET("", h.ListMemberships)
 		memberships.GET("/tiers", h.ListTiers)
 		memberships.GET("/:id", h.GetMembership)
+		memberships.POST("/process-billing", h.ProcessBilling)
 	}
 }
 
 func (h *MembershipHandler) ListTiers(c *gin.Context) {
-	tiers, err := h.useCases.ListTiers(c.Request.Context())
+	clubID := c.GetString("clubID")
+	tiers, err := h.useCases.ListTiers(c.Request.Context(), clubID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -54,7 +56,8 @@ func (h *MembershipHandler) CreateMembership(c *gin.Context) {
 	// Force UserID from token to ensure security
 	req.UserID = uuid.MustParse(userID.(string))
 
-	membership, err := h.useCases.CreateMembership(c.Request.Context(), req)
+	clubID := c.GetString("clubID")
+	membership, err := h.useCases.CreateMembership(c.Request.Context(), clubID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -71,7 +74,8 @@ func (h *MembershipHandler) GetMembership(c *gin.Context) {
 		return
 	}
 
-	membership, err := h.useCases.GetMembership(c.Request.Context(), id)
+	clubID := c.GetString("clubID")
+	membership, err := h.useCases.GetMembership(c.Request.Context(), clubID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -88,11 +92,26 @@ func (h *MembershipHandler) ListMemberships(c *gin.Context) {
 	}
 
 	uid := uuid.MustParse(userID.(string))
-	memberships, err := h.useCases.ListUserMemberships(c.Request.Context(), uid)
+	clubID := c.GetString("clubID")
+	memberships, err := h.useCases.ListUserMemberships(c.Request.Context(), clubID, uid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": memberships})
+}
+
+func (h *MembershipHandler) ProcessBilling(c *gin.Context) {
+	// In production, this would be restricted to ADMIN role.
+	clubID := c.GetString("clubID")
+	count, err := h.useCases.ProcessMonthlyBilling(c.Request.Context(), clubID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Billing cycle processed",
+		"count":   count,
+	})
 }

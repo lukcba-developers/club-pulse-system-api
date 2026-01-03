@@ -13,6 +13,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/domain"
 	attendanceHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/http"
 	attendanceRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/repository"
+	membershipRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/infrastructure/repository"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
@@ -25,12 +26,19 @@ func TestAttendanceFlow(t *testing.T) {
 	database.InitDB()
 	db := database.GetDB()
 
+	// Ensure clean state (Legacy schema conflict prevention)
+	_ = db.Migrator().DropTable(&attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{}, &userRepo.UserModel{})
+
+	// 2. Setup DB & Migrations
+	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
+	err := db.AutoMigrate(&userRepo.UserModel{}, &attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{})
+	assert.NoError(t, err)
+
 	// Repos
 	uRepo := userRepo.NewPostgresUserRepository(db)
 	aRepo := attendanceRepo.NewPostgresAttendanceRepository(db)
-
-	// uUseCase := userApp.NewUserUseCases(uRepo) // Unused
-	aUseCase := attendanceApp.NewAttendanceUseCases(aRepo, uRepo)
+	mRepo := membershipRepo.NewPostgresMembershipRepository(db)
+	aUseCase := attendanceApp.NewAttendanceUseCases(aRepo, uRepo, mRepo)
 
 	aHandler := attendanceHttp.NewAttendanceHandler(aUseCase)
 
@@ -42,7 +50,7 @@ func TestAttendanceFlow(t *testing.T) {
 		c.Next()
 	})
 
-	attendanceHttp.RegisterRoutes(r.Group("/api/v1"), aHandler, func(c *gin.Context) { c.Next() })
+	attendanceHttp.RegisterRoutes(r.Group("/api/v1"), aHandler, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
 
 	// 2. Seed Data
 	// Create a Student user with birth year 2012
@@ -53,7 +61,11 @@ func TestAttendanceFlow(t *testing.T) {
 		Email:       "student2012@test.com",
 		DateOfBirth: &deleteDate,
 	}
+	// Clean up in correct order (FK dependency: records -> lists)
+	db.Unscoped().Where("user_id = ?", student.ID).Delete(&attendanceRepo.AttendanceRecordModel{})
+	db.Unscoped().Where("group_name = ?", "2012").Delete(&attendanceRepo.AttendanceListModel{})
 	db.Unscoped().Where("id = ?", student.ID).Delete(&userRepo.UserModel{})
+
 	db.Create(&userRepo.UserModel{
 		ID:          student.ID,
 		Name:        student.Name,
@@ -70,7 +82,7 @@ func TestAttendanceFlow(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var list domain.AttendanceList
-	err := json.Unmarshal(w.Body.Bytes(), &list)
+	err = json.Unmarshal(w.Body.Bytes(), &list)
 	assert.NoError(t, err)
 	assert.Equal(t, "2012", list.Group)
 	assert.NotEmpty(t, list.ID)
@@ -100,13 +112,19 @@ func TestAttendanceFlow(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w2.Code)
 
 	// 5. Verify Persistence
-	updatedList, _ := aUseCase.GetOrCreateList("2012", list.Date, "coach-uuid-123")
+	updatedList, err := aUseCase.GetOrCreateList("test-club", "2012", list.Date, "coach-uuid-123")
+	assert.NoError(t, err)
+	assert.NotNil(t, updatedList)
+
 	var updatedRecord domain.AttendanceRecord
+	foundUpdated := false
 	for _, rec := range updatedList.Records {
 		if rec.UserID == "student-2012" {
 			updatedRecord = rec
+			foundUpdated = true
 		}
 	}
+	assert.True(t, foundUpdated, "Updated record not found")
 	assert.Equal(t, domain.StatusPresent, updatedRecord.Status)
 	assert.Equal(t, "Arrived on time", updatedRecord.Notes)
 }

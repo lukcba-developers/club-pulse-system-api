@@ -33,6 +33,7 @@ const (
 // MembershipTier defines the types of memberships available (Gold, Silver, etc.)
 type MembershipTier struct {
 	ID          uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ClubID      string          `json:"club_id" gorm:"index;not null"`
 	Name        string          `json:"name" gorm:"not null;size:255"`
 	Description string          `json:"description" gorm:"type:text"`
 	MonthlyFee  decimal.Decimal `json:"monthly_fee" gorm:"type:decimal(10,2);not null"`
@@ -48,6 +49,7 @@ type MembershipTier struct {
 // Membership represents a user's subscription
 type Membership struct {
 	ID               uuid.UUID      `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ClubID           string         `json:"club_id" gorm:"index;not null"`
 	UserID           uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;index"`
 	MembershipTierID uuid.UUID      `json:"membership_tier_id" gorm:"type:uuid;not null"`
 	MembershipTier   MembershipTier `json:"membership_tier" gorm:"foreignKey:MembershipTierID"`
@@ -81,8 +83,10 @@ func (m *Membership) CalculateLateFee() decimal.Decimal {
 // Repository Interface
 type MembershipRepository interface {
 	Create(ctx context.Context, membership *Membership) error
-	GetByID(ctx context.Context, id uuid.UUID) (*Membership, error)
-	GetByUserID(ctx context.Context, userID uuid.UUID) ([]Membership, error)
-	ListTiers(ctx context.Context) ([]MembershipTier, error)
-	GetTierByID(ctx context.Context, id uuid.UUID) (*MembershipTier, error)
+	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*Membership, error)
+	GetByUserID(ctx context.Context, clubID string, userID uuid.UUID) ([]Membership, error)
+	ListTiers(ctx context.Context, clubID string) ([]MembershipTier, error)
+	GetTierByID(ctx context.Context, clubID string, id uuid.UUID) (*MembershipTier, error)
+	ListBillable(ctx context.Context, clubID string, date time.Time) ([]Membership, error)
+	UpdateBalance(ctx context.Context, clubID string, membershipID uuid.UUID, newBalance decimal.Decimal, nextBilling time.Time) error
 }

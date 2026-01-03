@@ -25,13 +25,13 @@ func NewMembershipUseCases(repo domain.MembershipRepository) *MembershipUseCases
 	}
 }
 
-func (uc *MembershipUseCases) ListTiers(ctx context.Context) ([]domain.MembershipTier, error) {
-	return uc.repo.ListTiers(ctx)
+func (uc *MembershipUseCases) ListTiers(ctx context.Context, clubID string) ([]domain.MembershipTier, error) {
+	return uc.repo.ListTiers(ctx, clubID)
 }
 
-func (uc *MembershipUseCases) CreateMembership(ctx context.Context, req CreateMembershipRequest) (*domain.Membership, error) {
+func (uc *MembershipUseCases) CreateMembership(ctx context.Context, clubID string, req CreateMembershipRequest) (*domain.Membership, error) {
 	// 1. Get Tier to calculate dates and validate
-	tier, err := uc.repo.GetTierByID(ctx, req.MembershipTierID)
+	tier, err := uc.repo.GetTierByID(ctx, clubID, req.MembershipTierID)
 	if err != nil {
 		return nil, errors.New("invalid membership tier")
 	}
@@ -58,6 +58,7 @@ func (uc *MembershipUseCases) CreateMembership(ctx context.Context, req CreateMe
 		UserID:           req.UserID,
 		MembershipTierID: req.MembershipTierID,
 		MembershipTier:   *tier,
+		ClubID:           clubID,
 		Status:           domain.MembershipStatusActive, // Auto-activate for MVP
 		BillingCycle:     req.BillingCycle,
 		StartDate:        startDate,
@@ -71,10 +72,34 @@ func (uc *MembershipUseCases) CreateMembership(ctx context.Context, req CreateMe
 	return membership, nil
 }
 
-func (uc *MembershipUseCases) GetMembership(ctx context.Context, id uuid.UUID) (*domain.Membership, error) {
-	return uc.repo.GetByID(ctx, id)
+func (uc *MembershipUseCases) GetMembership(ctx context.Context, clubID string, id uuid.UUID) (*domain.Membership, error) {
+	return uc.repo.GetByID(ctx, clubID, id)
 }
 
-func (uc *MembershipUseCases) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]domain.Membership, error) {
-	return uc.repo.GetByUserID(ctx, userID)
+func (uc *MembershipUseCases) ListUserMemberships(ctx context.Context, clubID string, userID uuid.UUID) ([]domain.Membership, error) {
+	return uc.repo.GetByUserID(ctx, clubID, userID)
+}
+
+// ProcessMonthlyBilling runs the billing cycle for all active memberships
+func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID string) (int, error) {
+	now := time.Now()
+	billable, err := uc.repo.ListBillable(ctx, clubID, now)
+	if err != nil {
+		return 0, err
+	}
+
+	processedCount := 0
+	for _, m := range billable {
+		// Calculate new balance
+		newBalance := m.OutstandingBalance.Add(m.MembershipTier.MonthlyFee)
+
+		// Calculate next billing date (next month)
+		nextBilling := m.NextBillingDate.AddDate(0, 1, 0)
+
+		if err := uc.repo.UpdateBalance(ctx, clubID, m.ID, newBalance, nextBilling); err == nil {
+			processedCount++
+		}
+	}
+
+	return processedCount, nil
 }

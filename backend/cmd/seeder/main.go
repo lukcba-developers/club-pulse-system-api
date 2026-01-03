@@ -7,13 +7,43 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	accessDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/domain"
+	attendanceRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/domain"
+	bookingDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
+	clubDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
+	disciplineDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/domain"
 	facilityDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	membershipDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/domain"
+	paymentDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/shopspring/decimal"
 	"golang.org/x/crypto/bcrypt"
+
+	"gorm.io/gorm"
 )
+
+// SeederUser helps us create the full table schema required by all modules
+type SeederUser struct {
+	ID                string `gorm:"primaryKey"`
+	Name              string
+	Email             string `gorm:"uniqueIndex"`
+	Password          string
+	Role              string
+	DateOfBirth       *time.Time
+	SportsPreferences map[string]interface{} `gorm:"serializer:json"`
+	ParentID          *string                `gorm:"index"`
+	ClubID            string                 `gorm:"index"`
+	GoogleID          string                 `gorm:"index"`
+	AvatarURL         string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         gorm.DeletedAt `gorm:"index"`
+}
+
+func (SeederUser) TableName() string {
+	return "users"
+}
 
 func main() {
 	// Initialize DB
@@ -28,10 +58,58 @@ func main() {
 
 	// Reset Tables for clean seed (MVP)
 	log.Println("Resetting Tables...")
-	db.Migrator().DropTable(&domain.User{}, &facilityDom.Facility{}, &membershipDom.MembershipTier{})
-	db.AutoMigrate(&domain.User{})
-	db.AutoMigrate(&facilityDom.Facility{})
-	db.AutoMigrate(&membershipDom.MembershipTier{})
+	// Reset Tables logic removed to preserve App Schema
+
+	// Ensure UUID extension exists
+	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
+
+	if err := db.Migrator().DropTable(
+		&SeederUser{},
+		&clubDom.Club{},
+		&facilityDom.Facility{},
+		&membershipDom.MembershipTier{},
+		&membershipDom.Membership{},
+		&disciplineDom.Discipline{},
+		&disciplineDom.TrainingGroup{},
+		&bookingDom.Booking{},
+		&paymentDom.Payment{},
+		&accessDom.AccessLog{},
+		&attendanceRepo.AttendanceRecordModel{},
+		// Add others if we seed them
+	); err != nil {
+		log.Printf("Error dropping tables: %v", err)
+	}
+	if err := db.AutoMigrate(
+		&SeederUser{},
+		&clubDom.Club{},
+		&facilityDom.Facility{},
+		&membershipDom.MembershipTier{},
+		&membershipDom.Membership{},
+		&disciplineDom.Discipline{},
+		&disciplineDom.TrainingGroup{},
+		&bookingDom.Booking{},
+		&paymentDom.Payment{},
+		&accessDom.AccessLog{},
+		&attendanceRepo.AttendanceRecordModel{},
+		// Add others if we seed them
+	); err != nil {
+		log.Fatalf("Failed to automigrate: %v", err)
+	}
+
+	// 0. Seed Clubs
+	defaultClub := clubDom.Club{
+		ID:        "club-alpha",
+		Name:      "Club Alpha",
+		Domain:    "club-alpha.com",
+		Status:    clubDom.ClubStatusActive,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := db.FirstOrCreate(&defaultClub, "id = ?", defaultClub.ID).Error; err != nil {
+		log.Printf("Error creating club: %v", err)
+	} else {
+		log.Println("Seeded Club: Club Alpha")
+	}
 
 	// 1. Seed Users
 	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
@@ -40,7 +118,8 @@ func main() {
 		Email:     "admin@clubpulse.com",
 		Password:  string(hashedPwd),
 		Name:      "System Admin",
-		Role:      "ADMIN",
+		Role:      domain.RoleAdmin,
+		ClubID:    defaultClub.ID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -51,6 +130,24 @@ func main() {
 		log.Println("Seeded Admin User")
 	}
 
+	// 1.2 Seed Super Admin
+	superAdmin := domain.User{
+		ID:        uuid.New().String(),
+		Email:     "superadmin@clubpulse.com",
+		Password:  string(hashedPwd), // Same password for MVP convenience
+		Name:      "Super Administrator",
+		Role:      domain.RoleSuperAdmin,
+		ClubID:    "system",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.Where("email = ?", superAdmin.Email).FirstOrCreate(&superAdmin).Error; err != nil {
+		log.Printf("Error seeding super admin: %v", err)
+	} else {
+		log.Println("Seeded Super Admin User")
+	}
+
 	// 1.5 Seed Test User (Member)
 	hashedPwdTest, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	testUser := domain.User{
@@ -58,7 +155,8 @@ func main() {
 		Email:     "testuser@example.com",
 		Password:  string(hashedPwdTest),
 		Name:      "Test User",
-		Role:      "MEMBER",
+		Role:      domain.RoleMember,
+		ClubID:    defaultClub.ID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -76,6 +174,7 @@ func main() {
 	facilities := []facilityDom.Facility{
 		{
 			ID:         uuid.New().String(),
+			ClubID:     defaultClub.ID, // Add ClubID
 			Name:       "Centre Court (Tennis)",
 			Type:       facilityDom.FacilityTypeCourt,
 			Status:     facilityDom.FacilityStatusActive,
@@ -95,6 +194,7 @@ func main() {
 		},
 		{
 			ID:         uuid.New().String(),
+			ClubID:     defaultClub.ID, // Add ClubID
 			Name:       "Padel Court 1",
 			Type:       facilityDom.FacilityTypeCourt, // Padel is a court type
 			Status:     facilityDom.FacilityStatusActive,
@@ -114,6 +214,7 @@ func main() {
 		},
 		{
 			ID:         uuid.New().String(),
+			ClubID:     defaultClub.ID, // Add ClubID
 			Name:       "Main Gym",
 			Type:       facilityDom.FacilityTypeGym,
 			Status:     facilityDom.FacilityStatusActive,
@@ -145,6 +246,7 @@ func main() {
 	tiers := []membershipDom.MembershipTier{
 		{
 			ID:          uuid.New(),
+			ClubID:      defaultClub.ID, // Add ClubID
 			Name:        "Bronze",
 			Description: "Entry level access for casual players",
 			MonthlyFee:  decimal.NewFromFloat(29.99),
@@ -154,6 +256,7 @@ func main() {
 		},
 		{
 			ID:          uuid.New(),
+			ClubID:      defaultClub.ID, // Add ClubID
 			Name:        "Silver",
 			Description: "Perfect for regular members",
 			MonthlyFee:  decimal.NewFromFloat(59.99),
@@ -163,6 +266,7 @@ func main() {
 		},
 		{
 			ID:          uuid.New(),
+			ClubID:      defaultClub.ID, // Add ClubID
 			Name:        "Gold",
 			Description: "The ultimate VIP experience",
 			MonthlyFee:  decimal.NewFromFloat(99.99),
@@ -179,6 +283,68 @@ func main() {
 			log.Printf("Seeded Tier: %s", t.Name)
 		}
 	}
+
+	// 4. Seed Disciplines
+	futbol := disciplineDom.Discipline{
+		ID:          uuid.New(),
+		ClubID:      defaultClub.ID, // Add ClubID
+		Name:        "Fútbol",
+		Description: "Escuela de fútbol infantil y juvenil",
+		IsActive:    true,
+	}
+	if err := db.FirstOrCreate(&futbol, "name = ?", futbol.Name).Error; err != nil {
+		log.Printf("Error creating discipline %s: %v", futbol.Name, err)
+	}
+
+	tennis := disciplineDom.Discipline{
+		ID:          uuid.New(),
+		ClubID:      defaultClub.ID, // Add ClubID
+		Name:        "Tenis",
+		Description: "Clases grupales e individuales",
+		IsActive:    true,
+	}
+	if err := db.FirstOrCreate(&tennis, "name = ?", tennis.Name).Error; err != nil {
+		log.Printf("Error creating discipline %s: %v", tennis.Name, err)
+	}
+
+	// 5. Seed Training Groups
+	groups := []disciplineDom.TrainingGroup{
+		{
+			ID:           uuid.New(),
+			ClubID:       defaultClub.ID, // Add ClubID
+			Name:         "Fútbol 2012",
+			DisciplineID: futbol.ID,
+			Category:     "2012",
+			CoachID:      admin.ID,
+			Schedule:     "Lun/Mie 18:00",
+		},
+		{
+			ID:           uuid.New(),
+			ClubID:       defaultClub.ID, // Add ClubID
+			Name:         "Fútbol 2015",
+			DisciplineID: futbol.ID,
+			Category:     "2015",
+			CoachID:      admin.ID,
+			Schedule:     "Mar/Jue 17:30",
+		},
+		{
+			ID:           uuid.New(),
+			ClubID:       defaultClub.ID, // Add ClubID
+			Name:         "Tenis Inicial - Niños",
+			DisciplineID: tennis.ID,
+			Category:     "2014",
+			CoachID:      admin.ID,
+			Schedule:     "Sab 10:00",
+		},
+	}
+
+	for _, g := range groups {
+		if err := db.FirstOrCreate(&g, "name = ?", g.Name).Error; err != nil {
+			log.Printf("Error seeding group %s: %v", g.Name, err)
+		}
+	}
+
+	log.Println("Seeded Disciplines and Training Groups")
 
 	log.Println("--- Seeding Completed Successfully ---")
 }

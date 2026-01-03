@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 )
 
 // --- Mocks ---
@@ -24,16 +26,16 @@ func (m *MockBookingRepo) Create(booking *bookingDomain.Booking) error {
 	return args.Error(0)
 }
 
-func (m *MockBookingRepo) GetByID(id uuid.UUID) (*bookingDomain.Booking, error) {
-	args := m.Called(id)
+func (m *MockBookingRepo) GetByID(clubID string, id uuid.UUID) (*bookingDomain.Booking, error) {
+	args := m.Called(clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*bookingDomain.Booking), args.Error(1)
 }
 
-func (m *MockBookingRepo) List(filter map[string]interface{}) ([]bookingDomain.Booking, error) {
-	args := m.Called(filter)
+func (m *MockBookingRepo) List(clubID string, filter map[string]interface{}) ([]bookingDomain.Booking, error) {
+	args := m.Called(clubID, filter)
 	return args.Get(0).([]bookingDomain.Booking), args.Error(1)
 }
 
@@ -42,9 +44,19 @@ func (m *MockBookingRepo) Update(booking *bookingDomain.Booking) error {
 	return args.Error(0)
 }
 
-func (m *MockBookingRepo) HasTimeConflict(facilityID uuid.UUID, start, end time.Time) (bool, error) {
-	args := m.Called(facilityID, start, end)
+func (m *MockBookingRepo) HasTimeConflict(clubID string, facilityID uuid.UUID, start, end time.Time) (bool, error) {
+	args := m.Called(clubID, facilityID, start, end)
 	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockBookingRepo) ListByFacilityAndDate(clubID string, facilityID uuid.UUID, date time.Time) ([]bookingDomain.Booking, error) {
+	args := m.Called(clubID, facilityID, date)
+	return args.Get(0).([]bookingDomain.Booking), args.Error(1)
+}
+
+func (m *MockBookingRepo) ListAll(clubID string, filter map[string]interface{}, from, to *time.Time) ([]bookingDomain.Booking, error) {
+	args := m.Called(clubID, filter, from, to)
+	return args.Get(0).([]bookingDomain.Booking), args.Error(1)
 }
 
 type MockFacilityRepo struct {
@@ -56,16 +68,16 @@ func (m *MockFacilityRepo) Create(facility *facilityDomain.Facility) error {
 	return args.Error(0)
 }
 
-func (m *MockFacilityRepo) GetByID(id string) (*facilityDomain.Facility, error) {
-	args := m.Called(id)
+func (m *MockFacilityRepo) GetByID(clubID, id string) (*facilityDomain.Facility, error) {
+	args := m.Called(clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*facilityDomain.Facility), args.Error(1)
 }
 
-func (m *MockFacilityRepo) List(limit, offset int) ([]*facilityDomain.Facility, error) {
-	args := m.Called(limit, offset)
+func (m *MockFacilityRepo) List(clubID string, limit, offset int) ([]*facilityDomain.Facility, error) {
+	args := m.Called(clubID, limit, offset)
 	return args.Get(0).([]*facilityDomain.Facility), args.Error(1)
 }
 
@@ -74,9 +86,61 @@ func (m *MockFacilityRepo) Update(facility *facilityDomain.Facility) error {
 	return args.Error(0)
 }
 
-func (m *MockFacilityRepo) HasConflict(facilityID string, startTime, endTime time.Time) (bool, error) {
-	args := m.Called(facilityID, startTime, endTime)
+func (m *MockFacilityRepo) HasConflict(clubID, facilityID string, startTime, endTime time.Time) (bool, error) {
+	args := m.Called(clubID, facilityID, startTime, endTime)
 	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockFacilityRepo) SemanticSearch(clubID string, embedding []float32, limit int) ([]*facilityDomain.FacilityWithSimilarity, error) {
+	args := m.Called(clubID, embedding, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*facilityDomain.FacilityWithSimilarity), args.Error(1)
+}
+
+func (m *MockFacilityRepo) UpdateEmbedding(facilityID string, embedding []float32) error {
+	args := m.Called(facilityID, embedding)
+	return args.Error(0)
+}
+
+type MockNotificationSender struct {
+	mock.Mock
+}
+
+func (m *MockNotificationSender) Send(ctx context.Context, n service.Notification) error {
+	args := m.Called(ctx, n)
+	return args.Error(0)
+}
+
+type MockRecurringRepo struct {
+	mock.Mock
+}
+
+func (m *MockRecurringRepo) Create(ctx context.Context, rule *bookingDomain.RecurringRule) error {
+	args := m.Called(ctx, rule)
+	return args.Error(0)
+}
+
+func (m *MockRecurringRepo) GetByFacility(ctx context.Context, clubID string, facilityID uuid.UUID) ([]bookingDomain.RecurringRule, error) {
+	args := m.Called(ctx, clubID, facilityID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]bookingDomain.RecurringRule), args.Error(1)
+}
+
+func (m *MockRecurringRepo) GetAllActive(ctx context.Context, clubID string) ([]bookingDomain.RecurringRule, error) {
+	args := m.Called(ctx, clubID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]bookingDomain.RecurringRule), args.Error(1)
+}
+
+func (m *MockRecurringRepo) Delete(ctx context.Context, clubID string, id uuid.UUID) error {
+	args := m.Called(ctx, clubID, id)
+	return args.Error(0)
 }
 
 // --- Tests ---
@@ -90,7 +154,7 @@ func TestCreateBooking(t *testing.T) {
 	tests := []struct {
 		name          string
 		dto           application.CreateBookingDTO
-		setupMocks    func(mbr *MockBookingRepo, mfr *MockFacilityRepo)
+		setupMocks    func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender)
 		expectedError string
 		checkResult   func(t *testing.T, booking *bookingDomain.Booking)
 	}{
@@ -102,21 +166,24 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  startTime,
 				EndTime:    endTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo) {
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
 				// 1. Get Facility -> Active
-				mfr.On("GetByID", facilityID).Return(&facilityDomain.Facility{
+				mfr.On("GetByID", "test-club", facilityID).Return(&facilityDomain.Facility{
 					ID:     facilityID,
 					Status: facilityDomain.FacilityStatusActive,
 				}, nil).Once()
 
 				// 2. Check Conflict -> False
-				mbr.On("HasTimeConflict", mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Once()
+				mbr.On("HasTimeConflict", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Once()
 
 				// 3. Maintenance Conflict -> False
-				mfr.On("HasConflict", mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Once()
+				mfr.On("HasConflict", "test-club", facilityID, startTime, endTime).Return(false, nil).Once()
 
 				// 4. Create -> Success
 				mbr.On("Create", mock.AnythingOfType("*domain.Booking")).Return(nil).Once()
+
+				// 5. Notification -> Called (Async)
+				mns.On("Send", mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			expectedError: "",
 			checkResult: func(t *testing.T, booking *bookingDomain.Booking) {
@@ -132,17 +199,17 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  startTime,
 				EndTime:    endTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo) {
-				mfr.On("GetByID", facilityID).Return(&facilityDomain.Facility{
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
+				mfr.On("GetByID", "test-club", facilityID).Return(&facilityDomain.Facility{
 					ID:     facilityID,
 					Status: facilityDomain.FacilityStatusActive, // Facility is active, but maintenance task exists
 				}, nil).Once()
 
 				// 2. Check Conflict -> False (No booking conflict)
-				mbr.On("HasTimeConflict", mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Once()
+				mbr.On("HasTimeConflict", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Once()
 
 				// 3. Maintenance Conflict -> True
-				mfr.On("HasConflict", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once()
+				mfr.On("HasConflict", "test-club", facilityID, startTime, endTime).Return(true, nil).Once()
 			},
 			expectedError: "scheduled for maintenance",
 			checkResult: func(t *testing.T, booking *bookingDomain.Booking) {
@@ -157,13 +224,13 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  startTime,
 				EndTime:    endTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo) {
-				mfr.On("GetByID", facilityID).Return(&facilityDomain.Facility{
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
+				mfr.On("GetByID", "test-club", facilityID).Return(&facilityDomain.Facility{
 					ID:     facilityID,
 					Status: facilityDomain.FacilityStatusActive,
 				}, nil).Once()
 
-				mbr.On("HasTimeConflict", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once()
+				mbr.On("HasTimeConflict", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once()
 			},
 			expectedError: "booking time conflict",
 			checkResult: func(t *testing.T, booking *bookingDomain.Booking) {
@@ -178,11 +245,8 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  endTime, // Invalid
 				EndTime:    startTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo) {
-				mfr.On("GetByID", facilityID).Return(&facilityDomain.Facility{
-					ID:     facilityID,
-					Status: facilityDomain.FacilityStatusActive,
-				}, nil).Once()
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
+				// No mocks needed as time validation happens before repo calls
 			},
 			expectedError: "start time must be before end time",
 			checkResult: func(t *testing.T, booking *bookingDomain.Booking) {
@@ -197,14 +261,14 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  startTime,
 				EndTime:    endTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo) {
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
 				// Return nil directly for facility? Or error?
 				// usecases.go checks `if facility == nil` after error check.
 				// But typically repo returns error too if not found or nil, nil.
 				// Let's assume repo returns nil, nil for not found in this mock setup or a specific error.
 				// Looking at usecases logic: `if err != nil { return nil, err }` then `if facility == nil { return nil, not found }`.
 				// So we mock returning nil, nil.
-				mfr.On("GetByID", facilityID).Return(nil, nil).Once()
+				mfr.On("GetByID", "test-club", facilityID).Return(nil, nil).Once()
 			},
 			expectedError: "facility not found",
 			checkResult: func(t *testing.T, booking *bookingDomain.Booking) {
@@ -217,15 +281,17 @@ func TestCreateBooking(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			mockBookingRepo := new(MockBookingRepo)
+			mockRecurringRepo := new(MockRecurringRepo)
 			mockFacilityRepo := new(MockFacilityRepo)
-			useCase := application.NewBookingUseCases(mockBookingRepo, mockFacilityRepo)
+			mockNotificationSender := new(MockNotificationSender)
+			useCase := application.NewBookingUseCases(mockBookingRepo, mockRecurringRepo, mockFacilityRepo, mockNotificationSender)
 
 			if tc.setupMocks != nil {
-				tc.setupMocks(mockBookingRepo, mockFacilityRepo)
+				tc.setupMocks(mockBookingRepo, mockFacilityRepo, mockNotificationSender)
 			}
 
 			// Execution
-			booking, err := useCase.CreateBooking(tc.dto)
+			booking, err := useCase.CreateBooking("test-club", tc.dto)
 
 			// Assertions
 			if tc.expectedError != "" {
