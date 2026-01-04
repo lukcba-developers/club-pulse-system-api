@@ -9,14 +9,16 @@ import (
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
 // DTOs
 type CreateBookingDTO struct {
-	UserID     string    `json:"user_id" binding:"required"`
-	FacilityID string    `json:"facility_id" binding:"required"`
-	StartTime  time.Time `json:"start_time" binding:"required"`
-	EndTime    time.Time `json:"end_time" binding:"required"`
+	UserID       string                      `json:"user_id" binding:"required"`
+	FacilityID   string                      `json:"facility_id" binding:"required"`
+	StartTime    time.Time                   `json:"start_time" binding:"required"`
+	EndTime      time.Time                   `json:"end_time" binding:"required"`
+	GuestDetails []bookingDomain.GuestDetail `json:"guest_details"`
 }
 
 type CreateRecurringRuleDTO struct {
@@ -37,6 +39,7 @@ type BookingUseCases struct {
 	repo          bookingDomain.BookingRepository
 	recurringRepo bookingDomain.RecurringRepository
 	facilityRepo  facilityDomain.FacilityRepository
+	userRepo      userDomain.UserRepository
 	notifier      service.NotificationSender
 }
 
@@ -44,12 +47,14 @@ func NewBookingUseCases(
 	repo bookingDomain.BookingRepository,
 	recurringRepo bookingDomain.RecurringRepository,
 	facilityRepo facilityDomain.FacilityRepository,
+	userRepo userDomain.UserRepository,
 	notifier service.NotificationSender,
 ) *BookingUseCases {
 	return &BookingUseCases{
 		repo:          repo,
 		recurringRepo: recurringRepo,
 		facilityRepo:  facilityRepo,
+		userRepo:      userRepo,
 		notifier:      notifier,
 	}
 }
@@ -71,17 +76,23 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 		return nil, err
 	}
 
+	// 2.1. Validate User Medical Certificate
+	if err := uc.validateUserHealth(clubID, userID.String()); err != nil {
+		return nil, err
+	}
+
 	// 3. Entity Construction
 	booking := &bookingDomain.Booking{
-		ID:         uuid.New(),
-		UserID:     userID,
-		FacilityID: facilityID,
-		ClubID:     clubID,
-		StartTime:  dto.StartTime,
-		EndTime:    dto.EndTime,
-		Status:     bookingDomain.BookingStatusConfirmed,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		ID:           uuid.New(),
+		UserID:       userID,
+		FacilityID:   facilityID,
+		ClubID:       clubID,
+		StartTime:    dto.StartTime,
+		EndTime:      dto.EndTime,
+		Status:       bookingDomain.BookingStatusConfirmed,
+		GuestDetails: dto.GuestDetails,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	// 4. Persistence
@@ -143,7 +154,23 @@ func (uc *BookingUseCases) CancelBooking(clubID, bookingID, requestingUserID str
 	booking.Status = bookingDomain.BookingStatusCancelled
 	booking.UpdatedAt = time.Now()
 
-	return uc.repo.Update(booking)
+	if err := uc.repo.Update(booking); err != nil {
+		return err
+	}
+
+	// Waitlist Logic
+	ctx := context.Background()
+	next, err := uc.repo.GetNextInLine(ctx, clubID, booking.FacilityID, booking.StartTime)
+	if err == nil && next != nil {
+		_ = uc.notifier.Send(ctx, service.Notification{
+			RecipientID: next.UserID.String(),
+			Type:        service.NotificationTypeEmail,
+			Subject:     "Slot Available!",
+			Message:     "Good news! A slot has opened up for your waitlisted time: " + booking.StartTime.String(),
+		})
+	}
+
+	return nil
 }
 
 // GetAvailability calculates available slots based on business hours and existing bookings.
@@ -295,6 +322,26 @@ func (uc *BookingUseCases) validateBookingRules(clubID, facilityIDStr string, fa
 	}
 	if maintConflict {
 		return errors.New("booking time conflict: facility is scheduled for maintenance during this time")
+	}
+
+	return nil
+}
+
+func (uc *BookingUseCases) validateUserHealth(clubID, userID string) error {
+	user, err := uc.userRepo.GetByID(clubID, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	if user.MedicalCertStatus == nil || *user.MedicalCertStatus != userDomain.MedicalCertStatusValid {
+		return errors.New("medical certificate expired or invalid")
+	}
+
+	if user.MedicalCertExpiry != nil && user.MedicalCertExpiry.Before(time.Now()) {
+		return errors.New("medical certificate expired")
 	}
 
 	return nil

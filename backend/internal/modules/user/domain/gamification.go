@@ -11,7 +11,7 @@ import (
 
 type Transaction struct {
 	ID          string    `json:"id"`
-	Type        string    `json:"type"` // "credit", "debit"
+	Type        string    `json:"type"` // "credit", "debit", "manual_debt", "cantina_charge"
 	Amount      float64   `json:"amount"`
 	Description string    `json:"description"`
 	Date        time.Time `json:"date"`

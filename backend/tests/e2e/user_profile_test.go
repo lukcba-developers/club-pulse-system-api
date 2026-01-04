@@ -28,6 +28,10 @@ func TestUserProfileCategory(t *testing.T) {
 	// Migrate schema for test
 	_ = db.AutoMigrate(&repository.UserModel{}, &domain.UserStats{}, &domain.Wallet{})
 
+	// Clear PostgreSQL cached prepared statements after schema change
+	// This fixes "cached plan must not change result type" error
+	db.Exec("DISCARD ALL")
+
 	repo := repository.NewPostgresUserRepository(db)
 	useCase := application.NewUserUseCases(repo)
 	handler := userHttp.NewUserHandler(useCase)

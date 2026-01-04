@@ -2,11 +2,23 @@ package http
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/core/errors"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/application"
 )
+
+// isSecureCookie returns true in production (GIN_MODE=release) for Secure cookies.
+func isSecureCookie() bool {
+	return os.Getenv("GIN_MODE") == "release"
+}
+
+// setAuthCookie configures a secure HttpOnly cookie with SameSite protection.
+func setAuthCookie(c *gin.Context, name, value string, maxAge int) {
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(name, value, maxAge, "/", "", isSecureCookie(), true)
+}
 
 type AuthHandler struct {
 	useCase *application.AuthUseCases
@@ -57,17 +69,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Set HttpOnly Cookie
-	// MaxAge: 24 hours (86400 seconds)
-	// Path: "/"
-	// Domain: "" (localhost handles this)
-	// Secure: false (for dev, true in prod)
-	// HttpOnly: true
-	c.SetCookie("access_token", token.AccessToken, 86400, "/", "", false, true)
-
-	// We can also set refresh token if available
+	// Set secure HttpOnly cookies with SameSite protection
+	setAuthCookie(c, "access_token", token.AccessToken, 86400) // 24 hours
 	if token.RefreshToken != "" {
-		c.SetCookie("refresh_token", token.RefreshToken, 86400*7, "/", "", false, true)
+		setAuthCookie(c, "refresh_token", token.RefreshToken, 86400*7) // 7 days
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
@@ -163,19 +168,16 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 		return
 	}
 
-	// Set HttpOnly Cookie
-	// MaxAge: 24 hours (86400 seconds)
-	c.SetCookie("access_token", token.AccessToken, 86400, "/", "", false, true)
+	// Set secure HttpOnly cookies with SameSite protection
+	setAuthCookie(c, "access_token", token.AccessToken, 86400)
 	if token.RefreshToken != "" {
-		c.SetCookie("refresh_token", token.RefreshToken, 86400*7, "/", "", false, true)
+		setAuthCookie(c, "refresh_token", token.RefreshToken, 86400*7)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Google login successful"})
 }
 
-// Routes registration
-// Routes registration
-// Routes registration
+// RegisterRoutes sets up authentication endpoints.
 func RegisterRoutes(r *gin.RouterGroup, h *AuthHandler, authMiddleware gin.HandlerFunc) {
 	authGroup := r.Group("/auth")
 	{

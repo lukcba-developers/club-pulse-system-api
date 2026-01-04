@@ -8,6 +8,13 @@ import (
 	"gorm.io/gorm"
 )
 
+type VirtualCredential struct {
+	UserID    string `json:"user_id"`
+	Timestamp int64  `json:"timestamp"`
+	Signature string `json:"signature"`
+	Token     string `json:"token"`
+}
+
 type AccessDirection string
 type AccessStatus string
 

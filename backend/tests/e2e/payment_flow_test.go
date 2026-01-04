@@ -29,6 +29,9 @@ func TestPaymentWebhookFlow(t *testing.T) {
 	_ = db.Migrator().DropTable(&domain.Payment{})
 	_ = db.AutoMigrate(&domain.Payment{})
 
+	// Clear PostgreSQL cached prepared statements after schema change
+	db.Exec("DISCARD ALL")
+
 	// Repositories & Services
 	repo := repository.NewPostgresPaymentRepository(db)
 	gateway := gateways.NewMockGateway()

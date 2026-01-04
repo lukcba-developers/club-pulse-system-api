@@ -129,7 +129,12 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	authRepo := repository.NewPostgresAuthRepository(db)
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "SECRET_KEY_DEV"
+		if os.Getenv("GIN_MODE") == "release" {
+			logger.Error("CRITICAL: JWT_SECRET environment variable is required in production")
+			panic("JWT_SECRET is required in production")
+		}
+		logger.Warn("JWT_SECRET not set, using development fallback. DO NOT USE IN PRODUCTION!")
+		jwtSecret = "DEV_ONLY_SECRET_DO_NOT_USE_IN_PROD_" + "change_me"
 	}
 	tokenService := token.NewJWTService(jwtSecret)
 	googleAuthService := authService.NewGoogleAuthService()
@@ -184,7 +189,7 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	// --- Module: Booking ---
 	bookingRepository := bookingRepo.NewPostgresBookingRepository(db)
 	recurringRepository := bookingRepo.NewPostgresRecurringRepository(db)
-	bookingUseCase := bookingApplication.NewBookingUseCases(bookingRepository, recurringRepository, facilityRepository, notifier)
+	bookingUseCase := bookingApplication.NewBookingUseCases(bookingRepository, recurringRepository, facilityRepository, userRepository, notifier)
 	bookingHandler := bookingHTTP.NewBookingHandler(bookingUseCase)
 
 	bookingHTTP.RegisterRoutes(api, bookingHandler, authMiddleware, tenantMiddleware)

@@ -14,6 +14,7 @@ import (
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
 	facilitiesRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
+	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,14 +30,18 @@ func TestMultiTenantIsolation(t *testing.T) {
 	_ = db.Migrator().DropTable(&facilitiesRepo.FacilityModel{}, &domain.Booking{}, &domain.RecurringRule{})
 	_ = db.AutoMigrate(&facilitiesRepo.FacilityModel{}, &domain.Booking{}, &domain.RecurringRule{})
 
+	// Clear PostgreSQL cached prepared statements after schema change
+	db.Exec("DISCARD ALL")
+
 	// Repos
 	facRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
 	bookRepo := bookingRepo.NewPostgresBookingRepository(db)
 	recRepo := bookingRepo.NewPostgresRecurringRepository(db)
+	usRepo := userRepo.NewPostgresUserRepository(db)
 
 	// Logic
 	// Using Booking Module as proxy for isolation test (most data heavy)
-	bookUC := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, nil) // Notifier nil
+	bookUC := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, nil) // Notifier nil
 	bookH := bookingHttp.NewBookingHandler(bookUC)
 
 	r := gin.New()

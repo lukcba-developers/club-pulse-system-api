@@ -15,12 +15,13 @@ const (
 )
 
 type Equipment struct {
-	ID         string             `json:"id"`
-	FacilityID string             `json:"facility_id"`
-	Name       string             `json:"name"`
-	Type       string             `json:"type"` // e.g., "Tennis Racket", "Net", "Gym Machine"
-	Condition  EquipmentCondition `json:"condition"`
-	Status     string             `json:"status"` // "available", "maintenance", "in_use"
+	ID          string             `json:"id"`
+	FacilityID  string             `json:"facility_id"`
+	Name        string             `json:"name"`
+	Type        string             `json:"type"` // e.g., "Tennis Racket", "Net", "Gym Machine"
+	Condition   EquipmentCondition `json:"condition"`
+	Status      string             `json:"status"` // "available", "maintenance", "in_use"
+	IsAvailable bool               `json:"is_available"`
 
 	PurchaseDate *time.Time `json:"purchase_date,omitempty"`
 

@@ -5,18 +5,21 @@ import (
 )
 
 type User struct {
-	ID          string     `json:"id"`
-	Email       string     `json:"email"`
-	Password    string     `json:"-"` // Hash
-	Name        string     `json:"name"`
-	Role        string     `json:"role"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	DateOfBirth *time.Time `json:"date_of_birth,omitempty"`
-	ParentID    *string    `json:"parent_id,omitempty"`
-	ClubID      string     `json:"club_id"`
-	GoogleID    string     `json:"google_id,omitempty"`
-	AvatarURL   string     `json:"avatar_url,omitempty"`
+	ID                string     `json:"id"`
+	Email             string     `json:"email"`
+	Password          string     `json:"-"` // Hash
+	Name              string     `json:"name"`
+	Role              string     `json:"role"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+	DateOfBirth       *time.Time `json:"date_of_birth,omitempty"`
+	ParentID          *string    `json:"parent_id,omitempty"`
+	ClubID            string     `json:"club_id"`
+	GoogleID          string     `json:"google_id,omitempty"`
+	AvatarURL         string     `json:"avatar_url,omitempty"`
+	MedicalCertStatus *string    `json:"medical_cert_status,omitempty"`
+	MedicalCertExpiry *time.Time `json:"medical_cert_expiry,omitempty"`
+	FamilyGroupID     *string    `json:"family_group_id,omitempty"`
 }
 
 const (

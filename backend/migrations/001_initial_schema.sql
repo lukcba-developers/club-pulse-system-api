@@ -1,6 +1,25 @@
--- Enable UUID extension
+-- =============================================
+-- Club Pulse System API
+-- Consolidated Initial Schema
+-- =============================================
+
+-- Enable Extensions
 SET search_path TO public;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- =============================================
+-- Core Identity & User Management
+-- =============================================
+
+-- Family Groups (Created before users for reference)
+CREATE TABLE IF NOT EXISTS family_groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    head_user_id TEXT NOT NULL, -- Reference to users(id) logically, effectively TEXT
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
@@ -11,6 +30,12 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(50),
     date_of_birth DATE,
     sports_preferences JSONB,
+    -- Medical / Health
+    medical_cert_status VARCHAR(20) DEFAULT 'PENDING',
+    medical_cert_expiry TIMESTAMP WITH TIME ZONE,
+    -- Family
+    family_group_id UUID REFERENCES family_groups(id) ON DELETE SET NULL,
+    -- Metadata
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -38,13 +63,35 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens (user_id
 CREATE TABLE IF NOT EXISTS authentication_logs (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    type VARCHAR(50), -- LOGIN, LOGOUT
+    type VARCHAR(50), 
     ip_address VARCHAR(50),
     user_agent TEXT,
     success BOOLEAN,
     failure_reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Access Logs
+CREATE TABLE IF NOT EXISTS access_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT NOT NULL,
+    facility_id UUID,
+    direction VARCHAR(10) NOT NULL, 
+    status VARCHAR(50) NOT NULL, 
+    reason VARCHAR(255),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_logs_user_id ON access_logs (user_id);
+CREATE INDEX IF NOT EXISTS idx_access_logs_timestamp ON access_logs (timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_recent ON access_logs (timestamp DESC) WHERE timestamp > CURRENT_TIMESTAMP - INTERVAL '30 days';
+
+
+-- =============================================
+-- Membership & Billing
+-- =============================================
 
 -- Membership Tiers
 CREATE TABLE IF NOT EXISTS membership_tiers (
@@ -63,8 +110,7 @@ CREATE TABLE IF NOT EXISTS membership_tiers (
 -- Memberships
 CREATE TABLE IF NOT EXISTS memberships (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id TEXT NOT NULL,  -- Changed to TEXT to match users.id type? Checking main.go users seems to use string IDs but GORM might default to UUID if defined. Let's assume consistent Text/UUID. Legacy user was UUID. 
-    -- User struct used string ID. Let's assume TEXT for now to match users table above.
+    user_id TEXT NOT NULL,
     membership_tier_id UUID NOT NULL REFERENCES membership_tiers(id),
     status VARCHAR(50) DEFAULT 'PENDING',
     billing_cycle VARCHAR(50) DEFAULT 'MONTHLY',
@@ -88,10 +134,11 @@ CREATE TABLE IF NOT EXISTS payments (
     status VARCHAR(50) DEFAULT 'PENDING' NOT NULL,
     method VARCHAR(50) NOT NULL,
     external_id VARCHAR(255),
-    payer_id TEXT NOT NULL, -- Match users.id type
-    reference_id UUID, -- Membership ID or Booking ID
+    payer_id TEXT NOT NULL,
+    reference_id UUID,
     reference_type VARCHAR(50),
     paid_at TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -101,27 +148,95 @@ CREATE INDEX IF NOT EXISTS idx_payments_payer_id ON payments (payer_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status);
 CREATE INDEX IF NOT EXISTS idx_payments_external_id ON payments (external_id);
 
--- Access Logs
-CREATE TABLE IF NOT EXISTS access_logs (
+-- Wallets
+CREATE TABLE IF NOT EXISTS wallets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id TEXT NOT NULL,
-    facility_id UUID,
-    direction VARCHAR(10) NOT NULL, -- IN, OUT
-    status VARCHAR(50) NOT NULL, -- GRANTED, DENIED
-    reason VARCHAR(255),
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    balance DECIMAL(10, 2) DEFAULT 0,
+    points INT DEFAULT 0,
+    transactions JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets (user_id);
+
+-- Subscriptions
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    membership_id UUID NOT NULL REFERENCES memberships(id),
+    amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'ARS',
+    status VARCHAR(20) NOT NULL,
+    payment_method_id TEXT,
+    next_billing_date DATE,
+    last_payment_date TIMESTAMP WITH TIME ZONE,
+    fail_count INT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX IF NOT EXISTS idx_access_logs_user_id ON access_logs (user_id);
-CREATE INDEX IF NOT EXISTS idx_access_logs_timestamp ON access_logs (timestamp);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions (user_id);
+
+-- Scholarships
+CREATE TABLE IF NOT EXISTS scholarships (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    percentage DECIMAL(5,2) NOT NULL, -- 0.50, 1.00
+    reason VARCHAR(255),
+    grantor_id TEXT, -- Admin User ID
+    valid_until DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_scholarships_user ON scholarships (user_id);
+
+-- =============================================
+-- Sports & Training
+-- =============================================
+
+-- Disciplines
+CREATE TABLE IF NOT EXISTS disciplines (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(255) NOT NULL,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_disciplines_club_id ON disciplines (club_id);
+
+-- Training Groups
+CREATE TABLE IF NOT EXISTS training_groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(255) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    discipline_id UUID NOT NULL REFERENCES disciplines(id),
+    category VARCHAR(20) NOT NULL,
+    category_year INT,
+    coach_id VARCHAR(255),
+    schedule VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_training_groups_club_id ON training_groups (club_id);
+CREATE INDEX IF NOT EXISTS idx_training_groups_discipline_id ON training_groups (discipline_id);
 
 -- Attendance Lists
 CREATE TABLE IF NOT EXISTS attendance_lists (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     date TIMESTAMP WITH TIME ZONE NOT NULL,
-    group_name VARCHAR(50) NOT NULL, -- Renamed from group to avoid reserved word
+    group_name VARCHAR(50) NOT NULL,
     coach_id TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -135,29 +250,167 @@ CREATE TABLE IF NOT EXISTS attendance_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     attendance_list_id UUID NOT NULL REFERENCES attendance_lists(id),
     user_id TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL, -- PRESENT, ABSENT, LATE, EXCUSED
+    status VARCHAR(20) NOT NULL,
     notes TEXT,
     UNIQUE(attendance_list_id, user_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_attendance_records_list_id ON attendance_records (attendance_list_id);
 
--- Subscriptions (Automatic Debit)
-CREATE TABLE IF NOT EXISTS subscriptions (
+-- =============================================
+-- Facilities & Bookings
+-- =============================================
+
+-- Facilities
+CREATE TABLE IF NOT EXISTS facilities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id TEXT NOT NULL REFERENCES users(id),
-    membership_id UUID NOT NULL REFERENCES memberships(id),
-    amount DECIMAL(10, 2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'ARS',
-    status VARCHAR(20) NOT NULL, -- ACTIVE, PAUSED, CANCELLED, PAST_DUE
-    payment_method_id TEXT, -- External Token
-    next_billing_date DATE,
-    last_payment_date TIMESTAMP WITH TIME ZONE,
-    fail_count INT DEFAULT 0,
+    club_id VARCHAR(255) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    type VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'active',
+    location VARCHAR(255),
+    capacity INT,
+    price_per_hour DECIMAL(10, 2),
+    amenities JSONB,
+    images TEXT[],
+    is_active BOOLEAN DEFAULT TRUE,
+    embedding vector(256), -- pgvector support
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions (user_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions (status);
+CREATE INDEX IF NOT EXISTS idx_facilities_club_id ON facilities (club_id);
+-- HNSW Index for Facilities Semantic Search
+CREATE INDEX IF NOT EXISTS idx_facilities_embedding 
+ON facilities USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+
+-- Equipment
+CREATE TABLE IF NOT EXISTS equipment (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    facility_id UUID REFERENCES facilities(id),
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(100),
+    condition VARCHAR(50),
+    status VARCHAR(50),
+    is_available BOOLEAN DEFAULT TRUE,
+    purchase_date TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_equipment_facility_id ON equipment (facility_id);
+
+-- Equipment Loans
+CREATE TABLE IF NOT EXISTS equipment_loans (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    equipment_id UUID NOT NULL REFERENCES equipment(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    loaned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expected_return_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    returned_at TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(20) DEFAULT 'ACTIVE', -- ACTIVE, RETURNED, OVERDUE, LOST
+    condition_on_return TEXT, -- "Good", "Damaged"
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_loans_user ON equipment_loans (user_id);
+CREATE INDEX IF NOT EXISTS idx_loans_status ON equipment_loans (status);
+
+-- Bookings
+CREATE TABLE IF NOT EXISTS bookings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(255) NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    facility_id UUID NOT NULL REFERENCES facilities(id),
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(20) DEFAULT 'CONFIRMED',
+    guest_details JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_club_id ON bookings (club_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings (user_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_facility_id ON bookings (facility_id);
+
+-- Optimized Booking Indexes
+CREATE INDEX IF NOT EXISTS idx_bookings_user_status ON bookings (user_id, status, start_time DESC);
+CREATE INDEX IF NOT EXISTS idx_bookings_facility_status_time ON bookings (facility_id, status, start_time, end_time);
+
+-- GIST Index for Overlap Detection
+CREATE INDEX IF NOT EXISTS idx_bookings_facility_time 
+ON bookings USING GIST (
+    facility_id,
+    tstzrange(start_time, end_time, '[)') 
+);
+
+-- Waitlists
+CREATE TABLE IF NOT EXISTS waitlists (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(255) NOT NULL,
+    resource_id UUID NOT NULL,
+    target_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    status VARCHAR(50) DEFAULT 'PENDING',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_waitlists_resource_date ON waitlists(resource_id, target_date);
+CREATE INDEX IF NOT EXISTS idx_waitlists_club_date ON waitlists(club_id, target_date);
+
+
+-- =============================================
+-- Functions & Procedures
+-- =============================================
+
+CREATE OR REPLACE FUNCTION check_booking_overlap(
+    p_facility_id UUID,
+    p_start_time TIMESTAMPTZ,
+    p_end_time TIMESTAMPTZ,
+    p_exclude_booking_id UUID DEFAULT NULL
+) RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 
+        FROM bookings 
+        WHERE facility_id = p_facility_id
+          AND status IN ('confirmed', 'pending')
+          AND (p_exclude_booking_id IS NULL OR id != p_exclude_booking_id)
+          AND tstzrange(start_time, end_time, '[)') && tstzrange(p_start_time, p_end_time, '[)')
+    );
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION search_facilities_by_embedding(
+    query_embedding vector(256),
+    result_limit INT DEFAULT 10
+) RETURNS TABLE (
+    id UUID,
+    name VARCHAR,
+    type VARCHAR,
+    status VARCHAR,
+    similarity FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        f.id::UUID,
+        f.name::VARCHAR,
+        f.type::VARCHAR,
+        f.status::VARCHAR,
+        1 - (f.embedding <=> query_embedding) as similarity
+    FROM facilities f
+    WHERE f.embedding IS NOT NULL
+      AND f.status = 'active'
+    ORDER BY f.embedding <=> query_embedding
+    LIMIT result_limit;
+END;
+$$ LANGUAGE plpgsql STABLE;

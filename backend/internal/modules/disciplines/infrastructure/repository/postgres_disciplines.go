@@ -50,6 +50,12 @@ func (r *PostgresDisciplineRepository) ListGroups(clubID string, filter map[stri
 	if category, ok := filter["category"]; ok {
 		query = query.Where("category = ?", category)
 	}
+	if coachID, ok := filter["coach_id"]; ok {
+		query = query.Where("coach_id = ?", coachID)
+	}
+	if year, ok := filter["category_year"]; ok {
+		query = query.Where("category_year = ?", year)
+	}
 	err := query.Find(&groups).Error
 	return groups, err
 }

@@ -32,6 +32,9 @@ func TestSuperAdminAccess(t *testing.T) {
 	_ = db.Migrator().DropTable(&clubDomain.Club{}, &userRepo.UserModel{})
 	_ = db.AutoMigrate(&clubDomain.Club{}, &userRepo.UserModel{})
 
+	// Clear PostgreSQL cached prepared statements after schema change
+	db.Exec("DISCARD ALL")
+
 	// Repos & Services
 	cRepo := clubRepo.NewPostgresClubRepository(db)
 	cUC := clubApp.NewClubUseCases(cRepo)

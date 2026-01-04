@@ -20,8 +20,10 @@ var (
 // InitDB initializes the database connection
 func InitDB() {
 	once.Do(func() {
+		// Use simple_protocol to disable prepared statement cache at driver level
+		// This prevents "cached plan must not change result type" errors during schema migrations
 		dsn := fmt.Sprintf(
-			"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+			"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC default_query_exec_mode=simple_protocol",
 			getEnv("DB_HOST", "localhost"),
 			getEnv("DB_USER", "postgres"),
 			getEnv("DB_PASSWORD", "pulse_secret"),
@@ -31,7 +33,8 @@ func InitDB() {
 
 		var err error
 		config := &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
+			Logger:      logger.Default.LogMode(logger.Info),
+			PrepareStmt: false, // Also disable GORM's prepared statement cache
 		}
 
 		// Retry logic for docker startup delay

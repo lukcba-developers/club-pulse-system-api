@@ -23,7 +23,8 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 
 		// Content Security Policy - Restrict sources
 		// Adjust this based on frontend needs (e.g. allowing scripts from specific CDNs)
-		c.Header("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; font-src 'self'; script-src 'self'")
+		// For development, allow connect-src to localhost:8080 (backend API)
+		c.Header("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; font-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:8080 ws://localhost:3000")
 
 		// Referrer Policy
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")

@@ -34,6 +34,9 @@ func TestAttendanceFlow(t *testing.T) {
 	err := db.AutoMigrate(&userRepo.UserModel{}, &attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{})
 	assert.NoError(t, err)
 
+	// Clear PostgreSQL cached prepared statements after schema change
+	db.Exec("DISCARD ALL")
+
 	// Repos
 	uRepo := userRepo.NewPostgresUserRepository(db)
 	aRepo := attendanceRepo.NewPostgresAttendanceRepository(db)
@@ -43,10 +46,12 @@ func TestAttendanceFlow(t *testing.T) {
 	aHandler := attendanceHttp.NewAttendanceHandler(aUseCase)
 
 	r := gin.Default()
+	testClubID := "test-club-attendance"
 	// Mock Auth for Coach
 	r.Use(func(c *gin.Context) {
 		c.Set("userID", "coach-uuid-123")
 		c.Set("userRole", "COACH")
+		c.Set("clubID", testClubID)
 		c.Next()
 	})
 
@@ -68,6 +73,7 @@ func TestAttendanceFlow(t *testing.T) {
 
 	db.Create(&userRepo.UserModel{
 		ID:          student.ID,
+		ClubID:      testClubID, // Must match the middleware clubID
 		Name:        student.Name,
 		Email:       student.Email,
 		DateOfBirth: student.DateOfBirth,
@@ -111,8 +117,8 @@ func TestAttendanceFlow(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w2.Code)
 
-	// 5. Verify Persistence
-	updatedList, err := aUseCase.GetOrCreateList("test-club", "2012", list.Date, "coach-uuid-123")
+	// 5. Verify Persistence (use the SAME clubID as middleware)
+	updatedList, err := aUseCase.GetOrCreateList(testClubID, "2012", list.Date, "coach-uuid-123")
 	assert.NoError(t, err)
 	assert.NotNil(t, updatedList)
 

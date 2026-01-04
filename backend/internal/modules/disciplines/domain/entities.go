@@ -25,6 +25,7 @@ type TrainingGroup struct {
 	DisciplineID uuid.UUID      `json:"discipline_id" gorm:"type:uuid;not null"`
 	Discipline   Discipline     `json:"discipline" gorm:"foreignKey:DisciplineID"`
 	Category     string         `json:"category" gorm:"not null;size:20"` // e.g. "2012"
+	CategoryYear int            `json:"category_year"`                    // Normalized year (e.g. 2010)
 	CoachID      string         `json:"coach_id"`                         // User ID of the coach
 	Schedule     string         `json:"schedule"`                         // e.g. "Mon/Wed 18:00"
 	CreatedAt    time.Time      `json:"created_at" gorm:"autoCreateTime"`

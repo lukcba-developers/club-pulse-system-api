@@ -46,7 +46,7 @@ func TestAccessFlow(t *testing.T) {
 	// Note: Auth Repo typically migrates 'users' but might miss 'club_id' if using an older model definition.
 	// We force migration with UserRepo's model which has it.
 	_ = db.AutoMigrate(&userRepo.UserModel{})
-	_ = db.AutoMigrate(&accessDomain.AccessLog{})
+	// MembershipTier and Membership are migrated by NewPostgresMembershipRepository
 
 	// 2. Setup Dependencies
 	// Auth
@@ -58,9 +58,12 @@ func TestAccessFlow(t *testing.T) {
 	userR := userRepo.NewPostgresUserRepository(db)
 	// userUC := userApp.NewUserUseCases(userR)
 
-	// Membership
+	// Membership (this does AutoMigrate internally)
 	memR := membershipRepo.NewPostgresMembershipRepository(db)
 	// memUC := membershipApp.NewMembershipUseCases(memR)
+
+	// Migrate access_logs AFTER membership repo (which does its own migrations)
+	_ = db.AutoMigrate(&accessDomain.AccessLog{})
 
 	// Access
 	accessR := accessRepo.NewPostgresAccessRepository(db)

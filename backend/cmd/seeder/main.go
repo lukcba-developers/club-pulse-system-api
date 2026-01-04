@@ -36,13 +36,44 @@ type SeederUser struct {
 	ClubID            string                 `gorm:"index"`
 	GoogleID          string                 `gorm:"index"`
 	AvatarURL         string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	DeletedAt         gorm.DeletedAt `gorm:"index"`
+	// New Business Rules
+	MedicalCertStatus string `gorm:"default:'PENDING'"`
+	MedicalCertExpiry *time.Time
+	FamilyGroupID     *string `gorm:"type:uuid"`
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 func (SeederUser) TableName() string {
 	return "users"
+}
+
+type SeederFamilyGroup struct {
+	ID         string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	Name       string
+	HeadUserID string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+func (SeederFamilyGroup) TableName() string {
+	return "family_groups"
+}
+
+type SeederWallet struct {
+	ID           string          `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	UserID       string          `gorm:"uniqueIndex"`
+	Balance      decimal.Decimal `gorm:"type:decimal(10,2)"`
+	Points       int
+	Transactions []byte `gorm:"type:jsonb"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+func (SeederWallet) TableName() string {
+	return "wallets"
 }
 
 func main() {
@@ -75,7 +106,8 @@ func main() {
 		&paymentDom.Payment{},
 		&accessDom.AccessLog{},
 		&attendanceRepo.AttendanceRecordModel{},
-		// Add others if we seed them
+		&SeederFamilyGroup{},
+		&SeederWallet{},
 	); err != nil {
 		log.Printf("Error dropping tables: %v", err)
 	}
@@ -91,7 +123,8 @@ func main() {
 		&paymentDom.Payment{},
 		&accessDom.AccessLog{},
 		&attendanceRepo.AttendanceRecordModel{},
-		// Add others if we seed them
+		&SeederFamilyGroup{},
+		&SeederWallet{},
 	); err != nil {
 		log.Fatalf("Failed to automigrate: %v", err)
 	}
@@ -150,21 +183,59 @@ func main() {
 
 	// 1.5 Seed Test User (Member)
 	hashedPwdTest, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+
+	validExpiry := time.Now().AddDate(1, 0, 0) // 1 year from now
+	validStatus := "VALID"
+
 	testUser := domain.User{
-		ID:        uuid.New().String(),
-		Email:     "testuser@example.com",
-		Password:  string(hashedPwdTest),
-		Name:      "Test User",
-		Role:      domain.RoleMember,
-		ClubID:    defaultClub.ID,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:                uuid.New().String(),
+		Email:             "testuser@example.com",
+		Password:          string(hashedPwdTest),
+		Name:              "Test User",
+		Role:              domain.RoleMember,
+		ClubID:            defaultClub.ID,
+		MedicalCertStatus: &validStatus,
+		MedicalCertExpiry: &validExpiry,
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
 	}
 
 	if err := db.Where("email = ?", testUser.Email).FirstOrCreate(&testUser).Error; err != nil {
 		log.Printf("Error seeding test user: %v", err)
 	} else {
-		log.Println("Seeded Test User")
+		log.Println("Seeded Test User (With Valid Med Cert)")
+	}
+
+	// 1.6 Seed Family Group
+	familyID := uuid.New().String()
+	familyGroup := SeederFamilyGroup{
+		ID:         familyID,
+		Name:       "The Test Family",
+		HeadUserID: testUser.ID,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	if err := db.FirstOrCreate(&familyGroup).Error; err != nil {
+		log.Printf("Error seeding family group: %v", err)
+	} else {
+		log.Println("Seeded Family Group: The Test Family")
+		// Update user with family ID
+		db.Model(&SeederUser{}).Where("id = ?", testUser.ID).Update("family_group_id", familyID)
+	}
+
+	// 1.7 Seed Wallet
+	wallet := SeederWallet{
+		ID:        uuid.New().String(),
+		UserID:    testUser.ID,
+		Balance:   decimal.NewFromFloat(5000.00),
+		Points:    150,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := db.FirstOrCreate(&wallet).Error; err != nil {
+		log.Printf("Error seeding wallet: %v", err)
+	} else {
+		log.Println("Seeded Wallet for Test User ($5000)")
 	}
 
 	// 2. Seed Facilities

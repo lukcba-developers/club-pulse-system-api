@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -111,4 +112,27 @@ func (r *PostgresBookingRepository) ListAll(clubID string, filter map[string]int
 		return nil, err
 	}
 	return bookings, nil
+}
+
+func (r *PostgresBookingRepository) AddToWaitlist(ctx context.Context, entry *domain.Waitlist) error {
+	return r.db.WithContext(ctx).Create(entry).Error
+}
+
+func (r *PostgresBookingRepository) GetNextInLine(ctx context.Context, clubID string, resourceID uuid.UUID, date time.Time) (*domain.Waitlist, error) {
+	var entry domain.Waitlist
+	err := r.db.WithContext(ctx).
+		Where("club_id = ?", clubID).
+		Where("resource_id = ?", resourceID).
+		Where("target_date = ?", date).
+		Where("status = ?", "PENDING").
+		Order("created_at asc").
+		First(&entry).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &entry, nil
 }

@@ -21,10 +21,11 @@ const (
 type PaymentMethod string
 
 const (
-	PaymentMethodCash        PaymentMethod = "CASH"
-	PaymentMethodMercadoPago PaymentMethod = "MERCADOPAGO"
-	PaymentMethodStripe      PaymentMethod = "STRIPE"
-	PaymentMethodTransfer    PaymentMethod = "TRANSFER"
+	PaymentMethodCash          PaymentMethod = "CASH"
+	PaymentMethodMercadoPago   PaymentMethod = "MERCADOPAGO"
+	PaymentMethodStripe        PaymentMethod = "STRIPE"
+	PaymentMethodTransfer      PaymentMethod = "TRANSFER"
+	PaymentMethodLaborExchange PaymentMethod = "LABOR_EXCHANGE"
 )
 
 type Payment struct {
@@ -37,6 +38,7 @@ type Payment struct {
 	PayerID       uuid.UUID       `json:"payer_id" gorm:"type:uuid;not null;index"`
 	ReferenceID   uuid.UUID       `json:"reference_id" gorm:"type:uuid;index"` // Could be Membership ID or Booking ID
 	ReferenceType string          `json:"reference_type"`                      // "MEMBERSHIP", "BOOKING"
+	Notes         string          `json:"notes" gorm:"type:text"`              // Details for Offline/Labor payments
 
 	PaidAt    *time.Time     `json:"paid_at,omitempty"`
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`

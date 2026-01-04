@@ -154,3 +154,47 @@ func (uc *UserUseCases) GetWallet(clubID, userID string) (*domain.Wallet, error)
 	}
 	return user.Wallet, nil
 }
+
+func (uc *UserUseCases) CreateManualDebt(clubID, userID string, amount float64, description string, adminID string) error {
+	user, err := uc.repo.GetByID(clubID, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	// Assuming Wallet is loaded or we need to init it.
+	// For MVP, if Wallet is nil, we might need to create it, but `gamification.go` defines it.
+	// We will append to Transactions and Update User.
+
+	if user.Wallet == nil {
+		user.Wallet = &domain.Wallet{
+			ID:           uuid.New(),
+			UserID:       userID,
+			Balance:      0,
+			Transactions: []domain.Transaction{},
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+	}
+
+	// Manual Debt increases negative balance or reduces positive?
+	// Usually "Debt" means they owe money. So Balance goes down (negative) or we have a Debt field.
+	// Let's assume Balance represents what they have. If they have debt, it's negative.
+	user.Wallet.Balance -= amount
+
+	transaction := domain.Transaction{
+		ID:          uuid.New().String(),
+		Type:        "MANUAL_DEBT",
+		Amount:      amount,
+		Description: description + " (by Admin " + adminID + ")",
+		Date:        time.Now(),
+	}
+
+	user.Wallet.Transactions = append(user.Wallet.Transactions, transaction)
+	user.Wallet.UpdatedAt = time.Now()
+
+	// Since Wallet is part of User struct in our Domain (aggregates), updating User Updates Wallet (cascade).
+	return uc.repo.Update(user)
+}

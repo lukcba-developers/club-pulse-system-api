@@ -13,6 +13,7 @@ import (
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
 // --- Mocks ---
@@ -57,6 +58,19 @@ func (m *MockBookingRepo) ListByFacilityAndDate(clubID string, facilityID uuid.U
 func (m *MockBookingRepo) ListAll(clubID string, filter map[string]interface{}, from, to *time.Time) ([]bookingDomain.Booking, error) {
 	args := m.Called(clubID, filter, from, to)
 	return args.Get(0).([]bookingDomain.Booking), args.Error(1)
+}
+
+func (m *MockBookingRepo) AddToWaitlist(ctx context.Context, entry *bookingDomain.Waitlist) error {
+	args := m.Called(ctx, entry)
+	return args.Error(0)
+}
+
+func (m *MockBookingRepo) GetNextInLine(ctx context.Context, clubID string, resourceID uuid.UUID, date time.Time) (*bookingDomain.Waitlist, error) {
+	args := m.Called(ctx, clubID, resourceID, date)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*bookingDomain.Waitlist), args.Error(1)
 }
 
 type MockFacilityRepo struct {
@@ -143,6 +157,43 @@ func (m *MockRecurringRepo) Delete(ctx context.Context, clubID string, id uuid.U
 	return args.Error(0)
 }
 
+type MockUserRepo struct {
+	mock.Mock
+}
+
+func (m *MockUserRepo) GetByID(clubID, id string) (*userDomain.User, error) {
+	args := m.Called(clubID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*userDomain.User), args.Error(1)
+}
+
+func (m *MockUserRepo) Update(user *userDomain.User) error {
+	args := m.Called(user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepo) Delete(clubID, id string) error {
+	args := m.Called(clubID, id)
+	return args.Error(0)
+}
+
+func (m *MockUserRepo) List(clubID string, limit, offset int, filters map[string]interface{}) ([]userDomain.User, error) {
+	args := m.Called(clubID, limit, offset, filters)
+	return args.Get(0).([]userDomain.User), args.Error(1)
+}
+
+func (m *MockUserRepo) FindChildren(clubID, parentID string) ([]userDomain.User, error) {
+	args := m.Called(clubID, parentID)
+	return args.Get(0).([]userDomain.User), args.Error(1)
+}
+
+func (m *MockUserRepo) Create(user *userDomain.User) error {
+	args := m.Called(user)
+	return args.Error(0)
+}
+
 // --- Tests ---
 
 func TestCreateBooking(t *testing.T) {
@@ -154,7 +205,7 @@ func TestCreateBooking(t *testing.T) {
 	tests := []struct {
 		name          string
 		dto           application.CreateBookingDTO
-		setupMocks    func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender)
+		setupMocks    func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo)
 		expectedError string
 		checkResult   func(t *testing.T, booking *bookingDomain.Booking)
 	}{
@@ -166,7 +217,16 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  startTime,
 				EndTime:    endTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo) {
+				// 0. User Health -> Active
+				status := userDomain.MedicalCertStatusValid
+				now := time.Now().Add(24 * time.Hour)
+				mur.On("GetByID", "test-club", userID).Return(&userDomain.User{
+					ID:                userID,
+					MedicalCertStatus: &status,
+					MedicalCertExpiry: &now,
+				}, nil).Once()
+
 				// 1. Get Facility -> Active
 				mfr.On("GetByID", "test-club", facilityID).Return(&facilityDomain.Facility{
 					ID:     facilityID,
@@ -199,7 +259,7 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  startTime,
 				EndTime:    endTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo) {
 				mfr.On("GetByID", "test-club", facilityID).Return(&facilityDomain.Facility{
 					ID:     facilityID,
 					Status: facilityDomain.FacilityStatusActive, // Facility is active, but maintenance task exists
@@ -224,7 +284,7 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  startTime,
 				EndTime:    endTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo) {
 				mfr.On("GetByID", "test-club", facilityID).Return(&facilityDomain.Facility{
 					ID:     facilityID,
 					Status: facilityDomain.FacilityStatusActive,
@@ -245,7 +305,7 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  endTime, // Invalid
 				EndTime:    startTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo) {
 				// No mocks needed as time validation happens before repo calls
 			},
 			expectedError: "start time must be before end time",
@@ -261,7 +321,7 @@ func TestCreateBooking(t *testing.T) {
 				StartTime:  startTime,
 				EndTime:    endTime,
 			},
-			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender) {
+			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo) {
 				// Return nil directly for facility? Or error?
 				// usecases.go checks `if facility == nil` after error check.
 				// But typically repo returns error too if not found or nil, nil.
@@ -283,11 +343,12 @@ func TestCreateBooking(t *testing.T) {
 			mockBookingRepo := new(MockBookingRepo)
 			mockRecurringRepo := new(MockRecurringRepo)
 			mockFacilityRepo := new(MockFacilityRepo)
+			mockUserRepo := new(MockUserRepo)
 			mockNotificationSender := new(MockNotificationSender)
-			useCase := application.NewBookingUseCases(mockBookingRepo, mockRecurringRepo, mockFacilityRepo, mockNotificationSender)
+			useCase := application.NewBookingUseCases(mockBookingRepo, mockRecurringRepo, mockFacilityRepo, mockUserRepo, mockNotificationSender)
 
 			if tc.setupMocks != nil {
-				tc.setupMocks(mockBookingRepo, mockFacilityRepo, mockNotificationSender)
+				tc.setupMocks(mockBookingRepo, mockFacilityRepo, mockNotificationSender, mockUserRepo)
 			}
 
 			// Execution
