@@ -196,8 +196,15 @@ func (uc *BookingUseCases) GetAvailability(clubID, facilityID string, date time.
 	}
 
 	// 2. Calculate Slots
-	// TODO(Architect): Move hardcoded hours (8-23) to Facility Configuration domain.
-	const startHour, endHour = 8, 23
+	startHour := facility.OpeningHour
+	endHour := facility.ClosingHour
+
+	// Safety Defaults
+	if startHour == 0 && endHour == 0 {
+		startHour = 8
+		endHour = 23
+	}
+
 	var slots []map[string]interface{}
 
 	for h := startHour; h < endHour; h++ {
@@ -427,4 +434,37 @@ func (uc *BookingUseCases) calculateRecurringBookings(rule bookingDomain.Recurri
 	}
 
 	return bookings
+}
+
+type JoinWaitlistDTO struct {
+	UserID     string    `json:"user_id" binding:"required"`
+	ResourceID string    `json:"resource_id" binding:"required"`
+	TargetDate time.Time `json:"target_date" binding:"required"`
+}
+
+func (uc *BookingUseCases) JoinWaitlist(clubID string, dto JoinWaitlistDTO) (*bookingDomain.Waitlist, error) {
+	uid, err := uuid.Parse(dto.UserID)
+	if err != nil {
+		return nil, errors.New("invalid user id")
+	}
+	rid, err := uuid.Parse(dto.ResourceID)
+	if err != nil {
+		return nil, errors.New("invalid resource id")
+	}
+
+	entry := &bookingDomain.Waitlist{
+		ID:         uuid.New(),
+		ClubID:     clubID,
+		UserID:     uid,
+		ResourceID: rid,
+		TargetDate: dto.TargetDate,
+		Status:     "PENDING",
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := uc.repo.AddToWaitlist(context.Background(), entry); err != nil {
+		return nil, err
+	}
+	return entry, nil
 }

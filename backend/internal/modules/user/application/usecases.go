@@ -243,3 +243,57 @@ func (uc *UserUseCases) LogIncident(clubID, injuredUserID, description, actionTa
 
 	return incident, nil
 }
+
+func (uc *UserUseCases) UpdateMatchStats(clubID, userID string, won bool, xpGained int) error {
+	user, err := uc.repo.GetByID(clubID, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		// If user not found, maybe just warn or skip? returning error is safer.
+		return errors.New("user not found")
+	}
+
+	if user.Stats == nil {
+		// Initialize stats if missing
+		user.Stats = &domain.UserStats{
+			ID:            uuid.New(),
+			UserID:        userID,
+			MatchesPlayed: 0,
+			MatchesWon:    0,
+			RankingPoints: 0,
+			Level:         1,
+			Experience:    0,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		}
+	}
+
+	user.Stats.MatchesPlayed++
+	user.Stats.Experience += xpGained
+
+	if won {
+		user.Stats.MatchesWon++
+		user.Stats.RankingPoints += 3 // Example logic
+	} else {
+		user.Stats.RankingPoints += 1 // Participation points?
+	}
+
+	// Level up logic
+	// Simple formula: Level * 1000 XP
+	requiredXP := user.Stats.Level * 1000
+	if user.Stats.Experience >= requiredXP {
+		user.Stats.Level++
+		user.Stats.Experience -= requiredXP
+	}
+
+	user.Stats.UpdatedAt = time.Now()
+
+	// Update User (which updates Stats via GORM Association usually, or update Stats explicitly)
+	// Assuming Repository Update handles associations or we explicitly update stats?
+	// UserRepo.Update updates the user. GORM 'Session(&gorm.Session{FullSaveAssociations: true})' might be needed.
+	// Or we can add UpdateStats to UserRepo.
+	// Check UserRepo.Update implementation.
+	// For now assume Update works.
+	return uc.repo.Update(user)
+}

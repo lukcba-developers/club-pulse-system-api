@@ -36,6 +36,13 @@ Este documento contiene una lista de tareas de mantenimiento, refactorización y
     1.  Verificar por qué la ruta no está expuesta.
     2.  Añadir el endpoint `POST /bookings/waitlist` al `handler` de `booking`, protegiéndolo con el middleware de autenticación.
 
+### Tarea: Exponer la gestión de Equipamiento y Préstamos en la API
+
+-   **Análisis:** El sistema está diseñado para manejar equipamiento asociado a instalaciones y el préstamo de dicho equipamiento a socios. La lógica de dominio (`Equipment`, `EquipmentLoan`) y los repositorios están implementados. Sin embargo, no hay endpoints en la API para gestionar estas entidades.
+-   **Acción Sugerida:**
+    1.  Crear un nuevo `handler` en el módulo `facilities` para gestionar el equipamiento (CRUD de `Equipment`).
+    2.  Crear otro `handler` para gestionar los préstamos (`Loan`), permitiendo a los administradores registrar un préstamo, marcarlo como devuelto y ver el historial de préstamos de un usuario o un ítem.
+
 ## 3. Corrección de Inconsistencias
 
 ### Tarea: Sincronizar el `membership-service.ts` del Frontend con el Backend
@@ -53,3 +60,23 @@ Este documento contiene una lista de tareas de mantenimiento, refactorización y
 -   **Acción Sugerida:**
     1.  Eliminar el endpoint de disponibilidad del `handler` de `facilities`.
     2.  Mantener y usar exclusivamente `GET /bookings/availability` para esta funcionalidad, asegurando que todos los componentes del frontend lo utilicen.
+
+## 4. Mejoras de Arquitectura y Diseño
+
+### Tarea: Desacoplar Horarios de Apertura de la Lógica de Reservas
+
+-   **Análisis:** El caso de uso para obtener la disponibilidad de una instalación (`GetAvailability`) utiliza un horario de funcionamiento fijo de 8:00 a 23:00, que está escrito directamente en el código. Esto impide que cada instalación pueda tener su propio horario personalizado.
+-   **Acción Sugerida:**
+    1.  Añadir los campos `OpeningTime` y `ClosingTime` (o similar) al modelo de dominio de `Facility`.
+    2.  Actualizar la API y la interfaz de administración de instalaciones para permitir a los administradores configurar estos horarios para cada instalación.
+    3.  Modificar el caso de uso `GetAvailability` para que lea los horarios de la instalación específica en lugar de usar valores fijos.
+
+## 5. Mantenimiento y Simplificación
+
+### Tarea: Consolidar Archivos de Migración SQL
+
+-   **Análisis:** El directorio `backend/migrations` contiene múltiples archivos de migración SQL para definir el esquema de la base de datos. Dado que el proyecto aún no está en un entorno productivo, manejar múltiples archivos para el esquema inicial puede complicar innecesariamente la configuración para nuevos desarrolladores.
+-   **Acción Sugerida:**
+    1.  Copiar el contenido de los archivos de migración más recientes (ej: `20260105_001_championship_schema.sql`).
+    2.  Pegar este contenido al final del archivo de migración inicial (`001_initial_schema.sql`).
+    3.  Eliminar los archivos de migración más recientes, dejando un único archivo que represente el estado completo y actual del esquema.

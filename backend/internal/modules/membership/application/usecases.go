@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/domain"
+	"github.com/shopspring/decimal"
 )
 
 type CreateMembershipRequest struct {
@@ -16,12 +17,14 @@ type CreateMembershipRequest struct {
 }
 
 type MembershipUseCases struct {
-	repo domain.MembershipRepository
+	repo            domain.MembershipRepository
+	scholarshipRepo domain.ScholarshipRepository
 }
 
-func NewMembershipUseCases(repo domain.MembershipRepository) *MembershipUseCases {
+func NewMembershipUseCases(repo domain.MembershipRepository, scholarshipRepo domain.ScholarshipRepository) *MembershipUseCases {
 	return &MembershipUseCases{
-		repo: repo,
+		repo:            repo,
+		scholarshipRepo: scholarshipRepo,
 	}
 }
 
@@ -90,8 +93,16 @@ func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID 
 
 	processedCount := 0
 	for _, m := range billable {
+		// Calculate fee with potential scholarship
+		fee := m.MembershipTier.MonthlyFee
+
+		scholarship, err := uc.scholarshipRepo.GetActiveByUserID(m.UserID.String()) // Convert UUID to string if needed
+		if err == nil && scholarship != nil {
+			fee = scholarship.ApplyDiscount(fee)
+		}
+
 		// Calculate new balance
-		newBalance := m.OutstandingBalance.Add(m.MembershipTier.MonthlyFee)
+		newBalance := m.OutstandingBalance.Add(fee)
 
 		// Calculate next billing date (next month)
 		nextBilling := m.NextBillingDate.AddDate(0, 1, 0)
@@ -102,4 +113,31 @@ func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID 
 	}
 
 	return processedCount, nil
+}
+
+type AssignScholarshipRequest struct {
+	UserID     string          `json:"user_id"`
+	Percentage decimal.Decimal `json:"percentage"`
+	Reason     string          `json:"reason"`
+	ValidUntil *time.Time      `json:"valid_until"`
+}
+
+func (uc *MembershipUseCases) AssignScholarship(ctx context.Context, clubID string, req AssignScholarshipRequest, grantorID string) (*domain.Scholarship, error) {
+	// Create Scholarship
+	scholarship := &domain.Scholarship{
+		ID:         uuid.New().String(),
+		UserID:     req.UserID,
+		Percentage: req.Percentage,
+		Reason:     req.Reason,
+		GrantorID:  grantorID,
+		ValidUntil: req.ValidUntil,
+		IsActive:   true,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := uc.scholarshipRepo.Create(scholarship); err != nil {
+		return nil, err
+	}
+	return scholarship, nil
 }

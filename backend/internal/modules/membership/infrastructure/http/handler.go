@@ -26,6 +26,7 @@ func RegisterRoutes(r *gin.RouterGroup, h *MembershipHandler, authMiddleware, te
 		memberships.GET("/tiers", h.ListTiers)
 		memberships.GET("/:id", h.GetMembership)
 		memberships.POST("/process-billing", h.ProcessBilling)
+		memberships.POST("/scholarship", h.AssignScholarship)
 	}
 }
 
@@ -114,4 +115,28 @@ func (h *MembershipHandler) ProcessBilling(c *gin.Context) {
 		"message": "Billing cycle processed",
 		"count":   count,
 	})
+}
+
+func (h *MembershipHandler) AssignScholarship(c *gin.Context) {
+	var req application.AssignScholarshipRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get Grantor ID (Admin)
+	grantorID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "admin not authenticated"})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	scholarship, err := h.useCases.AssignScholarship(c.Request.Context(), clubID, req, grantorID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": scholarship})
 }

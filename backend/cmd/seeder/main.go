@@ -11,6 +11,7 @@ import (
 	attendanceRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/domain"
 	bookingDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
+	championshipDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/domain"
 	clubDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
 	disciplineDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/domain"
 	facilityDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
@@ -87,10 +88,6 @@ func main() {
 
 	log.Println("--- Starting Seeder ---")
 
-	// Reset Tables for clean seed (MVP)
-	log.Println("Resetting Tables...")
-	// Reset Tables logic removed to preserve App Schema
-
 	// Ensure UUID extension exists
 	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
 
@@ -98,16 +95,27 @@ func main() {
 		&SeederUser{},
 		&clubDom.Club{},
 		&facilityDom.Facility{},
+		&facilityDom.Equipment{},     // Added
+		&facilityDom.EquipmentLoan{}, // Added
 		&membershipDom.MembershipTier{},
 		&membershipDom.Membership{},
+		&membershipDom.Scholarship{}, // Added
 		&disciplineDom.Discipline{},
 		&disciplineDom.TrainingGroup{},
 		&bookingDom.Booking{},
+		&bookingDom.Waitlist{}, // Added
 		&paymentDom.Payment{},
 		&accessDom.AccessLog{},
 		&attendanceRepo.AttendanceRecordModel{},
 		&SeederFamilyGroup{},
 		&SeederWallet{},
+		// Championship Tables
+		&championshipDom.Tournament{},
+		&championshipDom.TournamentStage{},
+		&championshipDom.Group{},
+		&championshipDom.Team{},
+		&championshipDom.TournamentMatch{},
+		&championshipDom.Standing{},
 	); err != nil {
 		log.Printf("Error dropping tables: %v", err)
 	}
@@ -115,16 +123,27 @@ func main() {
 		&SeederUser{},
 		&clubDom.Club{},
 		&facilityDom.Facility{},
+		&facilityDom.Equipment{},     // Added
+		&facilityDom.EquipmentLoan{}, // Added
 		&membershipDom.MembershipTier{},
 		&membershipDom.Membership{},
+		&membershipDom.Scholarship{}, // Added
 		&disciplineDom.Discipline{},
 		&disciplineDom.TrainingGroup{},
 		&bookingDom.Booking{},
+		&bookingDom.Waitlist{}, // Added
 		&paymentDom.Payment{},
 		&accessDom.AccessLog{},
 		&attendanceRepo.AttendanceRecordModel{},
 		&SeederFamilyGroup{},
 		&SeederWallet{},
+		// Championship Tables
+		&championshipDom.Tournament{},
+		&championshipDom.TournamentStage{},
+		&championshipDom.Group{},
+		&championshipDom.Team{},
+		&championshipDom.TournamentMatch{},
+		&championshipDom.Standing{},
 	); err != nil {
 		log.Fatalf("Failed to automigrate: %v", err)
 	}
@@ -416,6 +435,53 @@ func main() {
 	}
 
 	log.Println("Seeded Disciplines and Training Groups")
+
+	// 6. Seed Equipment
+	if len(facilities) > 0 {
+		courtFac := facilities[0]
+		equipments := []facilityDom.Equipment{
+			{
+				ID:         uuid.New().String(),
+				FacilityID: courtFac.ID,
+				Name:       "Tennis Racket Pro",
+				Type:       "Racket",
+				Condition:  facilityDom.EquipmentConditionExcellent,
+				Status:     "available",
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+			{
+				ID:         uuid.New().String(),
+				FacilityID: courtFac.ID,
+				Name:       "Tennis Ball Basket",
+				Type:       "Accessory",
+				Condition:  facilityDom.EquipmentConditionGood,
+				Status:     "available",
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+		}
+		for _, eq := range equipments {
+			db.Create(&eq)
+		}
+		log.Println("Seeded Equipment")
+	}
+
+	// 7. Seed Championship (Basic)
+	endDate := time.Now().AddDate(0, 1, 0)
+	tournament := championshipDom.Tournament{
+		ID:        uuid.New(),
+		ClubID:    uuid.MustParse(defaultClub.ID),
+		Name:      "Copa Verano 2026",
+		Sport:     "TENNIS",
+		Status:    championshipDom.TournamentActive, // Fixed constant name
+		StartDate: time.Now(),
+		EndDate:   &endDate,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	db.Create(&tournament)
+	log.Println("Seeded Tournament: Copa Verano 2026")
 
 	log.Println("--- Seeding Completed Successfully ---")
 }

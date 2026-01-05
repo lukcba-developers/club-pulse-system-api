@@ -224,6 +224,29 @@ func (h *BookingHandler) GenerateBookings(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "bookings generated successfully"})
 }
 
+func (h *BookingHandler) JoinWaitlist(c *gin.Context) {
+	var dto application.JoinWaitlistDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	// Enforce user_id from token if we want strict security, similar to CreateBooking.
+	userID, exists := c.Get("userID")
+	if exists {
+		dto.UserID = userID.(string)
+	}
+
+	entry, err := h.useCases.JoinWaitlist(clubID, dto)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, entry)
+}
+
 func RegisterRoutes(r *gin.RouterGroup, handler *BookingHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
 	bookings := r.Group("/bookings")
 	bookings.Use(authMiddleware, tenantMiddleware)
@@ -235,5 +258,6 @@ func RegisterRoutes(r *gin.RouterGroup, handler *BookingHandler, authMiddleware,
 		bookings.DELETE("/:id", handler.Cancel)
 		bookings.POST("/recurring", handler.CreateRecurringRule)
 		bookings.POST("/generate", handler.GenerateBookings)
+		bookings.POST("/waitlist", handler.JoinWaitlist)
 	}
 }

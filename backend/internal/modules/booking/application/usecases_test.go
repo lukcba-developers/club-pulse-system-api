@@ -118,6 +118,32 @@ func (m *MockFacilityRepo) UpdateEmbedding(facilityID string, embedding []float3
 	return args.Error(0)
 }
 
+func (m *MockFacilityRepo) CreateEquipment(equipment *facilityDomain.Equipment) error {
+	args := m.Called(equipment)
+	return args.Error(0)
+}
+
+func (m *MockFacilityRepo) GetEquipmentByID(id string) (*facilityDomain.Equipment, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*facilityDomain.Equipment), args.Error(1)
+}
+
+func (m *MockFacilityRepo) ListEquipmentByFacility(facilityID string) ([]*facilityDomain.Equipment, error) {
+	args := m.Called(facilityID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*facilityDomain.Equipment), args.Error(1)
+}
+
+func (m *MockFacilityRepo) UpdateEquipment(equipment *facilityDomain.Equipment) error {
+	args := m.Called(equipment)
+	return args.Error(0)
+}
+
 type MockNotificationSender struct {
 	mock.Mock
 }

@@ -37,10 +37,6 @@ func TenantMiddleware(clubRepo clubDomain.ClubRepository) gin.HandlerFunc {
 		if role == userDomain.RoleSuperAdmin {
 			if clubID != "" {
 				c.Set(ContextClubID, clubID)
-			} else {
-				// No header? Use token club? Or just proceed?
-				// SuperAdmin might operate cross-club.
-				// For now trust header if present.
 			}
 			c.Next()
 			return

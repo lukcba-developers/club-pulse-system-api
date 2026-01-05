@@ -37,7 +37,14 @@ type GuestDetail struct {
 type GuestDetails []GuestDetail
 
 func (g GuestDetails) Value() (driver.Value, error) {
-	return json.Marshal(g)
+	if g == nil {
+		return "[]", nil
+	}
+	b, err := json.Marshal(g)
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
 }
 
 func (g *GuestDetails) Scan(value interface{}) error {

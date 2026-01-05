@@ -33,6 +33,8 @@ type FacilityModel struct {
 	Status         string                `gorm:"default:'active'"`
 	Capacity       int                   `gorm:"not null"`
 	HourlyRate     float64               `gorm:"not null"`
+	OpeningHour    int                   `gorm:"default:8"`
+	ClosingHour    int                   `gorm:"default:23"`
 	Specifications domain.Specifications `gorm:"type:jsonb;serializer:json"` // Postgres JSONB
 	Location       domain.Location       `gorm:"type:jsonb;serializer:json"`
 	ClubID         string                `gorm:"index;not null"`
@@ -52,6 +54,8 @@ func (r *PostgresFacilityRepository) Create(facility *domain.Facility) error {
 		Status:         string(facility.Status),
 		Capacity:       facility.Capacity,
 		HourlyRate:     facility.HourlyRate,
+		OpeningHour:    facility.OpeningHour,
+		ClosingHour:    facility.ClosingHour,
 		Specifications: facility.Specifications,
 		Location:       facility.Location,
 		ClubID:         facility.ClubID,
@@ -95,6 +99,8 @@ func (r *PostgresFacilityRepository) Update(facility *domain.Facility) error {
 		Status:         string(facility.Status),
 		Capacity:       facility.Capacity,
 		HourlyRate:     facility.HourlyRate,
+		OpeningHour:    facility.OpeningHour,
+		ClosingHour:    facility.ClosingHour,
 		Specifications: facility.Specifications,
 		Location:       facility.Location,
 		CreatedAt:      facility.CreatedAt,
@@ -112,6 +118,8 @@ func (r *PostgresFacilityRepository) toDomain(m FacilityModel) *domain.Facility 
 		Status:         domain.FacilityStatus(m.Status),
 		Capacity:       m.Capacity,
 		HourlyRate:     m.HourlyRate,
+		OpeningHour:    m.OpeningHour,
+		ClosingHour:    m.ClosingHour,
 		Specifications: m.Specifications,
 		Location:       m.Location,
 		ClubID:         m.ClubID,
@@ -393,7 +401,7 @@ func float32SliceToVectorString(v []float32) string {
 // GetImpactedUsers returns a list of user IDs that have bookings during the maintenance window
 func (r *PostgresFacilityRepository) GetImpactedUsers(facilityID string, start, end time.Time) ([]string, error) {
 	var userIDs []string
-	
+
 	// We use standard SQL check for overlap: (StartA < EndB) and (EndA > StartB)
 	// Booking Start < Task End AND Booking End > Task Start
 	query := `
@@ -404,10 +412,10 @@ func (r *PostgresFacilityRepository) GetImpactedUsers(facilityID string, start, 
 		AND start_time < ? 
 		AND end_time > ?
 	`
-	
+
 	if err := r.db.Raw(query, facilityID, end, start).Scan(&userIDs).Error; err != nil {
 		return nil, err
 	}
-	
+
 	return userIDs, nil
 }

@@ -48,9 +48,6 @@ func CORSMiddleware() gin.HandlerFunc {
 
 		if origin != "" {
 			c.Header("Access-Control-Allow-Origin", origin) // Dynamic allow for localhost:3000
-		} else {
-			// Fallback for tools or direct access?
-			// c.Header("Access-Control-Allow-Origin", "*") // Don't do this with Credentials=true
 		}
 		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Club-ID")

@@ -91,9 +91,11 @@ func TestSuperAdminAccess(t *testing.T) {
 		case "Bearer super-token":
 			c.Set("userID", saUser.ID)
 			c.Set("userRole", saUser.Role)
+			c.Set("userClubID", saUser.ClubID)
 		case "Bearer normal-token":
 			c.Set("userID", normUser.ID)
 			c.Set("userRole", normUser.Role)
+			c.Set("userClubID", normUser.ClubID)
 		}
 		c.Next()
 	}
@@ -107,7 +109,17 @@ func TestSuperAdminAccess(t *testing.T) {
 	api.Use(mockAuth)
 	api.Use(middleware.TenantMiddleware(cRepo))
 
-	clubHttp.RegisterRoutes(api, cHandler, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() }) // Auth already handled
+	// Strict Auth Middleware to enforce Super Admin role
+	strictAuth := func(c *gin.Context) {
+		role, exists := c.Get("userRole")
+		if !exists || role != userDomain.RoleSuperAdmin {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+			return
+		}
+		c.Next()
+	}
+
+	clubHttp.RegisterRoutes(api, cHandler, strictAuth, func(c *gin.Context) { c.Next() }) // Use strictAuth
 
 	// 2. Test: Normal User Cannot Access /clubs (Forbidden)
 	t.Run("Normal User Forbidden", func(t *testing.T) {

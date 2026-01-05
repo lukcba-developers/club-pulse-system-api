@@ -76,6 +76,8 @@ type Facility struct {
 	Status         FacilityStatus `json:"status"`
 	Capacity       int            `json:"capacity"`
 	HourlyRate     float64        `json:"hourly_rate"`
+	OpeningHour    int            `json:"opening_hour"`   // 0-23
+	ClosingHour    int            `json:"closing_hour"`   // 0-23
 	Specifications Specifications `json:"specifications"` // Stored as JSONB
 	Location       Location       `json:"location"`       // Stored as JSONB
 
@@ -106,4 +108,10 @@ type FacilityRepository interface {
 	// Semantic Search Extensions
 	SemanticSearch(clubID string, embedding []float32, limit int) ([]*FacilityWithSimilarity, error)
 	UpdateEmbedding(facilityID string, embedding []float32) error
+
+	// Equipment Management
+	CreateEquipment(equipment *Equipment) error
+	GetEquipmentByID(id string) (*Equipment, error)
+	ListEquipmentByFacility(facilityID string) ([]*Equipment, error)
+	UpdateEquipment(equipment *Equipment) error
 }

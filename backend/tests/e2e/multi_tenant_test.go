@@ -50,7 +50,8 @@ func TestMultiTenantIsolation(t *testing.T) {
 	createMiddleware := func(clubID string) gin.HandlerFunc {
 		return func(c *gin.Context) {
 			c.Set("clubID", clubID)
-			c.Set("userID", "admin-user") // Ignored for listing usually
+			c.Set("userID", "admin-user")
+			c.Set("userRole", "ADMIN") // Use Admin role to access ListAll
 			c.Next()
 		}
 	}
@@ -75,21 +76,30 @@ func TestMultiTenantIsolation(t *testing.T) {
 		Status: "active",
 	})
 
-	// Create Booking A
 	userAID := uuid.New()
+	userBID := uuid.New()
+
+	// Create Users in DB to satisfy FKs (assuming Booking has FK to User)
+	db.Create(&userRepo.UserModel{ID: userAID.String(), ClubID: "club-A", Name: "User A", Email: "usera@test.com", Role: "MEMBER"})
+	// 3. Create Data for Club B
+	db.Create(&userRepo.UserModel{ID: userBID.String(), ClubID: "club-B", Name: "User B", Email: "userb@test.com", Role: "MEMBER"})
+
+	// Create Booking A
 	startA := time.Now().Add(24 * time.Hour)
 	bookA := &domain.Booking{
-		ID:         uuid.New(),
-		ClubID:     "club-A",
-		FacilityID: facAID,
-		UserID:     userAID,
-		StartTime:  startA,
-		EndTime:    startA.Add(1 * time.Hour),
-		Status:     domain.BookingStatusConfirmed,
+		ID:           uuid.New(),
+		ClubID:       "club-A",
+		FacilityID:   facAID,
+		UserID:       userAID,
+		StartTime:    startA,
+		EndTime:      startA.Add(1 * time.Hour),
+		Status:       domain.BookingStatusConfirmed,
+		GuestDetails: []domain.GuestDetail{},
 	}
-	_ = bookRepo.Create(bookA)
+	err := bookRepo.Create(bookA)
+	require.NoError(t, err)
 
-	// 3. Create Data for Club B
+	// Create Facility B
 	facBID := uuid.New()
 	db.Create(&facilitiesRepo.FacilityModel{
 		ID:     facBID.String(),
@@ -100,33 +110,45 @@ func TestMultiTenantIsolation(t *testing.T) {
 	})
 
 	// Create Booking B
-	userBID := uuid.New()
 	startB := time.Now().Add(48 * time.Hour)
 	bookB := &domain.Booking{
-		ID:         uuid.New(),
-		ClubID:     "club-B",
-		FacilityID: facBID, // Valid for this club
-		UserID:     userBID,
-		StartTime:  startB,
-		EndTime:    startB.Add(1 * time.Hour),
-		Status:     domain.BookingStatusConfirmed,
+		ID:           uuid.New(),
+		ClubID:       "club-B",
+		FacilityID:   facBID, // Valid for this club
+		UserID:       userBID,
+		StartTime:    startB,
+		EndTime:      startB.Add(1 * time.Hour),
+		Status:       domain.BookingStatusConfirmed,
+		GuestDetails: []domain.GuestDetail{},
 	}
-	_ = bookRepo.Create(bookB)
+	err = bookRepo.Create(bookB)
+	require.NoError(t, err)
 
 	// 4. Verify Isolation: Club A should NOT see Booking B
 	t.Run("Club A Isolation", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/clubA/api/v1/bookings", nil)
+		_, _ = http.NewRequest("GET", "/clubA/api/v1/bookings", nil) // Keeping original endpoint but with admin role?
+		// Wait, Handler List() does NOT check Admin. ListAll() does.
+		// So we MUST use /bookings/all
+		req, _ := http.NewRequest("GET", "/clubA/api/v1/bookings/all", nil)
 		r.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var bookings []map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &bookings)
+		require.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		// Handle potential nil or type mismatch if needed, but assuming valid response
+		bookingsData, ok := resp["data"].([]interface{})
+		if !ok {
+			// fallback or fail
+			bookingsData = []interface{}{}
+		}
 
 		foundA := false
 		foundB := false
-		for _, b := range bookings {
-			idStr, ok := b["id"].(string)
+		for _, b := range bookingsData {
+			bMap := b.(map[string]interface{})
+			idStr, ok := bMap["id"].(string)
 			if !ok {
 				continue
 			}
@@ -145,17 +167,23 @@ func TestMultiTenantIsolation(t *testing.T) {
 	// 5. Verify Isolation: Club B should NOT see Booking A
 	t.Run("Club B Isolation", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/clubB/api/v1/bookings", nil)
+		req, _ := http.NewRequest("GET", "/clubB/api/v1/bookings/all", nil)
 		r.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var bookings []map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &bookings)
+		require.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		bookingsData, ok := resp["data"].([]interface{})
+		if !ok {
+			bookingsData = []interface{}{}
+		}
 
 		foundA := false
 		foundB := false
-		for _, b := range bookings {
-			idStr, ok := b["id"].(string)
+		for _, b := range bookingsData {
+			bMap := b.(map[string]interface{})
+			idStr, ok := bMap["id"].(string)
 			if !ok {
 				continue
 			}

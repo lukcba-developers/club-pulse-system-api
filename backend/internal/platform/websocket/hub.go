@@ -403,7 +403,7 @@ func (c *Client) readPump() {
 	c.conn.SetReadLimit(DefaultConfig.MaxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(DefaultConfig.PongWait))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(DefaultConfig.PongWait))
+		_ = c.conn.SetReadDeadline(time.Now().Add(DefaultConfig.PongWait))
 		return nil
 	})
 

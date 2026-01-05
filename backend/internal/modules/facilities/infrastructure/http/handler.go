@@ -35,6 +35,15 @@ func RegisterRoutes(r *gin.RouterGroup, handler *FacilityHandler, authMiddleware
 		protected.GET("/:id", handler.Get)
 		protected.POST("", handler.Create)
 		protected.PUT("/:id", handler.Update)
+
+		// Equipment
+		protected.POST("/:id/equipment", handler.AddEquipment)
+		protected.GET("/:id/equipment", handler.ListEquipment)
+
+		// Loans
+		// Loan is on user + equipment. Maybe POST /equipment/:id/loan
+		protected.POST("/equipment/:id/loan", handler.LoanEquipment) // :id is equipmentID
+		protected.POST("/loans/:id/return", handler.ReturnLoan)      // :id is loanID
 	}
 }
 
@@ -132,6 +141,83 @@ func (h *FacilityHandler) Update(c *gin.Context) {
 
 	h.invalidateCache(c, clubID)
 	c.JSON(http.StatusOK, facility)
+}
+
+func (h *FacilityHandler) AddEquipment(c *gin.Context) {
+	facilityID := c.Param("id")
+	var dto application.AddEquipmentDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	eq, err := h.useCases.AddEquipment(clubID, facilityID, dto)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, eq)
+}
+
+func (h *FacilityHandler) ListEquipment(c *gin.Context) {
+	facilityID := c.Param("id")
+	clubID := c.GetString("clubID")
+
+	eqs, err := h.useCases.ListEquipment(clubID, facilityID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, eqs)
+}
+
+type LoanRequest struct {
+	UserID         string `json:"user_id"`
+	ExpectedReturn string `json:"expected_return"` // YYYY-MM-DDT...
+}
+
+func (h *FacilityHandler) LoanEquipment(c *gin.Context) {
+	equipmentID := c.Param("id") // /equipment/:id/loan
+	var req LoanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	expectedReturn, err := time.Parse(time.RFC3339, req.ExpectedReturn)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid date format (RFC3339)"})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	loan, err := h.useCases.LoanEquipment(clubID, req.UserID, equipmentID, expectedReturn)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, loan)
+}
+
+type ReturnLoanRequest struct {
+	Condition string `json:"condition"`
+}
+
+func (h *FacilityHandler) ReturnLoan(c *gin.Context) {
+	loanID := c.Param("id") // /loans/:id/return
+	var req ReturnLoanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	if err := h.useCases.ReturnLoan(clubID, loanID, req.Condition); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "loan returned"})
 }
 
 func (h *FacilityHandler) invalidateCache(c *gin.Context, clubID string) {

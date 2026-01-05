@@ -34,6 +34,10 @@ import (
 	bookingApplication "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
 	bookingHTTP "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
+	championshipApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/application"
+	championshipHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/infrastructure/http"
+	championshipRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/infrastructure/repository"
+	championshipSvc "github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/infrastructure/service"
 
 	accessApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/application"
 	accessHTTP "github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/infrastructure/http"
@@ -161,7 +165,8 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	// --- Module: Facilities ---
 	facilityRepository := facilitiesRepo.NewPostgresFacilityRepository(db)
-	facilityUseCase := facilityApp.NewFacilityUseCases(facilityRepository)
+	loanRepository := facilitiesRepo.NewPostgresLoanRepository(db)
+	facilityUseCase := facilityApp.NewFacilityUseCases(facilityRepository, loanRepository)
 	facilityHandler := facilitiesHTTP.NewFacilityHandler(facilityUseCase)
 
 	facilitiesHTTP.RegisterRoutes(api, facilityHandler, authMiddleware, tenantMiddleware)
@@ -174,7 +179,8 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	// --- Module: Membership ---
 	membershipRepository := membershipRepo.NewPostgresMembershipRepository(db)
-	membershipUseCase := membershipApplication.NewMembershipUseCases(membershipRepository)
+	scholarshipRepository := membershipRepo.NewPostgresScholarshipRepository(db)
+	membershipUseCase := membershipApplication.NewMembershipUseCases(membershipRepository, scholarshipRepository)
 	membershipHandler := membershipHTTP.NewMembershipHandler(membershipUseCase)
 
 	membershipHTTP.RegisterRoutes(api, membershipHandler, authMiddleware, tenantMiddleware)
@@ -243,6 +249,12 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	storeUseCase := storeApp.NewStoreUseCases(storeRepository)
 	storeHandler := storeHttp.NewStoreHandler(storeUseCase)
 	storeHttp.RegisterRoutes(api, storeHandler, authMiddleware, tenantMiddleware)
+
+	// --- Module: Championship ---
+	championshipRepo := championshipRepo.NewPostgresChampionshipRepository(db)
+	championshipBookingAdapter := championshipSvc.NewChampionshipBookingAdapter(bookingUseCase) // Use bookingApp instance
+	championshipApp := championshipApp.NewChampionshipUseCases(championshipRepo, championshipBookingAdapter, userUseCase)
+	championshipHttp.NewChampionshipHandler(championshipApp).RegisterRoutes(api)
 
 	// --- Module: Team (Matches, Availability) ---
 	teamRepository := teamRepo.NewPostgresTeamRepository(db)
