@@ -37,7 +37,7 @@ func TestSuperAdminAccess(t *testing.T) {
 
 	// Repos & Services
 	cRepo := clubRepo.NewPostgresClubRepository(db)
-	cUC := clubApp.NewClubUseCases(cRepo)
+	cUC := clubApp.NewClubUseCases(cRepo, cRepo)
 	cHandler := clubHttp.NewClubHandler(cUC)
 
 	aRepo := authRepo.NewPostgresAuthRepository(db)
@@ -112,7 +112,7 @@ func TestSuperAdminAccess(t *testing.T) {
 	// 2. Test: Normal User Cannot Access /clubs (Forbidden)
 	t.Run("Normal User Forbidden", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/api/v1/clubs", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/admin/clubs", nil)
 		req.Header.Set("Authorization", "Bearer normal-token")
 		req.Header.Set("X-Club-ID", "club-A") // Even with valid club ID
 
@@ -128,8 +128,8 @@ func TestSuperAdminAccess(t *testing.T) {
 	// 3. Test: Super Admin Can Create Club (Success)
 	t.Run("Super Admin Create Club", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		body := `{"id": "new-club", "name": "New Club", "domain": "new.club.com"}`
-		req, _ := http.NewRequest("POST", "/api/v1/clubs", strings.NewReader(body))
+		body := `{"name": "New Club", "domain": "new.club.com"}`
+		req, _ := http.NewRequest("POST", "/api/v1/admin/clubs", strings.NewReader(body))
 		req.Header.Set("Authorization", "Bearer super-token")
 		// No X-Club-ID header needed for Super Admin if Bypass works!
 
@@ -137,8 +137,12 @@ func TestSuperAdminAccess(t *testing.T) {
 
 		require.Equal(t, http.StatusCreated, w.Code)
 
+		var createdClub map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &createdClub)
+		createdID := createdClub["id"].(string)
+
 		// Verify DB
-		club, _ := cRepo.GetByID("new-club")
+		club, _ := cRepo.GetByID(createdID)
 		assert.NotNil(t, club)
 		assert.Equal(t, "New Club", club.Name)
 	})
@@ -146,18 +150,20 @@ func TestSuperAdminAccess(t *testing.T) {
 	// 4. Test: Super Admin Can List Clubs
 	t.Run("Super Admin List Clubs", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/api/v1/clubs", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/admin/clubs", nil)
 		req.Header.Set("Authorization", "Bearer super-token")
 
 		r.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var clubs []map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &clubs)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		clubs := resp["data"].([]interface{})
 
 		found := false
 		for _, c := range clubs {
-			if c["id"] == "new-club" {
+			clubMap := c.(map[string]interface{})
+			if clubMap["name"] == "New Club" {
 				found = true
 				break
 			}

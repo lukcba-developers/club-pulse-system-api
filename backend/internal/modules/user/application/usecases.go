@@ -198,3 +198,48 @@ func (uc *UserUseCases) CreateManualDebt(clubID, userID string, amount float64, 
 	// Since Wallet is part of User struct in our Domain (aggregates), updating User Updates Wallet (cascade).
 	return uc.repo.Update(user)
 }
+
+func (uc *UserUseCases) UpdateEmergencyInfo(clubID, userID string, contactName, contactPhone, insuranceProvider, insuranceNumber string) error {
+	user, err := uc.repo.GetByID(clubID, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	user.EmergencyContactName = contactName
+	user.EmergencyContactPhone = contactPhone
+	user.InsuranceProvider = insuranceProvider
+	user.InsuranceNumber = insuranceNumber
+	user.UpdatedAt = time.Now()
+
+	return uc.repo.Update(user)
+}
+
+func (uc *UserUseCases) LogIncident(clubID, injuredUserID, description, actionTaken, witnesses, reporterID string) (*domain.IncidentLog, error) {
+	// injuredUserID can be empty if it's a visitor, but if provided, validate existence?
+	// For now, trust input or loose coupling.
+
+	incident := &domain.IncidentLog{
+		ID:          uuid.New(),
+		ClubID:      clubID,
+		Description: description,
+		Witnesses:   witnesses,
+		ActionTaken: actionTaken,
+		ReportedAt:  time.Now(),
+		CreatedBy:   reporterID,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	if injuredUserID != "" {
+		incident.InjuredUserID = &injuredUserID
+	}
+
+	if err := uc.repo.CreateIncident(incident); err != nil {
+		return nil, err
+	}
+
+	return incident, nil
+}

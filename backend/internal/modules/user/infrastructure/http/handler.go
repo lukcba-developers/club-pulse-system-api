@@ -277,6 +277,62 @@ func (h *UserHandler) GetWallet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": wallet})
 }
 
+type UpdateEmergencyInfoRequest struct {
+	ContactName       string `json:"contact_name"`
+	ContactPhone      string `json:"contact_phone"`
+	InsuranceProvider string `json:"insurance_provider"`
+	InsuranceNumber   string `json:"insurance_number"`
+}
+
+func (h *UserHandler) UpdateEmergencyInfo(c *gin.Context) {
+	var req UpdateEmergencyInfoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	clubID := c.GetString("clubID")
+
+	if err := h.useCases.UpdateEmergencyInfo(clubID, userID.(string), req.ContactName, req.ContactPhone, req.InsuranceProvider, req.InsuranceNumber); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+type LogIncidentRequest struct {
+	InjuredUserID string `json:"injured_user_id"`
+	Description   string `json:"description" binding:"required"`
+	Witnesses     string `json:"witnesses"`
+	ActionTaken   string `json:"action_taken"`
+}
+
+func (h *UserHandler) LogIncident(c *gin.Context) {
+	var req LogIncidentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reporter is the logged in user
+	reporterID, _ := c.Get("userID")
+	clubID := c.GetString("clubID")
+
+	incident, err := h.useCases.LogIncident(clubID, req.InjuredUserID, req.Description, req.ActionTaken, req.Witnesses, reporterID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, incident)
+}
+
 func RegisterRoutes(r *gin.RouterGroup, handler *UserHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
 	users := r.Group("/users")
 	users.Use(authMiddleware, tenantMiddleware) // Protect these routes with Auth THEN Tenant
@@ -289,5 +345,9 @@ func RegisterRoutes(r *gin.RouterGroup, handler *UserHandler, authMiddleware, te
 		users.DELETE("/:id", handler.DeleteUser)
 		users.GET("/:id/stats", handler.GetStats)
 		users.GET("/:id/wallet", handler.GetWallet)
+
+		// Operational
+		users.PUT("/me/emergency", handler.UpdateEmergencyInfo)
+		users.POST("/incidents", handler.LogIncident)
 	}
 }

@@ -389,3 +389,25 @@ func float32SliceToVectorString(v []float32) string {
 	result += "]"
 	return result
 }
+
+// GetImpactedUsers returns a list of user IDs that have bookings during the maintenance window
+func (r *PostgresFacilityRepository) GetImpactedUsers(facilityID string, start, end time.Time) ([]string, error) {
+	var userIDs []string
+	
+	// We use standard SQL check for overlap: (StartA < EndB) and (EndA > StartB)
+	// Booking Start < Task End AND Booking End > Task Start
+	query := `
+		SELECT DISTINCT user_id 
+		FROM bookings 
+		WHERE facility_id = ? 
+		AND status IN ('CONFIRMED', 'PENDING')
+		AND start_time < ? 
+		AND end_time > ?
+	`
+	
+	if err := r.db.Raw(query, facilityID, end, start).Scan(&userIDs).Error; err != nil {
+		return nil, err
+	}
+	
+	return userIDs, nil
+}

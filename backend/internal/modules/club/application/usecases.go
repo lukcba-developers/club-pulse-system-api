@@ -1,97 +1,126 @@
 package application
 
 import (
-	"errors"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
 )
 
-type ClubDTO struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	Domain   string            `json:"domain"`
-	Status   domain.ClubStatus `json:"status"`
-	Settings string            `json:"settings"`
-}
-
-type CreateClubDTO struct {
-	ID       string `json:"id" binding:"required"` // Slug
-	Name     string `json:"name" binding:"required"`
-	Domain   string `json:"domain"`
-	Settings string `json:"settings"`
-}
-
-type UpdateClubDTO struct {
-	Name     string            `json:"name"`
-	Domain   string            `json:"domain"`
-	Status   domain.ClubStatus `json:"status"`
-	Settings string            `json:"settings"`
-}
-
 type ClubUseCases struct {
-	repo domain.ClubRepository
+	sponsorRepo domain.SponsorRepository
+	clubRepo    domain.ClubRepository
 }
 
-func NewClubUseCases(repo domain.ClubRepository) *ClubUseCases {
-	return &ClubUseCases{repo: repo}
+func NewClubUseCases(sponsorRepo domain.SponsorRepository, clubRepo domain.ClubRepository) *ClubUseCases {
+	return &ClubUseCases{
+		sponsorRepo: sponsorRepo,
+		clubRepo:    clubRepo,
+	}
 }
 
-func (uc *ClubUseCases) CreateClub(dto CreateClubDTO) (*domain.Club, error) {
-	// Check if ID already exists
-	existing, err := uc.repo.GetByID(dto.ID)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil {
-		return nil, errors.New("club ID already exists")
-	}
+// --- Club Management (Super Admin) ---
 
+func (uc *ClubUseCases) CreateClub(name, domainStr, settings string) (*domain.Club, error) {
 	club := &domain.Club{
-		ID:       dto.ID,
-		Name:     dto.Name,
-		Domain:   dto.Domain,
-		Status:   domain.ClubStatusActive,
-		Settings: dto.Settings,
+		ID:        uuid.New().String(), // OR use specific slug logic if preferred
+		Name:      name,
+		Domain:    domainStr,
+		Status:    domain.ClubStatusActive,
+		Settings:  settings,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-
-	if err := uc.repo.Create(club); err != nil {
-		return nil, err
-	}
-	return club, nil
-}
-
-func (uc *ClubUseCases) UpdateClub(id string, dto UpdateClubDTO) (*domain.Club, error) {
-	club, err := uc.repo.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-	if club == nil {
-		return nil, errors.New("club not found")
-	}
-
-	if dto.Name != "" {
-		club.Name = dto.Name
-	}
-	if dto.Domain != "" {
-		club.Domain = dto.Domain
-	}
-	if dto.Status != "" {
-		club.Status = dto.Status
-	}
-	if dto.Settings != "" {
-		club.Settings = dto.Settings
-	}
-
-	if err := uc.repo.Update(club); err != nil {
+	if err := uc.clubRepo.Create(club); err != nil {
 		return nil, err
 	}
 	return club, nil
 }
 
 func (uc *ClubUseCases) GetClub(id string) (*domain.Club, error) {
-	return uc.repo.GetByID(id)
+	return uc.clubRepo.GetByID(id)
 }
 
 func (uc *ClubUseCases) ListClubs(limit, offset int) ([]domain.Club, error) {
-	return uc.repo.List(limit, offset)
+	return uc.clubRepo.List(limit, offset)
+}
+
+func (uc *ClubUseCases) UpdateClub(id string, name, domainStr, settings string, status domain.ClubStatus) (*domain.Club, error) {
+	club, err := uc.clubRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if club == nil {
+		return nil, nil // Or error
+	}
+
+	if name != "" {
+		club.Name = name
+	}
+	if domainStr != "" {
+		club.Domain = domainStr
+	}
+	if settings != "" {
+		club.Settings = settings
+	}
+	if status != "" {
+		club.Status = status
+	}
+	club.UpdatedAt = time.Now()
+
+	if err := uc.clubRepo.Update(club); err != nil {
+		return nil, err
+	}
+	return club, nil
+}
+
+func (uc *ClubUseCases) DeleteClub(id string) error {
+	return uc.clubRepo.Delete(id)
+}
+
+// --- Sponsor Management ---
+
+func (uc *ClubUseCases) RegisterSponsor(clubID, name, contactInfo, logoURL string) (*domain.Sponsor, error) {
+	sponsor := &domain.Sponsor{
+		ID:          uuid.New(),
+		ClubID:      clubID,
+		Name:        name,
+		ContactInfo: contactInfo,
+		LogoURL:     logoURL,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	if err := uc.sponsorRepo.CreateSponsor(sponsor); err != nil {
+		return nil, err
+	}
+	return sponsor, nil
+}
+
+func (uc *ClubUseCases) CreateAdPlacement(sponsorID string, locationType domain.LocationType, detail string, endDate time.Time, amount float64) (*domain.AdPlacement, error) {
+	sponsorUUID, err := uuid.Parse(sponsorID)
+	if err != nil {
+		return nil, err
+	}
+
+	ad := &domain.AdPlacement{
+		ID:             uuid.New(),
+		SponsorID:      sponsorUUID,
+		LocationType:   locationType,
+		LocationDetail: detail,
+		ContractEnd:    endDate,
+		AmountPaid:     amount,
+		IsActive:       true,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+
+	if err := uc.sponsorRepo.CreateAdPlacement(ad); err != nil {
+		return nil, err
+	}
+	return ad, nil
+}
+
+func (uc *ClubUseCases) GetActiveAds(clubID string) ([]domain.AdPlacement, error) {
+	return uc.sponsorRepo.GetActiveAds(clubID)
 }

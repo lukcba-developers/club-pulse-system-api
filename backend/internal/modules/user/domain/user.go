@@ -32,6 +32,12 @@ type User struct {
 	MedicalCertStatus *MedicalCertStatus `json:"medical_cert_status" gorm:"default:'PENDING'"`
 	MedicalCertExpiry *time.Time         `json:"medical_cert_expiry"`
 
+	// Emergency & Security
+	EmergencyContactName  string `json:"emergency_contact_name,omitempty"`
+	EmergencyContactPhone string `json:"emergency_contact_phone,omitempty"`
+	InsuranceProvider     string `json:"insurance_provider,omitempty"`
+	InsuranceNumber       string `json:"insurance_number,omitempty"`
+
 	// Relations (Fetched on demand or preloaded)
 	Stats  *UserStats `json:"stats,omitempty" gorm:"foreignKey:UserID;references:ID"`
 	Wallet *Wallet    `json:"wallet,omitempty" gorm:"foreignKey:UserID;references:ID"`
@@ -67,4 +73,19 @@ type UserRepository interface {
 	List(clubID string, limit, offset int, filters map[string]interface{}) ([]User, error)
 	FindChildren(clubID, parentID string) ([]User, error)
 	Create(user *User) error
+	CreateIncident(incident *IncidentLog) error
+}
+
+type IncidentLog struct {
+	ID            uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	ClubID        string     `json:"club_id" gorm:"not null;index"`
+	InjuredUserID *string    `json:"injured_user_id,omitempty"` // Nullable for visitors
+	Description   string     `json:"description" gorm:"not null"`
+	Witnesses     string     `json:"witnesses,omitempty"`
+	ActionTaken   string     `json:"action_taken,omitempty"`
+	ReportedAt    time.Time  `json:"reported_at"`
+	CreatedBy     string     `json:"created_by,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
 }

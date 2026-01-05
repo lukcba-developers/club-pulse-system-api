@@ -414,3 +414,120 @@ BEGIN
     LIMIT result_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- =============================================
+-- Operational Features (Real-World Pack)
+-- =============================================
+
+-- 1. STORE
+CREATE TABLE IF NOT EXISTS products (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    stock_quantity INT DEFAULT 0,
+    sku VARCHAR(100),
+    category VARCHAR(50), -- Merch, Buffet, Equipment
+    is_active BOOLEAN DEFAULT TRUE,
+    image_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_products_club ON products(club_id);
+
+CREATE TABLE IF NOT EXISTS orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(255) NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    total_amount DECIMAL(10,2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'PAID', -- PAID, PENDING, CANCELLED
+    items JSONB NOT NULL, -- [{product_id, qty, unit_price}]
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_club ON orders(club_id);
+
+-- 2. TEAM AVAILABILITY
+CREATE TABLE IF NOT EXISTS match_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    training_group_id UUID NOT NULL REFERENCES training_groups(id),
+    opponent_name VARCHAR(100),
+    location VARCHAR(255), -- "Home", "Away", or specific address
+    is_home_game BOOLEAN DEFAULT TRUE,
+    meetup_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE, -- Optional match start if diff from meetup
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_match_events_group ON match_events(training_group_id);
+
+CREATE TABLE IF NOT EXISTS player_availabilities (
+    match_event_id UUID NOT NULL REFERENCES match_events(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    status VARCHAR(20) NOT NULL, -- CONFIRMED, DECLINED, MAYBE
+    reason TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (match_event_id, user_id)
+);
+
+-- 3. SPONSORS
+CREATE TABLE IF NOT EXISTS sponsors (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    contact_info TEXT, -- JSON or Text
+    logo_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sponsors_club ON sponsors(club_id);
+
+CREATE TABLE IF NOT EXISTS ad_placements (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sponsor_id UUID NOT NULL REFERENCES sponsors(id),
+    location_type VARCHAR(50), -- WEBSITE_BANNER, PHYSICAL_BANNER, JERSEY
+    location_detail VARCHAR(255), -- "Cancha 1 - Fondo"
+    contract_start DATE,
+    contract_end DATE NOT NULL,
+    amount_paid DECIMAL(10,2),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ad_placements_sponsor ON ad_placements(sponsor_id);
+
+-- 4. INCIDENTS (Y Update Users)
+-- Adding columns to users table is handled by migration tool or manually here if safe
+-- We use IF NOT EXISTS to be safe in this consolidated file
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(255),
+ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50),
+ADD COLUMN IF NOT EXISTS insurance_provider VARCHAR(100),
+ADD COLUMN IF NOT EXISTS insurance_number VARCHAR(100);
+
+CREATE TABLE IF NOT EXISTS incident_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(255) NOT NULL,
+    injured_user_id TEXT REFERENCES users(id), -- Nullable for visitors
+    description TEXT NOT NULL,
+    witnesses TEXT,
+    action_taken TEXT, -- "Ambulance Called", "First Aid"
+    reported_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by TEXT, -- Staff User ID
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidents_club ON incident_logs(club_id);

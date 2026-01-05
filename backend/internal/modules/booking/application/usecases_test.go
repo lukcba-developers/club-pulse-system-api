@@ -194,6 +194,11 @@ func (m *MockUserRepo) Create(user *userDomain.User) error {
 	return args.Error(0)
 }
 
+func (m *MockUserRepo) CreateIncident(incident *userDomain.IncidentLog) error {
+	args := m.Called(incident)
+	return args.Error(0)
+}
+
 // --- Tests ---
 
 func TestCreateBooking(t *testing.T) {

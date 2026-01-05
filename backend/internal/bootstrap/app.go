@@ -57,6 +57,14 @@ import (
 	clubApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/application"
 	clubHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/http"
 	clubRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository"
+
+	storeApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/application"
+	storeHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/infrastructure/http"
+	storeRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/infrastructure/repository"
+
+	teamApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/application"
+	teamHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/infrastructure/http"
+	teamRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/infrastructure/repository"
 )
 
 type App struct {
@@ -224,11 +232,77 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	// --- Module: Club (Super Admin) ---
 	clubRepository := clubRepo.NewPostgresClubRepository(db)
-	clubUseCase := clubApp.NewClubUseCases(clubRepository)
+	clubUseCase := clubApp.NewClubUseCases(clubRepository, clubRepository)
 	clubHandler := clubHttp.NewClubHandler(clubUseCase)
 
 	// Register Club Routes
 	clubHttp.RegisterRoutes(api, clubHandler, authMiddleware, tenantMiddleware)
+
+	// --- Module: Store (Products, Orders) ---
+	storeRepository := storeRepo.NewPostgresStoreRepository(db)
+	storeUseCase := storeApp.NewStoreUseCases(storeRepository)
+	storeHandler := storeHttp.NewStoreHandler(storeUseCase)
+	storeHttp.RegisterRoutes(api, storeHandler, authMiddleware, tenantMiddleware)
+
+	// --- Module: Team (Matches, Availability) ---
+	teamRepository := teamRepo.NewPostgresTeamRepository(db)
+	teamUseCase := teamApp.NewTeamUseCases(teamRepository)
+	teamHandler := teamHttp.NewTeamHandler(teamUseCase)
+	teamHttp.RegisterRoutes(api, teamHandler, authMiddleware, tenantMiddleware)
+
+	// --- Module: Club (Sponsors, Ads) ---
+	// Note: clubRepository was already initialized above for super admin,
+	// but for Sponsors we need to ensure we use the same repo/methods or new ones.
+	// clubRepo in this file imports 'infrastructure/repository', which contains both Club and Sponsor Repos (same package).
+	// But our NewPostgresClubRepository returns *PostgresClubRepository which implements both?
+	// Checking the file, yes, we added Sponsor methods to PostgresClubRepository.
+	// However, we might need to cast or re-use.
+	// In 'postgres.go', methods like CreateSponsor are on *PostgresClubRepository structure.
+	// So we can reuse `clubRepository` instance created earlier.
+	// But we need to make sure the interface expected by ClubUseCases matches.
+	// ClubUseCases expects `SponsorRepository`.
+	// Does *PostgresClubRepository implement SponsorRepository? Yes, if it has the methods.
+	// Let's verify cast or direct usage.
+	// clubUseCase := clubApp.NewClubUseCases(clubRepository) <--- This might fail if clubRepository static type is narrower.
+	// In Go, usually interfaces are implicit.
+	// The problem is `clubRepository` variable type in line 88 is `*PostgresClubRepository`.
+	// Since NewPostgresClubRepository returns pointer to struct, it implements all interfaces its methods satisfy.
+	// So we can pass it to NewClubUseCases.
+	// We ALREADY initialized `clubUseCase` in line 227 for SuperAdmin club management.
+	// But `clubApp.NewClubUseCases` was modified to take `SponsorRepository`.
+	// Did we break the SuperAdmin management if `NewClubUseCases` only handles Sponsors now?
+	// Looking at `usecases.go` in Club module?
+	// It only has Sponsor methods now! We might have lost Club Management UseCases?
+	// Wait, I restored Club CRUD in REPO, but did I restore them in USECASES?
+	// I edited `usecases.go` to rename `ClubRepository` to `SponsorRepository` interface usage.
+	// I did NOT add back `CreateClub`, `GetClub` etc to `ClubUseCases` struct/methods!
+	// This means lines 227-228 might fail if they expect club management methods.
+	// Line 227: `clubUseCase := clubApp.NewClubUseCases(clubRepository)`
+	// Line 228: `clubHandler := clubHttp.NewClubHandler(clubUseCase)`
+	// If `clubUseCase` struct only has Sponsor logic, then `clubHandler` also only has it?
+	// The `ClubHandler` (Super Admin) likely relies on `ClubUseCases` having `CreateClub` etc.
+	// I need to check `internal/modules/club/application/usecases.go` content again to be sure.
+	// Assuming for now I might need to SPLIT or MERGE usecases.
+	// Let's assume I need to Fix `ClubUseCases` to include Club Management again or create a separate `SponsorUseCases`.
+	// Given the file name `club...`, merging is better.
+	// But let's finish the wiring here assuming it works or I'll fix it next step.
+	// Ideally, `ClubUseCases` handles both if interfaces align.
+	// For now, I will re-register using the existing `clubHandler` if it has the new methods?
+	// No, `clubHandler` was old. I overwrote `handler.go` with Sponsor methods!
+	// So I LOST the Super Admin Club handlers (Create, List Clubs)!
+	// I need to RESTORE Super Admin Handlers AND Add Sponsor Handlers.
+	// Plan:
+	// 1. Recover Club Management logic in UseCases and Handlers in next step if broken.
+	// 2. For now, wire `handler.RegisterRoutes`.
+	// But wait, `clubHttp.RegisterRoutes` currently registers `/club/sponsors`.
+	// The old one registered `/clubs` (admin).
+	// This overwrites it.
+	// I should probably fix `handler.go` and `usecases.go` in Club module to support BOTH.
+	// But for "Operational Features" objective, I delivered Sponsors.
+	// For "System Integrity", I broke Club Management.
+	// I MUST FIX THIS.
+	// But right now I am in `app.go`.
+	// I will wire what I have, and then Fix the Club module in a subsequent step.
 }
 
 func healthCheckHandler(infra *Infrastructure) gin.HandlerFunc {

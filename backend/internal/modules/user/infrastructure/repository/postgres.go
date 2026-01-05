@@ -37,6 +37,12 @@ type UserModel struct {
 	Stats  *domain.UserStats `gorm:"foreignKey:UserID;references:ID"`
 	Wallet *domain.Wallet    `gorm:"foreignKey:UserID;references:ID"`
 	ClubID string            `gorm:"index;not null"`
+
+	// Operational Fields
+	EmergencyContactName  string
+	EmergencyContactPhone string
+	InsuranceProvider     string
+	InsuranceNumber       string
 }
 
 func (UserModel) TableName() string {
@@ -55,18 +61,22 @@ func (r *PostgresUserRepository) GetByID(clubID, id string) (*domain.User, error
 	}
 
 	return &domain.User{
-		ID:                model.ID,
-		Name:              model.Name,
-		Email:             model.Email,
-		Role:              model.Role,
-		DateOfBirth:       model.DateOfBirth,
-		SportsPreferences: model.SportsPreferences,
-		ParentID:          model.ParentID,
-		CreatedAt:         model.CreatedAt,
-		UpdatedAt:         model.UpdatedAt,
-		Stats:             model.Stats,
-		Wallet:            model.Wallet,
-		ClubID:            model.ClubID,
+		ID:                    model.ID,
+		Name:                  model.Name,
+		Email:                 model.Email,
+		Role:                  model.Role,
+		DateOfBirth:           model.DateOfBirth,
+		SportsPreferences:     model.SportsPreferences,
+		ParentID:              model.ParentID,
+		CreatedAt:             model.CreatedAt,
+		UpdatedAt:             model.UpdatedAt,
+		Stats:                 model.Stats,
+		Wallet:                model.Wallet,
+		ClubID:                model.ClubID,
+		EmergencyContactName:  model.EmergencyContactName,
+		EmergencyContactPhone: model.EmergencyContactPhone,
+		InsuranceProvider:     model.InsuranceProvider,
+		InsuranceNumber:       model.InsuranceNumber,
 	}, nil
 }
 
@@ -83,6 +93,19 @@ func (r *PostgresUserRepository) Update(user *domain.User) error {
 	}
 	if user.SportsPreferences != nil {
 		updates["sports_preferences"] = user.SportsPreferences
+	}
+	// Operational Updates
+	if user.EmergencyContactName != "" {
+		updates["emergency_contact_name"] = user.EmergencyContactName
+	}
+	if user.EmergencyContactPhone != "" {
+		updates["emergency_contact_phone"] = user.EmergencyContactPhone
+	}
+	if user.InsuranceProvider != "" {
+		updates["insurance_provider"] = user.InsuranceProvider
+	}
+	if user.InsuranceNumber != "" {
+		updates["insurance_number"] = user.InsuranceNumber
 	}
 
 	result := r.db.Model(&UserModel{ID: user.ID}).Updates(updates)
@@ -201,4 +224,8 @@ func (r *PostgresUserRepository) Create(user *domain.User) error {
 	model.ClubID = user.ClubID
 
 	return r.db.Create(&model).Error
+}
+
+func (r *PostgresUserRepository) CreateIncident(incident *domain.IncidentLog) error {
+	return r.db.Create(incident).Error
 }

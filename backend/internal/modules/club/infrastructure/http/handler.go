@@ -2,121 +2,131 @@ package http
 
 import (
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/application"
-	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
 )
 
 type ClubHandler struct {
-	uc *application.ClubUseCases
+	useCases *application.ClubUseCases
 }
 
-func NewClubHandler(uc *application.ClubUseCases) *ClubHandler {
-	return &ClubHandler{uc: uc}
+func NewClubHandler(useCases *application.ClubUseCases) *ClubHandler {
+	return &ClubHandler{useCases: useCases}
 }
 
-// CreateClub godoc
-// @Summary Create a new club (Super Admin only)
-// @Description Creates a new tenant
-// @Tags clubs
-// @Accept json
-// @Produce json
-// @Success 201 {object} domain.Club
-// @Router /clubs [post]
+// --- Club Handlers (Super Admin) ---
+
+type CreateClubRequest struct {
+	Name     string `json:"name" binding:"required"`
+	Domain   string `json:"domain"`
+	Settings string `json:"settings"`
+}
+
 func (h *ClubHandler) CreateClub(c *gin.Context) {
-	if !h.isSuperAdmin(c) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "requires SUPER_ADMIN role"})
-		return
-	}
-
-	var req application.CreateClubDTO
+	var req CreateClubRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	club, err := h.uc.CreateClub(req)
+	club, err := h.useCases.CreateClub(req.Name, req.Domain, req.Settings)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusCreated, club)
 }
 
-// ListClubs godoc
-// @Summary List all clubs (Super Admin only)
-// @Description Lists all tenants
-// @Tags clubs
-// @Produce json
-// @Success 200 {array} domain.Club
-// @Router /clubs [get]
 func (h *ClubHandler) ListClubs(c *gin.Context) {
-	if !h.isSuperAdmin(c) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "requires SUPER_ADMIN role"})
-		return
-	}
-
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-
-	clubs, err := h.uc.ListClubs(limit, offset)
+	clubs, err := h.useCases.ListClubs(100, 0)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	c.JSON(http.StatusOK, clubs)
+	c.JSON(http.StatusOK, gin.H{"data": clubs})
 }
 
-// UpdateClub godoc
-// @Summary Update a club (Super Admin only)
-// @Description Updates tenant details
-// @Tags clubs
-// @Accept json
-// @Produce json
-// @Router /clubs/{id} [put]
-func (h *ClubHandler) UpdateClub(c *gin.Context) {
-	if !h.isSuperAdmin(c) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "requires SUPER_ADMIN role"})
-		return
-	}
+// --- Sponsor Handlers ---
 
-	id := c.Param("id")
-	var req application.UpdateClubDTO
+type SponsorRequest struct {
+	Name        string `json:"name" binding:"required"`
+	ContactInfo string `json:"contact_info"`
+	LogoURL     string `json:"logo_url"`
+}
+
+func (h *ClubHandler) RegisterSponsor(c *gin.Context) {
+	var req SponsorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	club, err := h.uc.UpdateClub(id, req)
+	clubID := c.GetString("clubID")
+	if clubID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClubContext required"})
+		return
+	}
+
+	sponsor, err := h.useCases.RegisterSponsor(clubID, req.Name, req.ContactInfo, req.LogoURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, club)
+	c.JSON(http.StatusCreated, sponsor)
 }
 
-func (h *ClubHandler) isSuperAdmin(c *gin.Context) bool {
-	// 1. Check if userRole is set in context (from AuthMiddleware)
-	role, exists := c.Get("userRole")
-	if !exists {
-		// Fallback: Check if we can get it from DB if we have userID?
-		// Ideally, AuthMiddleware should set this.
-		return false
+type AdPlacementRequest struct {
+	SponsorID    string              `json:"sponsor_id" binding:"required"`
+	LocationType domain.LocationType `json:"location_type" binding:"required"`
+	Detail       string              `json:"detail"`
+	EndDate      time.Time           `json:"end_date" binding:"required"`
+	Amount       float64             `json:"amount" binding:"required"`
+}
+
+func (h *ClubHandler) CreateAdPlacement(c *gin.Context) {
+	var req AdPlacementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
-	return role == userDomain.RoleSuperAdmin
+
+	ad, err := h.useCases.CreateAdPlacement(req.SponsorID, req.LocationType, req.Detail, req.EndDate, req.Amount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, ad)
 }
 
-func RegisterRoutes(r *gin.RouterGroup, h *ClubHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
-	clubs := r.Group("/clubs")
-	clubs.Use(authMiddleware, tenantMiddleware)
+func (h *ClubHandler) GetActiveAds(c *gin.Context) {
+	clubID := c.GetString("clubID")
+	ads, err := h.useCases.GetActiveAds(clubID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": ads})
+}
+
+func RegisterRoutes(r *gin.RouterGroup, handler *ClubHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
+	// Super Admin Routes (Clubs)
+	clubs := r.Group("/admin/clubs")
+	clubs.Use(authMiddleware) // Tenant middleware NOT needed for creating clubs? Or maybe logical "system" tenant.
 	{
-		clubs.POST("", h.CreateClub)
-		clubs.GET("", h.ListClubs)
-		clubs.PUT("/:id", h.UpdateClub)
+		clubs.POST("", handler.CreateClub)
+		clubs.GET("", handler.ListClubs)
+	}
+
+	// Club Routes (Sponsors)
+	clubGroup := r.Group("/club")
+	clubGroup.Use(authMiddleware, tenantMiddleware)
+	{
+		clubGroup.POST("/sponsors", handler.RegisterSponsor)
+		clubGroup.POST("/ads", handler.CreateAdPlacement)
+		clubGroup.GET("/ads", handler.GetActiveAds)
 	}
 }
