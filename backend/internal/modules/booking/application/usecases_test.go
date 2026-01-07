@@ -225,6 +225,14 @@ func (m *MockUserRepo) CreateIncident(incident *userDomain.IncidentLog) error {
 	return args.Error(0)
 }
 
+func (m *MockUserRepo) GetByEmail(email string) (*userDomain.User, error) {
+	args := m.Called(email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*userDomain.User), args.Error(1)
+}
+
 // --- Tests ---
 
 func TestCreateBooking(t *testing.T) {
