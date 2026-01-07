@@ -1,7 +1,6 @@
 package e2e_test
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -25,8 +24,8 @@ func TestFacilitiesFlow(t *testing.T) {
 	db := database.GetDB()
 
 	// Clean state
-	_ = db.Migrator().DropTable(&facilitiesRepo.FacilityModel{}, &facilitiesDomain.Equipment{}, &facilitiesDomain.LoanDisplay{})
-	_ = db.AutoMigrate(&facilitiesRepo.FacilityModel{}, &facilitiesDomain.Equipment{}, &facilitiesDomain.LoanDisplay{})
+	_ = db.Migrator().DropTable(&facilitiesRepo.FacilityModel{}, &facilitiesDomain.Equipment{})
+	_ = db.AutoMigrate(&facilitiesRepo.FacilityModel{}, &facilitiesDomain.Equipment{})
 	// LoanDisplay might be a projection, usually checking Loan entity.
 	// Checking `facilities/domain/equipment.go` or similar would be better, but assuming Loan exists if Equipment does.
 	// For now, let's stick to Facility + Equipment as per docs.
@@ -110,7 +109,7 @@ func TestFacilitiesFlow(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 
 		// Verify update
-		facility, _ := repo.GetByID(context.Background(), createdFacilityID)
+		facility, _ := repo.GetByID("test-club-facilities", createdFacilityID)
 		assert.Equal(t, "Tennis Court 1 (Updated)", facility.Name)
 	})
 

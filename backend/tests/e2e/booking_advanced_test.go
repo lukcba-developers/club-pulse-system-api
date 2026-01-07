@@ -27,8 +27,8 @@ func TestBookingAdvancedFlow(t *testing.T) {
 	database.InitDB()
 	db := database.GetDB()
 
-	_ = db.Migrator().DropTable(&domain.Booking{}, &domain.WaitlistEntry{}, &facilitiesRepo.FacilityModel{})
-	_ = db.AutoMigrate(&domain.Booking{}, &domain.WaitlistEntry{}, &facilitiesRepo.FacilityModel{})
+	_ = db.Migrator().DropTable(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{})
+	_ = db.AutoMigrate(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{})
 
 	facRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
 	bookRepo := bookingRepo.NewPostgresBookingRepository(db)
@@ -91,16 +91,12 @@ func TestBookingAdvancedFlow(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/bookings", bytes.NewBuffer(body))
-		group.HandleContext(w) // Gin quirks with re-registering?
-		// No, standard way:
-		req, _ = http.NewRequest("POST", "/bookings", bytes.NewBuffer(body))
-		r.ServeHTTP(w, req)
-
 		// Wait, I registered routes to root.
 		// Actually I should register once carefully or use unique paths.
 		// Let's restart Router for clean referencing or use sub-paths with different middleware?
 		// Gin middleware is global if attached to r.Use().
 		// I used generated usage inside the Run.
+		r.ServeHTTP(w, req)
 	})
 
 	// Better Router Setup
@@ -160,7 +156,7 @@ func TestBookingAdvancedFlow(t *testing.T) {
 		require.Equal(t, http.StatusCreated, w.Code)
 
 		// Verify DB
-		var entry domain.WaitlistEntry
+		var entry domain.Waitlist
 		result := db.Where("user_id = ? AND facility_id = ?", user2ID, facID).First(&entry)
 		assert.NoError(t, result.Error)
 	})

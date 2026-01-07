@@ -35,7 +35,7 @@ func TestMembershipFlow(t *testing.T) {
 
 	// Repos
 	memRepo := membershipRepo.NewPostgresMembershipRepository(db)
-	userR := userRepo.NewPostgresUserRepository(db)
+	scholarshipRepo := membershipRepo.NewPostgresScholarshipRepository(db)
 
 	// We need User UseCase / Service to create user or just use Auth helper
 	authR := authRepo.NewPostgresAuthRepository(db)
@@ -43,7 +43,7 @@ func TestMembershipFlow(t *testing.T) {
 	authUC := authApp.NewAuthUseCases(authR, tokenService, nil)
 
 	// Membership Logic
-	memUC := membershipApp.NewMembershipUseCases(memRepo, userR) // Assuming userRepo needed for wallet/checks
+	memUC := membershipApp.NewMembershipUseCases(memRepo, scholarshipRepo) // Correct repo
 	memH := membershipHttp.NewMembershipHandler(memUC)
 
 	r := gin.Default()
@@ -51,7 +51,7 @@ func TestMembershipFlow(t *testing.T) {
 	// Middleware factory
 	r.Use(func(c *gin.Context) {
 		// Default to a user context if not overridden
-		if uid, exists := c.Get("userID"); !exists {
+		if _, exists := c.Get("userID"); !exists {
 			c.Set("userID", "ignored") // overridden in sub-tests
 		}
 		c.Set("clubID", "test-club-membership")
@@ -84,22 +84,7 @@ func TestMembershipFlow(t *testing.T) {
 	db.Create(tier)
 
 	// 4. Test: Purchase Membership
-	t.Run("Purchase Membership", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]string{
-			"tier_id": tierID.String(),
-		})
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/api/v1/memberships", bytes.NewBuffer(body))
-
-		// Context with User
-		// We can't easily inject context in ServeHTTP without middleware logic
-		// So we rely on the middleware using a header or just mocking it.
-		// Let's modify middleware above to check header or just re-create router with specific middleware for this test?
-		// Better: Check how auth works.
-		// Actually, let's use a specific handler wrapper or just assume the middleware picks up valid user.
-		// For simplicity, let's hack the middleware in the main block.
-	})
+	// 4. Test: Purchase (Skipped incomplete setup, moving to re-setup below)
 
 	// Re-setup with adjustable context
 	r = gin.New()

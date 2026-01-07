@@ -43,13 +43,13 @@ func TestStoreFlow(t *testing.T) {
 	// 2. Data Setup
 	prodID := uuid.New()
 	db.Create(&storeDomain.Product{
-		ID:          prodID,
-		ClubID:      "test-club-store",
-		Name:        "Protein Bar",
-		Description: "Chocolate",
-		Price:       250.0,
-		Stock:       100,
-		Category:    "Food",
+		ID:            prodID,
+		ClubID:        "test-club-store",
+		Name:          "Protein Bar",
+		Description:   "Chocolate",
+		Price:         250.0,
+		StockQuantity: 100,
+		Category:      "Food",
 	})
 
 	// 3. Test: List Products
@@ -82,6 +82,6 @@ func TestStoreFlow(t *testing.T) {
 		// Verify Stock Deduction
 		var p storeDomain.Product
 		db.First(&p, "id = ?", prodID)
-		assert.Equal(t, 98, p.Stock)
+		assert.Equal(t, 98, p.StockQuantity)
 	})
 }

@@ -26,6 +26,16 @@ type EquipmentLoan struct {
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
+// LoanDisplay is a DTO for displaying loan details with related entity names
+type LoanDisplay struct {
+	ID               string     `json:"id"`
+	EquipmentName    string     `json:"equipment_name"`
+	UserName         string     `json:"user_name"`
+	LoanedAt         time.Time  `json:"loaned_at"`
+	ExpectedReturnAt time.Time  `json:"expected_return_at"`
+	Status           LoanStatus `json:"status"`
+}
+
 type LoanRepository interface {
 	Create(loan *EquipmentLoan) error
 	GetByID(id string) (*EquipmentLoan, error)

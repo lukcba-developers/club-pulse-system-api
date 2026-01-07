@@ -21,6 +21,8 @@ type Waitlist struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+type WaitlistEntry = Waitlist
+
 type BookingStatus string
 
 const (
