@@ -27,7 +27,7 @@ const (
 )
 
 type AccessLog struct {
-	ID         uuid.UUID       `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	ID         uuid.UUID       `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	ClubID     string          `gorm:"type:varchar(255);index;not null" json:"club_id"`
 	UserID     string          `gorm:"type:text;not null" json:"user_id"`
 	FacilityID *uuid.UUID      `gorm:"type:uuid" json:"facility_id,omitempty"`
