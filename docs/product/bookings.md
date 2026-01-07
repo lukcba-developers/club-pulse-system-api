@@ -1,35 +1,32 @@
 # Módulo de Reservas (Booking Engine)
 
-Un motor transaccional de alta concurrencia diseñado para gestionar la agenda del club con precisión de milisegundos.
+## 1. Propósito
 
-## 🌟 Funcionalidades Principales
+El motor de **Reservas** es una de las funcionalidades centrales para el socio. Permite a los usuarios consultar la disponibilidad y reservar instalaciones (como canchas de tenis, pádel) o su lugar en clases grupales, garantizando la integridad de los datos y previniendo la sobreventa (overbooking).
 
-### 1. Reservas en Tiempo Real
-El corazón del sistema. Permite a los usuarios asegurar un espacio en segundos.
--   **Integridad de Datos**: Garantía absoluta de no sobreventa (overbooking).
--   **Mecanismo**: Utiliza bloqueos a nivel de base de datos (`CheckAvailability` con rangos de tiempo) antes de confirmar cualquier transacción.
+## 2. Funcionalidades Implementadas
 
-### 2. Motor de Disponibilidad Inteligente
-Endpoint core (`/availability`) que responde a la pregunta *"¿Qué hay libre?"*.
--   **Cálculo Dinámico**: Intersecta el horario operativo del club con las reservas existentes.
--   **Lógica de Slots**: Fragmenta el tiempo en bloques jugables (ej. 60 min, 90 min) según la configuración del deporte.
+-   **Calendario de Disponibilidad en Tiempo Real:**
+    -   Un endpoint (`GET /bookings/availability`) calcula y devuelve los horarios disponibles para una instalación en una fecha específica.
+    -   Utiliza **cacheo en Redis** para ofrecer respuestas de alta velocidad en consultas repetidas.
 
-### 3. Reglas de Recurrencia
-Para usuarios habituales y escuelas deportivas.
--   **Patrones Flexibles**:
-    -   "Todos los Lunes a las 19:00".
-    -   "Martes y Jueves por 2 meses".
--   **Materialización**: El sistema genera las instancias (bookings individuales) automáticamente, validando disponibilidad para cada una.
+-   **Creación de Reservas:**
+    -   Los usuarios pueden crear una reserva para un slot disponible.
+    -   **Gestión de Invitados:** El sistema permite añadir los datos de un invitado al crear la reserva. El backend valida cualquier tarifa asociada.
 
-### 4. Ciclo de Vida de la Reserva
-Estados claros para gestión operativa:
--   `Confirmed`: Pago o seña realizada (o usuario de confianza).
--   `Pending`: Reservado temporalmente esperando pago (TTL de 15 min).
--   `Cancelled`: Liberada por usuario o admin.
--   `Completed`: El turno ya ocurrió.
--   `No-Show`: El usuario no asistió (para estadísticas y penalizaciones).
+-   **Cancelación de Reservas:**
+    -   Los usuarios pueden cancelar sus propias reservas a través de la API.
 
-### 5. Validación de Políticas
--   **Ventana de Reserva**: "¿Con cuánta anticipación puedo reservar?" (ej. máx 14 días).
--   **Límite de Reservas**: Restricción de reservas simultáneas por usuario para equidad.
--   **Conflictos**: Verificación automática contra mantenimientos programados.
+-   **Listas de Espera Automatizadas:**
+    -   Si un horario está ocupado, un usuario puede unirse a una lista de espera (`POST /bookings/waitlist`).
+    -   Si la reserva original se cancela, el sistema automáticamente promueve al primer usuario de la lista de espera, creándole una reserva y notificándole.
+
+-   **Ciclo de Vida de la Reserva:**
+    -   El modelo de dominio actual soporta los estados: `CONFIRMED` y `CANCELLED`.
+
+## 3. Funcionalidades en Desarrollo (No Implementadas)
+
+-   **Reservas Recurrentes:** La capacidad de crear patrones de reserva (ej. "todos los lunes") está definida en el código pero no es funcional.
+-   **Estados Adicionales:** Los estados como `Pending` (esperando pago), `Completed` (completada) o `No-Show` (ausente) son parte de la visión del producto pero no están implementados en el modelo de dominio actual.
+
+*Este documento refleja el estado actual del código y se actualizará a medida que las funcionalidades en desarrollo se completen.*

@@ -1,31 +1,21 @@
 # Módulo de Membresías (Membership)
 
-Sistema integral para la gestión de la fidelización de socios y flujos de ingresos recurrentes.
+Este módulo es el sistema central para la gestión de la relación con los socios, sus planes de suscripción y los ciclos de ingresos recurrentes del club.
 
-## 🌟 Funcionalidades Principales
+## 🌟 Funcionalidades Implementadas
 
-### 1. Niveles de Membresía (Tiers)
-Configuración de productos de suscripción diferenciados.
--   **Personalización**:
-    -   *Nombre*: "Socio Pleno", "Pase Fin de Semana", "Estudiante".
-    -   *Fee*: Costo base del plan.
-    -   *Beneficios*: Descuentos en reservas, prioridad de booking, acceso a áreas exclusivas.
+### 1. Gestión de Planes de Membresía (Tiers)
+-   **Planes Configurables:** Permite a los administradores crear y gestionar diferentes tipos de membresía (ej: "Plan Individual", "Plan Familiar").
+-   **Atributos del Plan:** Cada plan define su precio, ciclo de facturación (mensual, anual, etc.) y los beneficios o restricciones asociados.
 
-### 2. Ciclos de Facturación (Billing Cycles)
-Flexibilidad total en la periodicidad de cobro.
--   **Mensual**: El estándar de la industria.
--   **Trimestral / Semestral**: Para promociones estacionales.
--   **Anual**: Para socios vitalicios o largo plazo.
+### 2. Ciclo de Vida de la Membresía
+-   **Gestión de Estado:** El sistema maneja el estado de la membresía de cada socio, que puede ser `Activa`, `Pendiente de Pago`, `Vencida` o `Cancelada`.
+-   **Control de Acceso:** El estado de la membresía se utiliza para determinar el acceso a los servicios del club, como la creación de nuevas reservas.
 
-### 3. Automatización de Cobros
-Job automatizado (`ProcessMonthlyBilling`) que corre periódicamente.
--   **Detección**: Identifica socios activos cuya fecha de `NextBilling` ha llegado.
--   **Generación de Deuda**: Calcula el monto a pagar y actualiza el saldo deudor (`OutstandingBalance`) del socio.
--   **Auditoría**: Registra cada evento de ciclo de facturación.
+### 3. Integración con Facturación
+-   **Generación de Deuda:** Se integra con el módulo de Pagos para la generación automática de las facturas recurrentes de las cuotas de membresía.
 
-### 4. Historial y Estado
--   **Trazabilidad**: Registro histórico de cambios de plan (ej. Upgrade de Gold a Platinum).
--   **Estados**:
-    -   `Active`: Socio al día.
-    -   `Inactive`: Baja voluntaria.
-    -   `Suspended`: Por falta de pago (bloquea acceso a reservas).
+## 4. Funcionalidades en Desarrollo
+
+-   **Automatización de Cobros:** Aunque se genera la deuda, la automatización completa del proceso de cobro (ej: `ProcessMonthlyBilling`) es una funcionalidad del roadmap.
+-   **Historial de Cambios:** Un log detallado de los cambios de plan (upgrades/downgrades) por socio es una mejora futura.

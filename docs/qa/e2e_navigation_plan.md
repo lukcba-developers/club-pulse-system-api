@@ -60,12 +60,15 @@ Las pruebas están organizadas por **Roles de Usuario** y **Módulos Funcionales
 - [ ] **Caso TC-MEM-10: Listar Instalaciones**
     - **Acción:** Navegar a `/facilities`.
     - **Esperado:** Lista de canchas/espacios. Buscador funcional.
-- [ ] **Caso TC-MEM-11: Crear Reserva Exitosa**
-    - **Acción:** Seleccionar slot libre en calendario -> Confirmar reserva.
-    - **Esperado:** Redirección a pago o confirmación directa. Notificación de éxito.
+- [ ] **Caso TC-MEM-11: Crear Reserva Exitosa (con Invitado)**
+    - **Acción:** Seleccionar slot libre en calendario -> Marcar checkbox "Añadir Invitado" -> Rellenar datos del invitado -> Confirmar reserva.
+    - **Esperado:** Redirección a pago o confirmación directa. La reserva se crea con los `guest_details`.
 - [ ] **Caso TC-MEM-12: Cancelar Reserva**
     - **Acción:** Ir a `/bookings` (Mis Reservas) -> Click "Cancelar".
-    - **Esperado:** Estado cambia a "Cancelada". Slot liberado.
+    - **Esperado:** Estado cambia a "Cancelada". Slot liberado. Si había alguien en lista de espera, debería recibir una notificación.
+- [ ] **Caso TC-MEM-12.1: Unirse a Lista de Espera**
+    - **Acción:** Seleccionar un slot ocupado en el calendario.
+    - **Esperado:** Un botón "Unirse a la lista de espera" aparece. Al hacer clic, se recibe una confirmación (`POST /bookings/waitlist` exitoso).
 
 #### Módulo: Equipos y Campeonatos (Teams) - **[NUEVO]**
 - [ ] **Caso TC-MEM-13: Inscribir Equipo**

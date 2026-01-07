@@ -1,33 +1,25 @@
 # Módulo de Instalaciones (Facilities)
 
-El núcleo del sistema para administrar espacios físicos y recursos, permitiendo una representación digital fiel de la infraestructura del club.
+Este módulo gestiona el inventario digital de todos los espacios físicos y recursos que el club ofrece a sus socios. Es la base sobre la cual operan otros módulos como el de Reservas.
 
-## 🌟 Funcionalidades Principales
+## 🌟 Funcionalidades Implementadas
 
-### 1. Inventario de Espacios
-Soporte flexible para múltiples tipologías de instalaciones. Cada instalación es una entidad independiente con reglas propias.
--   **Tipos Soportados**: Canchas de Tenis (Polvo/Rápida), Padel (Cristal/Muro), Fútbol (5/7/11), Gimnasios, Piscinas, Salones de Usos Múltiples.
--   **Metadata**: Capacidad de etiquetar instalaciones (ej. "Outdoor", "Climatizada", "Iluminación LED").
+### 1. Catálogo de Instalaciones
+-   **Gestión de Espacios:** Permite a los administradores dar de alta y configurar todas las instalaciones del club (ej: "Cancha de Pádel 1", "Piscina Olímpica").
+-   **Atributos:** Cada instalación tiene propiedades como nombre, tipo, capacidad y ubicación.
 
 ### 2. Gestión de Estados Operativos
-Control total sobre la disponibilidad de los activos.
--   **✅ Activo**: La instalación está operativa y listada en el motor de reservas.
--   **🛠️ Mantenimiento**: Bloqueo temporal.
-    -   *Efecto*: Impide nuevas reservas durante el periodo designado.
-    -   *Automatización*: Puede disparar alertas o cancelaciones si se solapa con reservas existentes (configurable).
--   **⛔ Clausurado**: Fuera de servicio indefinidamente (ej. reformas mayores).
+-   **Control de Disponibilidad:** Los administradores pueden definir el estado de una instalación para controlar si está disponible para reservas.
+-   **Estados Soportados:**
+    -   `Disponible`: Operativa y abierta para reservas.
+    -   `En Mantenimiento`: Bloqueada temporalmente, no se puede reservar.
+    -   `Cerrada`: Fuera de servicio por un periodo prolongado.
 
-### 3. Tarificación Flexible (Pricing)
--   **Hourly Rate**: Configuración de tarifa base por hora.
--   **Override**: Capacidad de ajustar precios para slots específicos (ej. "Hora Pico" vs "Hora Valle" - *Roadmap*).
+### 3. Configuración de Horarios
+-   **Horarios de Funcionamiento:** Se puede definir un horario de apertura y cierre para cada instalación, que puede ser independiente del horario general del club. Esta información es crucial para el motor de disponibilidad.
 
-### 4. Búsqueda Semántica (Vector Search)
-Implementación avanzada utilizando **PostgreSQL + pgvector**.
--   **Caso de Uso**: Un usuario busca *"cancha techada para jugar de noche barata"*.
--   **Funcionamiento**: El sistema interpreta la intención ("techada", "noche" -> iluminación, "barata" -> precio bajo) y devuelve las mejores coincidencias ordenadas por relevancia, no solo por coincidencia de texto exacto.
+## 4. Funcionalidades en Desarrollo
 
-### 5. Gestión de Equipamiento (Equipment)
-Inventario de ítems físicos asociados a las instalaciones.
--   **Relación**: Trazabilidad de qué equipamiento pertenece a qué instalación.
--   **Estados**: `Nuevo`, `Usado`, `Dañado`, `En Reparación`.
--   **Uso**: Permite bloquear equipamiento si está dañado, afectando la disponibilidad de la instalación asociada si es crítico (ej. Red de tenis rota).
+-   **Búsqueda Semántica (Vector Search):** La capacidad de buscar instalaciones usando lenguaje natural (ej: "cancha techada para jugar de noche") está prevista mediante el uso de `pgvector` pero no está completamente integrada.
+-   **Tarifas Flexibles:** La configuración de precios dinámicos por franja horaria ("hora pico") es parte del roadmap.
+-   **Gestión de Equipamiento:** Un inventario detallado del equipamiento asociado a cada instalación es una mejora futura.

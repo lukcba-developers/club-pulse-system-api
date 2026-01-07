@@ -6,7 +6,7 @@ La seguridad es una prioridad en **Club Pulse**. Implementamos múltiples capas 
 - **Cookies HttpOnly**: Los tokens de acceso y refresco se almacenan en cookies `HttpOnly` y `Secure`, mitigando el riesgo de robo de tokens vía XSS.
 - **RBAC (Control de Acceso Basado en Roles)**:
     - Middleware de autorización verifica roles (`SUPER_ADMIN`, `ADMIN`, `MEMBER`).
-- **Protección BOLA**: Validación estricta del `club_id` en cada solicitud para asegurar el aislamiento de tenants.
+- **Protección BOLA (Broken Object Level Authorization)**: Validación estricta del `club_id` en cada solicitud para asegurar el aislamiento de tenants. Un middleware inyecta el `club_id` del usuario autenticado en el contexto de la petición, y la capa de repositorio lo utiliza en cada consulta a la base de datos, haciendo imposible por diseño que un usuario de un club acceda a datos de otro.
 
 ## 2. Protección de API
 - **Headers OWASP**: Implementados vía middleware de seguridad (`SecurityHeadersMiddleware`).

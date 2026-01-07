@@ -139,41 +139,78 @@ Reserva una instalación para un horario específico.
 - **Body**:
   ```json
   {
-    "user_id": "uuid-del-usuario",
     "facility_id": "uuid-de-instalacion",
     "start_time": "2025-10-20T10:00:00Z",
-    "end_time": "2025-10-20T11:00:00Z"
+    "end_time": "2025-10-20T11:00:00Z",
+    "guest_details": [
+      {
+        "name": "Nombre del Invitado",
+        "dni": "12345678",
+        "fee_amount": 1500.00
+      }
+    ]
   }
   ```
+- **Notas**: El `user_id` se obtiene automáticamente del token de autenticación. `guest_details` es opcional.
 - **Errores**:
-  - `409 Conflict`: Si el horario ya está ocupado por otra reserva o por mantenimiento programado.
+  - `409 Conflict`: Si el horario ya está ocupado.
 
 ### Listar Mis Reservas
-Obtiene todas las reservas del usuario actual (o todas si es Admin).
+Obtiene todas las reservas del usuario actual.
 - **Endpoint**: `GET /bookings`
 - **Headers**: `Authorization: Bearer <token>`
 
+### Listar Todas las Reservas (Admin)
+Obtiene todas las reservas del club, con opción de filtrar por fechas.
+- **Endpoint**: `GET /bookings/all`
+- **Headers**: `Authorization: Bearer <token>`
+- **Rol Requerido**: `ADMIN` o `SUPER_ADMIN`
+- **Query Params**:
+  - `from`: Fecha de inicio en formato `YYYY-MM-DD`.
+  - `to`: Fecha de fin en formato `YYYY-MM-DD`.
+
 ### Cancelar Reserva
-Cancela una reserva existente.
+Cancela una reserva existente. Al cancelar, se puede disparar el proceso de lista de espera.
 - **Endpoint**: `DELETE /bookings/:id`
 - **Headers**: `Authorization: Bearer <token>`
 
 ### Consultar Disponibilidad
-Obtiene los slots de tiempo bloqueados por reservas o mantenimiento para una fecha e instalación específica.
+Obtiene los slots de tiempo y su estado para una instalación y fecha.
 - **Endpoint**: `GET /bookings/availability`
 - **Headers**: `Authorization: Bearer <token>`
 - **Query Params**:
   - `facility_id`: UUID de la instalación.
-  - `date`: Fecha en formato YYYY-MM-DD.
-- **Respuesta**:
+  - `date`: Fecha en formato `YYYY-MM-DD`.
+- **Respuesta Exitosa (200 OK)**:
   ```json
   {
     "data": [
-       // Lista de bloqueos (reservas o mantenimiento)
-       // Nota: Formato específico dependerá de la implementación final
+      {
+        "start_time": "2025-10-20T09:00:00Z",
+        "end_time": "2025-10-20T10:00:00Z",
+        "available": true
+      },
+      {
+        "start_time": "2025-10-20T10:00:00Z",
+        "end_time": "2025-10-20T11:00:00Z",
+        "available": false
+      }
     ]
   }
   ```
+
+### Unirse a la Lista de Espera
+Añade al usuario a la lista de espera para un recurso en una fecha/hora específica.
+- **Endpoint**: `POST /bookings/waitlist`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+  ```json
+  {
+    "resource_id": "uuid-de-instalacion",
+    "target_date": "2025-10-20T10:00:00Z"
+  }
+  ```
+
 
 ## 6. Módulo de Pagos (Payments)
 
