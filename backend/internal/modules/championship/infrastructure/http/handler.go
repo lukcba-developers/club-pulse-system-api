@@ -40,9 +40,8 @@ func (h *ChampionshipHandler) ListTournaments(c *gin.Context) {
 	// But TenantMiddleware is not applied? It is applied in app.go.
 	// So we can assume we might get it. But let's use Query for flexibility.
 	if clubID == "" {
-		// Try to see if we can get it from user context?
-		// For now return empty or error.
-		// Let's assume the frontend sends it.
+		c.JSON(http.StatusBadRequest, gin.H{"error": "club_id query parameter is required"})
+		return
 	}
 
 	tournaments, err := h.useCases.ListTournaments(clubID)

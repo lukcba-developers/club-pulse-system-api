@@ -361,9 +361,9 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(DefaultConfig.WriteWait))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(DefaultConfig.WriteWait))
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
@@ -371,13 +371,13 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			_, _ = w.Write(message)
 
 			// Optimized: Flush queued messages
 			n := len(c.send)
 			for i := 0; i < n; i++ {
-				w.Write([]byte{'\n'})
-				w.Write(<-c.send)
+				_, _ = w.Write([]byte{'\n'})
+				_, _ = w.Write(<-c.send)
 			}
 
 			if err := w.Close(); err != nil {
@@ -385,7 +385,7 @@ func (c *Client) writePump() {
 			}
 
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(DefaultConfig.WriteWait))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(DefaultConfig.WriteWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -401,7 +401,7 @@ func (c *Client) readPump() {
 	}()
 
 	c.conn.SetReadLimit(DefaultConfig.MaxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(DefaultConfig.PongWait))
+	_ = c.conn.SetReadDeadline(time.Now().Add(DefaultConfig.PongWait))
 	c.conn.SetPongHandler(func(string) error {
 		_ = c.conn.SetReadDeadline(time.Now().Add(DefaultConfig.PongWait))
 		return nil

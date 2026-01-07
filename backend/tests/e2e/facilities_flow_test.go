@@ -70,7 +70,7 @@ func TestFacilitiesFlow(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		if w.Code != http.StatusCreated {
-			// t.Logf("Create Failed Body: %s", w.Body.String())
+			t.Logf("Create Failed Body: %s", w.Body.String())
 		}
 		require.Equal(t, http.StatusCreated, w.Code)
 
