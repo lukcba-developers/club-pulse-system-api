@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"context"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	bookingApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
@@ -15,11 +17,18 @@ import (
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
 	facilitiesRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type MockNotifier struct{}
+
+func (m *MockNotifier) Send(ctx context.Context, n service.Notification) error {
+	return nil
+}
 
 func TestBookingAdvancedFlow(t *testing.T) {
 	// 1. Setup
@@ -33,18 +42,10 @@ func TestBookingAdvancedFlow(t *testing.T) {
 	facRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
 	bookRepo := bookingRepo.NewPostgresBookingRepository(db)
 	recRepo := bookingRepo.NewPostgresRecurringRepository(db)
-	// Waitlist Repo? Usually part of BookingRepo or separate.
-	// If separate, need to find it. `bookingRepo.NewPostgresWaitlistRepository`?
-	// Let's assume it's integrated or accessible.
-	// Checking `bookingApp.NewBookingUseCases` args: (BookingRepo, RecurringRepo, FacilityRepo, UserRepo, Notifier)
-	// It might manage waitlist internally implicitly or we need a WaitlistRepo.
-	// If I can't find it, I will assume it's part of the use case logic manually or check files.
-	// For now, let's assume `bookRepo` handles it or we find out.
-	// Actually, looking at previous files, `bookRepo` was passed.
 
 	usRepo := userRepo.NewPostgresUserRepository(db)
 
-	uc := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, nil)
+	uc := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, &MockNotifier{})
 	h := bookingHttp.NewBookingHandler(uc)
 
 	r := gin.Default()
@@ -65,14 +66,14 @@ func TestBookingAdvancedFlow(t *testing.T) {
 		ID:     facID,
 		ClubID: "test-club-adv-booking",
 		Name:   "Padel Court 1",
-		Status: "ACTIVE",
+		Status: "active",
 	})
 
 	// Users
 	user1ID := uuid.New().String()
 	user2ID := uuid.New().String()
-	db.Create(&userRepo.UserModel{ID: user1ID, ClubID: "test-club-adv-booking", Name: "U1", Email: "u1@test.com"})
-	db.Create(&userRepo.UserModel{ID: user2ID, ClubID: "test-club-adv-booking", Name: "U2", Email: "u2@test.com"})
+	db.Create(&userRepo.UserModel{ID: user1ID, ClubID: "test-club-adv-booking", Name: "U1", Email: "u1@test.com", MedicalCertStatus: "VALID"})
+	db.Create(&userRepo.UserModel{ID: user2ID, ClubID: "test-club-adv-booking", Name: "U2", Email: "u2@test.com", MedicalCertStatus: "VALID"})
 
 	// 3. Test: User 1 Books
 	startTime := time.Now().Add(24 * time.Hour).Truncate(time.Hour)
@@ -115,6 +116,7 @@ func TestBookingAdvancedFlow(t *testing.T) {
 
 	t.Run("User 1 Books", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]interface{}{
+			"user_id":     user1ID,
 			"facility_id": facID,
 			"start_time":  startTime,
 			"end_time":    endTime,
@@ -124,11 +126,15 @@ func TestBookingAdvancedFlow(t *testing.T) {
 		req.Header.Set("X-User-ID", user1ID)
 		r.ServeHTTP(w, req)
 
+		if w.Code != http.StatusCreated {
+			t.Logf("Booking Failed Body: %s", w.Body.String())
+		}
 		require.Equal(t, http.StatusCreated, w.Code)
 	})
 
 	t.Run("User 2 Conflict", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]interface{}{
+			"user_id":     user2ID,
 			"facility_id": facID,
 			"start_time":  startTime, // Same time
 			"end_time":    endTime,
@@ -138,14 +144,17 @@ func TestBookingAdvancedFlow(t *testing.T) {
 		req.Header.Set("X-User-ID", user2ID)
 		r.ServeHTTP(w, req)
 
+		if w.Code != http.StatusConflict {
+			t.Logf("Conflict Failed Body: %s", w.Body.String())
+		}
 		require.Equal(t, http.StatusConflict, w.Code)
 	})
 
 	t.Run("User 2 Join Waitlist", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]interface{}{
-			"facility_id": facID,
-			"start_time":  startTime,
-			"end_time":    endTime,
+			"resource_id": facID,
+			"target_date": startTime,
+			"user_id":     user2ID, // Required by binding, though overridden/verified by token
 		})
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/bookings/waitlist", bytes.NewBuffer(body))
@@ -157,7 +166,7 @@ func TestBookingAdvancedFlow(t *testing.T) {
 
 		// Verify DB
 		var entry domain.Waitlist
-		result := db.Where("user_id = ? AND facility_id = ?", user2ID, facID).First(&entry)
+		result := db.Where("user_id = ? AND resource_id = ?", user2ID, facID).First(&entry)
 		assert.NoError(t, result.Error)
 	})
 }

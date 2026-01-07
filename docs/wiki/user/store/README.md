@@ -1,33 +1,19 @@
 # Módulo de Tienda (Store)
 
-Este módulo proporciona una funcionalidad de tienda o punto de venta dentro del club. Permite a los socios comprar productos como merchandising, artículos del buffet/cantina o equipamiento deportivo.
+## 1. Propósito
 
-## Conceptos Clave
+El módulo de **Tienda** proporciona una funcionalidad de punto de venta (PDV) o *e-commerce* para que el club pueda vender productos y servicios a sus socios.
 
--   **Producto (`Product`):** Representa un artículo individual que se puede vender. Cada producto tiene un nombre, precio, categoría (ej: "Merch", "Buffet") y una cantidad de stock.
--   **Orden (`Order`):** Representa una compra realizada por un socio. Contiene la información del comprador, los productos y cantidades, y el monto total. El pago de la orden probablemente se gestiona a través del [Módulo de Pagos](../payment/README.md) o se debita del saldo en la [Billetera](../user/README.md) del usuario.
+## 2. Funcionalidades Principales
 
----
-
-## Casos de Uso
-
-### 1. Ver el Catálogo de Productos
-
-Los socios pueden explorar los productos que están a la venta.
-
--   **Flujo**:
-    1.  El usuario accede a la sección "Tienda" del sistema.
-    2.  Se muestra una lista de todos los productos disponibles.
-    3.  Opcionalmente, el usuario puede filtrar los productos por categoría (ej: ver solo la comida del "Buffet").
--   **Endpoint relacionado**: `GET /store/products`
-
-### 2. Realizar una Compra
-
-Un socio puede seleccionar uno o más productos y realizar una compra.
-
--   **Flujo**:
-    1.  El usuario añade productos a su carrito.
-    2.  Al confirmar la compra, el sistema crea una `Orden`.
-    3.  El backend calcula el monto total, verifica el stock y lo descuenta.
-    4.  Se procesa el pago de la orden.
--   **Endpoint relacionado**: `POST /store/purchase`
+-   **Catálogo de Productos:** Permite a los administradores gestionar un inventario de productos, que pueden incluir:
+    -   **Merchandising:** Camisetas, gorras, etc.
+    -   **Equipamiento Deportivo:** Pelotas, grips, etc.
+    -   **Buffet/Cafetería:** Bebidas, snacks y otros consumibles.
+-   **Gestión de Inventario:** Lleva un control del stock de cada producto, alertando a los administradores cuando los niveles son bajos.
+-   **Proceso de Venta:**
+    -   **Punto de Venta Físico:** Permite al personal del club realizar ventas en recepción, seleccionando productos y procesando el pago.
+    -   **Tienda Online (Próximamente):** Los socios podrán comprar productos directamente desde la aplicación web o móvil.
+-   **Integración con Pagos:** Las compras se pueden pagar utilizando los métodos configurados en el **Módulo de Pagos**, incluyendo la **Billetera Virtual** del socio.
+-   **Historial de Compras:** Los socios pueden ver un registro de todas las compras que han realizado.
+-   **Informes de Ventas:** Genera informes sobre los productos más vendidos, ingresos por categoría, etc., para ayudar en la toma de decisiones.

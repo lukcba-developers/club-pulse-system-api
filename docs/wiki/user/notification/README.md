@@ -1,32 +1,22 @@
 # Módulo de Notificaciones (Notification)
 
-**Nota Importante:** Este es un módulo de servicio que opera exclusivamente en el backend. No expone una API pública para ser consumida directamente por el frontend o por usuarios. Su función es ser utilizado internamente por otros módulos del sistema para enviar comunicaciones a los socios.
+## 1. Propósito
 
-## Propósito
+El módulo de **Notificaciones** centraliza y gestiona toda la comunicación saliente del sistema hacia los usuarios. Su objetivo es mantener a los socios informados sobre eventos importantes relacionados con su actividad en el club.
 
-El propósito del Módulo de Notificaciones es centralizar y gestionar el envío de todas las comunicaciones salientes del sistema a los usuarios. Al tener un servicio dedicado, se puede cambiar fácilmente de proveedor de envío (ej: cambiar de SendGrid a otro servicio de email) sin tener que modificar los demás módulos.
+## 2. Funcionalidades Principales
 
-## Canales de Notificación Soportados
+Este módulo funciona principalmente como un servicio interno utilizado por otros módulos y no tiene una interfaz de usuario directa para los socios.
 
-El servicio está diseñado para enviar notificaciones a través de diferentes canales:
-
--   **`EMAIL`**: Para comunicaciones formales como confirmaciones de pago, recibos, o reseteo de contraseñas. Se integra con proveedores como **SendGrid**.
--   **`SMS`**: Para alertas urgentes o recordatorios, como un cambio de último minuto en una reserva. Se integra con proveedores como **Twilio**.
--   **`PUSH`**: Para notificaciones en tiempo real a la aplicación móvil (funcionalidad futura).
-
-## Ejemplos de Casos de Uso (Internos)
-
-Otros módulos del sistema utilizan este servicio para notificar a los usuarios sobre eventos importantes. Por ejemplo:
-
--   El **Módulo de Reservas (Booking)** podría llamar a este servicio para:
-    -   Enviar un email de confirmación cuando una reserva es creada.
-    -   Enviar un SMS de recordatorio 24 horas antes de una reserva.
-
--   El **Módulo de Pagos (Payment)** podría usarlo para:
-    -   Enviar un email con el recibo después de un pago exitoso.
-    -   Notificar al usuario si un pago ha fallado.
-
--   El **Módulo de Autenticación (Auth)** lo usaría para:
-    -   Enviar un email con el enlace para restablecer la contraseña.
-
-En resumen, aunque los usuarios no interactúan directamente con este módulo, reciben el resultado de su trabajo cada vez que el sistema se comunica con ellos.
+-   **Envío de Comunicaciones:** Proporciona una vía para que otros módulos envíen notificaciones a través de diferentes canales:
+    -   **Email:** Para confirmaciones de reserva, facturas, restablecimiento de contraseñas, etc.
+    -   **SMS (Próximamente):** Para recordatorios urgentes o alertas.
+    -   **Notificaciones Push (Próximamente):** Para la aplicación móvil.
+-   **Plantillas de Notificaciones:** Los administradores pueden personalizar las plantillas para los diferentes tipos de comunicación, asegurando que el branding y el tono del club sean consistentes.
+-   **Eventos de Notificación:** El sistema envía notificaciones basadas en eventos, tales como:
+    -   Confirmación de una reserva exitosa (**Módulo de Reservas**).
+    -   Recordatorio de una reserva próxima.
+    -   Notificación de que un lugar se ha liberado en una lista de espera.
+    -   Aviso de una nueva factura generada (**Módulo de Pagos**).
+    -   Confirmación de un pago recibido.
+    -   Anuncios generales del club (**Módulo de Club**).

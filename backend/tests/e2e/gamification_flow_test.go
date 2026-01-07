@@ -99,8 +99,9 @@ func TestGamificationFlow(t *testing.T) {
 		r.ServeHTTP(w, req)
 		require.Equal(t, http.StatusOK, w.Code)
 
-		var stats map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &stats)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		stats := resp["data"].(map[string]interface{})
 
 		// Check defaults (stats fields may be nil if not present in response)
 		if stats["matches_played"] != nil {
@@ -118,8 +119,9 @@ func TestGamificationFlow(t *testing.T) {
 		r.ServeHTTP(w, req)
 		require.Equal(t, http.StatusOK, w.Code)
 
-		var wallet map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &wallet)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		wallet := resp["data"].(map[string]interface{})
 
 		assert.Equal(t, float64(0), wallet["balance"])
 	})
@@ -138,8 +140,9 @@ func TestGamificationFlow(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/api/v1/users/"+user.ID+"/stats", nil)
 		r.ServeHTTP(w, req)
-		var stats map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &stats)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		stats := resp["data"].(map[string]interface{})
 
 		assert.Equal(t, float64(5), stats["matches_played"])
 		assert.Equal(t, float64(1200), stats["ranking_points"])
@@ -162,14 +165,16 @@ func TestGamificationFlow(t *testing.T) {
 	// Update Balance
 	wallet.Balance += 50.0
 
-	db.Save(&wallet)
+	err = db.Save(&wallet).Error
+	require.NoError(t, err)
 
 	t.Run("Get Updated Wallet", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/api/v1/users/"+user.ID+"/wallet", nil)
 		r.ServeHTTP(w, req)
-		var res_wallet map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &res_wallet)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		res_wallet := resp["data"].(map[string]interface{})
 
 		assert.Equal(t, float64(50), res_wallet["balance"])
 		// Verify transactions if API exposes them (It assumes so based on struct)

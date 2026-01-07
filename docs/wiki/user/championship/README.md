@@ -1,45 +1,14 @@
 # Módulo de Campeonatos (Championship)
 
-Este módulo se encarga de todo lo relacionado con la creación y gestión de torneos y competencias dentro del club.
+## 1. Propósito
 
-La gestión de los [Equipos (Team)](../team/README.md) que participan en estos campeonatos se detalla en su propio módulo.
+El módulo de **Campeonatos** ofrece una solución completa para organizar y gestionar torneos y competiciones internas del club. Fomenta la participación y el espíritu competitivo entre los socios.
 
----
+## 2. Funcionalidades Principales
 
-## Casos de Uso
-
-### 1. Listar Campeonatos
-
-Los socios pueden ver todos los torneos que están abiertos para inscripción, en curso o que ya han finalizado.
-
--   **Endpoint relacionado**: `GET /championships`
-
-### 2. Crear un Campeonato (Admin)
-
-Los administradores pueden crear nuevos torneos, definiendo el nombre, la disciplina, las fechas y el formato (ej: Liga, Eliminatoria).
-
--   **Endpoint relacionado**: `POST /championships`
-
-### 3. Programar un Partido (Admin)
-
-Los administradores pueden definir los enfrentamientos del torneo, programando qué equipos juegan entre sí, cuándo y dónde.
-
--   **Endpoint relacionado**: `POST /championships/:id/matches`
-
-### 4. Ver Partidos de un Campeonato
-
-Todos los participantes y socios pueden ver la lista de partidos programados para un torneo, tanto los futuros como los que ya se han jugado.
-
--   **Endpoint relacionado**: `GET /championships/:id/matches`
-
-### 5. Actualizar Resultado de un Partido (Admin)
-
-Después de que un partido ha finalizado, un administrador registra el resultado final (marcador).
-
--   **Endpoint relacionado**: `PUT /championships/matches/:id/result`
-
-### 6. Ver la Tabla de Posiciones (Clasificación)
-
-En cualquier momento durante un torneo, los socios pueden consultar la tabla de posiciones (leaderboard) para ver el rendimiento de cada equipo: puntos, partidos ganados, perdidos, etc.
-
--   **Endpoint relacionado**: `GET /championships/:id/standings`
+-   **Creación de Torneos:** Los administradores pueden crear campeonatos para diferentes disciplinas, definiendo el formato (liga, eliminación directa), fechas, reglas y categorías.
+-   **Inscripción de Equipos/Jugadores:** Los socios pueden inscribirse en los torneos, ya sea de forma individual o creando y gestionando sus propios equipos a través del **Módulo de Equipos (Team)**.
+-   **Generación de Calendarios (Fixture):** El sistema puede generar automáticamente el calendario de partidos, distribuyendo las fechas y los enfrentamientos.
+-   **Carga de Resultados:** El personal autorizado puede cargar los resultados de los partidos una vez que han finalizado.
+-   **Tablas de Posiciones y Estadísticas:** Las tablas de clasificación, los resultados y las estadísticas de los jugadores se actualizan en tiempo real a medida que se cargan los resultados.
+-   **Visualización para Socios:** Todos los socios pueden seguir el desarrollo de los torneos, ver los próximos partidos, las clasificaciones y las estadísticas.

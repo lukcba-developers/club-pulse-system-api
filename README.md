@@ -89,11 +89,13 @@ Ahora, el entorno está listo. Puedes acceder a `http://localhost:3000` y usar l
 
 ## 📚 Documentación
 
-Todo el proyecto ha sido analizado y documentado para facilitar su uso y desarrollo.
+La documentación es una pieza clave de este proyecto. Está diseñada para ser clara, completa y útil tanto para desarrolladores como para usuarios finales.
 
--   **[Guía para Contribuidores (`CONTRIBUTING.md`)](CONTRIBUTING.md):** Contiene la guía de arquitectura, configuración del entorno y cómo añadir nuevas funcionalidades. **Lectura obligatoria para nuevos desarrolladores.**
--   **[Wiki de Usuario](docs/wiki/user/README.md):** Documentación detallada de cada módulo y funcionalidad desde la perspectiva del usuario final.
--   **[Lista de Tareas (`tasks.md`)](tasks.md):** Un listado curado de deuda técnica, funcionalidades incompletas y sugerencias de mejora para guiar el futuro desarrollo.
+-   **[Wiki de Usuario](docs/wiki/user/README.md):** **(Lectura recomendada)** Es la fuente central de conocimiento sobre la funcionalidad del sistema. Detalla cada módulo de negocio, explicando su propósito, características y flujos de trabajo desde la perspectiva del usuario. La wiki ha sido actualizada para reflejar el estado actual del código.
+
+-   **[Guía para Contribuidores (`CONTRIBUTING.md`)](CONTRIBUTING.md):** **(Lectura obligatoria para desarrolladores)** Contiene la guía de arquitectura, configuración del entorno y el flujo de trabajo para añadir nuevas funcionalidades.
+
+-   **[Lista de Tareas (`tasks.md`)](tasks.md):** Un listado de deuda técnica, funcionalidades incompletas y sugerencias de mejora para guiar el futuro desarrollo.
 
 ## 🧪 Pruebas
 

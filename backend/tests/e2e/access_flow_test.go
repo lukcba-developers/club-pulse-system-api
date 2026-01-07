@@ -63,7 +63,8 @@ func TestAccessFlow(t *testing.T) {
 	// memUC := membershipApp.NewMembershipUseCases(memR)
 
 	// Migrate access_logs AFTER membership repo (which does its own migrations)
-	_ = db.AutoMigrate(&accessDomain.AccessLog{})
+	err := db.AutoMigrate(&accessDomain.AccessLog{})
+	require.NoError(t, err, "Failed to migrate AccessLog")
 
 	// Access
 	accessR := accessRepo.NewPostgresAccessRepository(db)
@@ -86,7 +87,7 @@ func TestAccessFlow(t *testing.T) {
 	// 3. Create Test Data
 	// Create User
 	email := "access_test_" + uuid.New().String() + "@example.com"
-	_, err := authUC.Register(authApp.RegisterDTO{
+	_, err = authUC.Register(authApp.RegisterDTO{
 		Name:     "Access User",
 		Email:    email,
 		Password: "password",
@@ -110,7 +111,7 @@ func TestAccessFlow(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/v1/access/entry", bytes.NewBuffer(jsonBody))
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
+	require.Equal(t, http.StatusForbidden, w.Code)
 	// In handler we implemented: if DENIED -> 403 Forbidden.
 	// Let's verify what we wrote: Match the Handler implementation.
 	// if log.Status == "DENIED" { statusCode = http.StatusForbidden }
@@ -125,7 +126,7 @@ func TestAccessFlow(t *testing.T) {
 		assert.Equal(t, "DENIED", data["status"])
 	} else {
 		// Just in case we changed mind
-		assert.Equal(t, http.StatusForbidden, w.Code)
+		require.Equal(t, http.StatusForbidden, w.Code)
 	}
 
 	// 5. Test Case 2: Granted (Active Membership)
@@ -156,7 +157,7 @@ func TestAccessFlow(t *testing.T) {
 	req2, _ := http.NewRequest("POST", "/api/v1/access/entry", bytes.NewBuffer(jsonBody))
 	r.ServeHTTP(w2, req2)
 
-	assert.Equal(t, http.StatusOK, w2.Code)
+	require.Equal(t, http.StatusOK, w2.Code)
 	var resp2 gin.H
 	_ = json.Unmarshal(w2.Body.Bytes(), &resp2)
 	data2 := resp2["data"].(map[string]interface{})
@@ -170,7 +171,7 @@ func TestAccessFlow(t *testing.T) {
 	req3, _ := http.NewRequest("POST", "/api/v1/access/entry", bytes.NewBuffer(jsonBody))
 	r.ServeHTTP(w3, req3)
 
-	assert.Equal(t, http.StatusForbidden, w3.Code)
+	require.Equal(t, http.StatusForbidden, w3.Code)
 	var resp3 gin.H
 	_ = json.Unmarshal(w3.Body.Bytes(), &resp3)
 	data3 := resp3["data"].(map[string]interface{})

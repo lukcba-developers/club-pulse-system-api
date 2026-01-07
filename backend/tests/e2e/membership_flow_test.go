@@ -97,8 +97,10 @@ func TestMembershipFlow(t *testing.T) {
 	membershipHttp.RegisterRoutes(r.Group("/api/v1"), memH, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
 
 	t.Run("Purchase Success", func(t *testing.T) {
-		body, _ := json.Marshal(map[string]string{
-			"tier_id": tierID.String(),
+		body, _ := json.Marshal(map[string]interface{}{
+			"user_id":            userID,
+			"membership_tier_id": tierID,
+			"billing_cycle":      "MONTHLY",
 		})
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/memberships", bytes.NewBuffer(body))
@@ -129,6 +131,15 @@ func TestMembershipFlow(t *testing.T) {
 	membershipHttp.RegisterRoutes(rAdmin.Group("/api/v1"), memH, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
 
 	t.Run("Process Billing", func(t *testing.T) {
+		// Force billing due by moving NextBillingDate to past (Yesterday)
+		// This ensures that when +1 month is added, the new date is ~1 month from now (definitely in future)
+		uid, _ := uuid.Parse(userID)
+
+		err := db.Model(&membershipDomain.Membership{}).
+			Where("user_id = ?", uid).
+			Update("next_billing_date", time.Now().AddDate(0, 0, -1)).Error
+		require.NoError(t, err)
+
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/memberships/process-billing", nil)
 		rAdmin.ServeHTTP(w, req)

@@ -1,29 +1,13 @@
-# Módulo de Disciplinas
+# Módulo de Disciplinas (Disciplines)
 
-Este módulo define los deportes y actividades que ofrece el club (ej: Tenis, Fútbol, Natación) y organiza a los socios en grupos de entrenamiento.
+## 1. Propósito
 
-La gestión de competencias y torneos se realiza en el [Módulo de Campeonatos (Championship)](../championship/README.md).
+El módulo de **Disciplinas** se encarga de organizar la oferta deportiva y de actividades del club. Permite definir qué deportes se practican y cómo se estructuran los grupos de entrenamiento.
 
----
+## 2. Funcionalidades Principales
 
-## Casos de Uso
-
-### 1. Listar Disciplinas
-
-Permite a los usuarios ver todos los deportes y actividades que se practican en el club.
-
--   **Flujo**: Un usuario explora la sección de deportes y ve una lista con todas las disciplinas disponibles.
--   **Endpoint relacionado**: `GET /disciplines`
-
-### 2. Listar Grupos de Entrenamiento
-
-Dentro de cada disciplina, los socios suelen estar organizados en grupos, por ejemplo, por nivel o edad (ej: "Tenis Infantil", "Fútbol Adultos Avanzado").
-
--   **Flujo**: Un usuario o administrador puede filtrar y ver los distintos grupos que existen para una disciplina y categoría específicas.
--   **Endpoint relacionado**: `GET /disciplines/:id/groups`
-
-### 3. Ver Alumnos de un Grupo (Admin/Entrenador)
-
-Un administrador o el entrenador a cargo de un grupo puede consultar la lista de todos los socios inscritos en él.
-
--   **Endpoint relacionado**: `GET /groups/:id/students`
+-   **Gestión de Disciplinas:** Permite a los administradores crear y gestionar la lista de todas las disciplinas ofrecidas por el club (ej: Tenis, Fútbol, Natación, Yoga).
+-   **Gestión de Grupos de Entrenamiento:** Para cada disciplina, se pueden crear múltiples grupos o niveles. Por ejemplo, para "Tenis" se podrían crear los grupos: "Infantil", "Adulto Principiante" y "Equipo de Competición".
+-   **Asignación de Entrenadores:** Permite asignar uno o más entrenadores a cada grupo de entrenamiento.
+-   **Programación de Horarios:** Se pueden definir los horarios y las instalaciones que utilizará cada grupo para sus clases o entrenamientos semanales. Esta programación se integra con el **Módulo de Reservas** para bloquear esos recursos.
+-   **Inscripción de Socios a Grupos:** Los socios pueden solicitar la inscripción a un grupo, y los administradores pueden gestionar la lista de miembros de cada uno.

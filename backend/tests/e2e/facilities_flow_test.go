@@ -58,16 +58,20 @@ func TestFacilitiesFlow(t *testing.T) {
 			"name": "Tennis Court 1",
 			"description": "Professional hard court",
 			"type": "TENNIS",
-			"open_hour": 8,
-			"close_hour": 22,
+			"opening_hour": 8,
+			"closing_hour": 22,
 			"slot_duration": 60,
-			"price_per_hour": 500.0,
+			"hourly_rate": 500.0,
+			"capacity": 4,
             "status": "ACTIVE"
 		}`
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/facilities", strings.NewReader(body))
 		r.ServeHTTP(w, req)
 
+		if w.Code != http.StatusCreated {
+			// t.Logf("Create Failed Body: %s", w.Body.String())
+		}
 		require.Equal(t, http.StatusCreated, w.Code)
 
 		var resp map[string]interface{}
@@ -110,6 +114,7 @@ func TestFacilitiesFlow(t *testing.T) {
 
 		// Verify update
 		facility, _ := repo.GetByID("test-club-facilities", createdFacilityID)
+		require.NotNil(t, facility)
 		assert.Equal(t, "Tennis Court 1 (Updated)", facility.Name)
 	})
 
@@ -118,8 +123,9 @@ func TestFacilitiesFlow(t *testing.T) {
 	t.Run("Add Equipment", func(t *testing.T) {
 		body := `{
             "name": "Tennis Racket pro",
+            "type": "TENNIS_RACKET",
             "quantity": 10,
-            "condition": "NEW"
+            "condition": "excellent"
         }`
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/facilities/"+createdFacilityID+"/equipment", strings.NewReader(body))
@@ -129,6 +135,9 @@ func TestFacilitiesFlow(t *testing.T) {
 		// but docs say it exists.
 		if w.Code == http.StatusNotFound {
 			t.Skip("Equipment endpoint might not be implemented yet")
+		}
+		if w.Code != http.StatusCreated {
+			t.Logf("Response Body: %s", w.Body.String())
 		}
 		require.Equal(t, http.StatusCreated, w.Code)
 	})

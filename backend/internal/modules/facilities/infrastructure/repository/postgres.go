@@ -103,6 +103,7 @@ func (r *PostgresFacilityRepository) Update(facility *domain.Facility) error {
 		ClosingHour:    facility.ClosingHour,
 		Specifications: facility.Specifications,
 		Location:       facility.Location,
+		ClubID:         facility.ClubID,
 		CreatedAt:      facility.CreatedAt,
 		UpdatedAt:      time.Now(), // Update timestamp
 	}
