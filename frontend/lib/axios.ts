@@ -1,0 +1,72 @@
+import axios from 'axios';
+
+// Create generic axios instance
+const api = axios.create({
+    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    withCredentials: true, // Enable sending cookies
+});
+
+// Add a request interceptor to Add Log and Club ID
+api.interceptors.request.use(
+    (config) => {
+        // Client-side only
+        if (typeof window !== 'undefined') {
+            // Inject Club ID (Priority: LocalStorage > Env > Default)
+            const clubID = localStorage.getItem('clubID') || process.env.NEXT_PUBLIC_DEFAULT_CLUB_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+            config.headers['X-Club-ID'] = clubID;
+        }
+
+        // Enhanced Logging
+        console.groupCollapsed(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+        console.log('Headers:', config.headers);
+        if (config.data) console.log('Payload:', config.data);
+        console.groupEnd();
+
+        return config;
+    },
+    (error) => {
+        console.error('[API Request Error]:', error);
+        return Promise.reject(error);
+    }
+);
+
+// Response Interceptor
+api.interceptors.response.use(
+    (response) => {
+        console.groupCollapsed(`[API Response] ${response.status} ${response.config.url}`);
+        console.log('Data:', response.data);
+        console.groupEnd();
+        return response;
+    },
+    (error: unknown) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const status = (error as any).response?.status;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const url = (error as any).config?.url;
+
+        // Skip logging for 401/403 as they are handled by AuthContext (session expiry)
+        if (status === 401 || status === 403) {
+            console.groupCollapsed(`[API Auth] ${status} ${url}`);
+            console.log('Session expired or invalid token. Redirecting/Clearing session.');
+            console.groupEnd();
+        } else {
+            console.group(`[API Error] ${status || 'Net'} ${url}`);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            console.error('Message:', (error as any).message);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((error as any).response) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                console.error('Response Data:', (error as any).response.data);
+                console.error('Status:', status);
+            }
+            console.groupEnd();
+        }
+
+        return Promise.reject(error);
+    }
+);
+
+export default api;
