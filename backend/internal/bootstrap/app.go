@@ -162,6 +162,7 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	userHandler := userHttp.NewUserHandler(userUseCase)
 
 	userHttp.RegisterRoutes(api, userHandler, authMiddleware, tenantMiddleware)
+	userHttp.RegisterPublicRoutes(api, userHandler)
 
 	// --- Module: Facilities ---
 	facilityRepository := facilitiesRepo.NewPostgresFacilityRepository(db)
@@ -254,7 +255,7 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	championshipRepo := championshipRepo.NewPostgresChampionshipRepository(db)
 	championshipBookingAdapter := championshipSvc.NewChampionshipBookingAdapter(bookingUseCase) // Use bookingApp instance
 	championshipApp := championshipApp.NewChampionshipUseCases(championshipRepo, championshipBookingAdapter, userUseCase)
-	championshipHttp.NewChampionshipHandler(championshipApp).RegisterRoutes(api)
+	championshipHttp.NewChampionshipHandler(championshipApp).RegisterRoutes(api, authMiddleware, tenantMiddleware)
 
 	// --- Module: Team (Matches, Availability) ---
 	teamRepository := teamRepo.NewPostgresTeamRepository(db)

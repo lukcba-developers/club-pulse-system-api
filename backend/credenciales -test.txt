@@ -1,0 +1,13 @@
+1. Super Admin (NUEVO)
+Email: s    
+Contraseña: admin123 (misma que admin)
+
+
+2. Administrador (Role: ADMIN)
+Email: admin@clubpulse.com
+Contraseña: admin123
+
+3. Usuario Miembro (Role: MEMBER)
+Email: testuser@example.com
+Contraseña: password123
+

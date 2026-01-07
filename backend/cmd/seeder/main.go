@@ -16,8 +16,11 @@ import (
 	disciplineDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/domain"
 	facilityDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	membershipDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/domain"
+
 	paymentDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
+	storeDom "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
+
 	"github.com/shopspring/decimal"
 	"golang.org/x/crypto/bcrypt"
 
@@ -115,8 +118,12 @@ func main() {
 		&championshipDom.Group{},
 		&championshipDom.Team{},
 		&championshipDom.TournamentMatch{},
+
 		&championshipDom.Standing{},
+		&storeDom.Product{},
+		&storeDom.Order{},
 	); err != nil {
+
 		log.Printf("Error dropping tables: %v", err)
 	}
 	if err := db.AutoMigrate(
@@ -143,14 +150,18 @@ func main() {
 		&championshipDom.Group{},
 		&championshipDom.Team{},
 		&championshipDom.TournamentMatch{},
+
 		&championshipDom.Standing{},
+		&storeDom.Product{},
+		&storeDom.Order{},
 	); err != nil {
+
 		log.Fatalf("Failed to automigrate: %v", err)
 	}
 
 	// 0. Seed Clubs
 	defaultClub := clubDom.Club{
-		ID:        "club-alpha",
+		ID:        "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
 		Name:      "Club Alpha",
 		Domain:    "club-alpha.com",
 		Status:    clubDom.ClubStatusActive,
@@ -483,5 +494,41 @@ func main() {
 	db.Create(&tournament)
 	log.Println("Seeded Tournament: Copa Verano 2026")
 
+	// 8. Seed Store Products
+	products := []storeDom.Product{
+		{
+			ID:            uuid.New(),
+			ClubID:        defaultClub.ID,
+			Name:          "Club Pulse T-Shirt",
+			Description:   "Official Club T-Shirt",
+			Price:         25.00,
+			StockQuantity: 100,
+			Category:      "Merch",
+			IsActive:      true,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		},
+		{
+			ID:            uuid.New(),
+			ClubID:        defaultClub.ID,
+			Name:          "Wilson US Open Balls (3-Pack)",
+			Description:   "Official Tournament Balls",
+			Price:         9.99,
+			StockQuantity: 500,
+			Category:      "Equipment",
+			IsActive:      true,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		},
+	}
+
+	for _, p := range products {
+		if err := db.Create(&p).Error; err != nil {
+			log.Printf("Error creating product %s: %v", p.Name, err)
+		}
+	}
+	log.Println("Seeded Store Products")
+
 	log.Println("--- Seeding Completed Successfully ---")
+
 }

@@ -1,4 +1,4 @@
-run:
+vrun:
   timeout: 5m
 linters:
   enable:

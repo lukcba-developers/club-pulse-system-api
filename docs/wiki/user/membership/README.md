@@ -46,13 +46,12 @@ Los administradores tienen la capacidad de ejecutar el ciclo de facturación par
 -   **Endpoint relacionado**: `POST /memberships/process-billing`
 -   **Nota**: Esta es una operación administrativa crítica que afecta a todos los socios.
 
----
-## Funcionalidad Interna (Sin API)
+### 2. Asignar una Beca (Scholarship)
 
-### Becas (Scholarships)
+Los administradores pueden otorgar becas a los socios, las cuales aplican un descuento porcentual en su facturación.
 
-El sistema incluye una funcionalidad interna para gestionar becas que otorgan descuentos a los socios.
-
--   **Concepto**: Una beca (`Scholarship`) es un descuento (en porcentaje) que se le asigna a un usuario por un motivo específico (ej: "Beca por rendimiento deportivo"). Puede tener una fecha de vencimiento.
--   **Aplicación**: La lógica para aplicar este descuento (`ApplyDiscount`) existe en el backend. Se utiliza, por ejemplo, durante el proceso de facturación mensual (`ProcessBilling`) para calcular el monto final que se le debe cobrar a un socio becado.
--   **Gestión**: Actualmente, **no existen endpoints en la API** para que los usuarios o administradores creen, vean o gestionen las becas directamente. Esta es una capacidad del sistema que probablemente se gestiona de forma interna o directamente en la base de datos por un `SUPER_ADMIN`.
+-   **Flujo**:
+    1.  Un administrador selecciona un socio.
+    2.  Especifica el porcentaje de descuento, el motivo de la beca y, opcionalmente, una fecha de vencimiento.
+    3.  El sistema crea y activa la beca para el socio. El descuento se aplicará automáticamente en los siguientes ciclos de facturación.
+-   **Endpoint relacionado**: `POST /memberships/scholarship`

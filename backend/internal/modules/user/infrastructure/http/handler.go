@@ -351,3 +351,32 @@ func RegisterRoutes(r *gin.RouterGroup, handler *UserHandler, authMiddleware, te
 		users.POST("/incidents", handler.LogIncident)
 	}
 }
+
+func (h *UserHandler) RegisterDependentPublic(c *gin.Context) {
+	clubID := c.Query("club_id")
+	if clubID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Club ID is required"})
+		return
+	}
+
+	var dto application.RegisterDependentDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.useCases.RegisterDependent(clubID, dto)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": user})
+}
+
+func RegisterPublicRoutes(r *gin.RouterGroup, handler *UserHandler) {
+	users := r.Group("/users/public")
+	{
+		users.POST("/register-dependent", handler.RegisterDependentPublic)
+	}
+}

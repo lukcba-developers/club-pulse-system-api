@@ -74,6 +74,7 @@ type UserRepository interface {
 	FindChildren(clubID, parentID string) ([]User, error)
 	Create(user *User) error
 	CreateIncident(incident *IncidentLog) error
+	GetByEmail(email string) (*User, error)
 }
 
 type IncidentLog struct {

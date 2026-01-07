@@ -43,6 +43,10 @@ type UserModel struct {
 	EmergencyContactPhone string
 	InsuranceProvider     string
 	InsuranceNumber       string
+
+	// Health
+	MedicalCertStatus string `gorm:"default:'PENDING'"`
+	MedicalCertExpiry *time.Time
 }
 
 func (UserModel) TableName() string {
@@ -60,6 +64,7 @@ func (r *PostgresUserRepository) GetByID(clubID, id string) (*domain.User, error
 		return nil, result.Error
 	}
 
+	status := domain.MedicalCertStatus(model.MedicalCertStatus)
 	return &domain.User{
 		ID:                    model.ID,
 		Name:                  model.Name,
@@ -77,6 +82,8 @@ func (r *PostgresUserRepository) GetByID(clubID, id string) (*domain.User, error
 		EmergencyContactPhone: model.EmergencyContactPhone,
 		InsuranceProvider:     model.InsuranceProvider,
 		InsuranceNumber:       model.InsuranceNumber,
+		MedicalCertStatus:     &status,
+		MedicalCertExpiry:     model.MedicalCertExpiry,
 	}, nil
 }
 
@@ -106,6 +113,12 @@ func (r *PostgresUserRepository) Update(user *domain.User) error {
 	}
 	if user.InsuranceNumber != "" {
 		updates["insurance_number"] = user.InsuranceNumber
+	}
+	if user.MedicalCertStatus != nil {
+		updates["medical_cert_status"] = *user.MedicalCertStatus
+	}
+	if user.MedicalCertExpiry != nil {
+		updates["medical_cert_expiry"] = user.MedicalCertExpiry
 	}
 
 	result := r.db.Model(&UserModel{ID: user.ID}).Updates(updates)
@@ -140,6 +153,7 @@ func (r *PostgresUserRepository) List(clubID string, limit, offset int, filters 
 
 	users := make([]domain.User, len(models))
 	for i, model := range models {
+		status := domain.MedicalCertStatus(model.MedicalCertStatus)
 		users[i] = domain.User{
 			ID:                model.ID,
 			Name:              model.Name,
@@ -151,6 +165,8 @@ func (r *PostgresUserRepository) List(clubID string, limit, offset int, filters 
 			CreatedAt:         model.CreatedAt,
 			UpdatedAt:         model.UpdatedAt,
 			ClubID:            model.ClubID,
+			MedicalCertStatus: &status,
+			MedicalCertExpiry: model.MedicalCertExpiry,
 		}
 	}
 	return users, nil
@@ -165,6 +181,7 @@ func (r *PostgresUserRepository) FindChildren(clubID, parentID string) ([]domain
 
 	users := make([]domain.User, len(models))
 	for i, m := range models {
+		status := domain.MedicalCertStatus(m.MedicalCertStatus)
 		users[i] = domain.User{
 			ID:                m.ID,
 			Name:              m.Name,
@@ -176,6 +193,8 @@ func (r *PostgresUserRepository) FindChildren(clubID, parentID string) ([]domain
 			CreatedAt:         m.CreatedAt,
 			UpdatedAt:         m.UpdatedAt,
 			ClubID:            m.ClubID,
+			MedicalCertStatus: &status,
+			MedicalCertExpiry: m.MedicalCertExpiry,
 		}
 	}
 	return users, nil
@@ -228,4 +247,32 @@ func (r *PostgresUserRepository) Create(user *domain.User) error {
 
 func (r *PostgresUserRepository) CreateIncident(incident *domain.IncidentLog) error {
 	return r.db.Create(incident).Error
+}
+
+func (r *PostgresUserRepository) GetByEmail(email string) (*domain.User, error) {
+	var model UserModel
+	result := r.db.Where("email = ?", email).First(&model)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+
+	status := domain.MedicalCertStatus(model.MedicalCertStatus)
+
+	return &domain.User{
+		ID:                model.ID,
+		Name:              model.Name,
+		Email:             model.Email,
+		Role:              model.Role,
+		DateOfBirth:       model.DateOfBirth,
+		SportsPreferences: model.SportsPreferences,
+		ParentID:          model.ParentID,
+		CreatedAt:         model.CreatedAt,
+		UpdatedAt:         model.UpdatedAt,
+		ClubID:            model.ClubID,
+		MedicalCertStatus: &status,
+		MedicalCertExpiry: model.MedicalCertExpiry,
+	}, nil
 }

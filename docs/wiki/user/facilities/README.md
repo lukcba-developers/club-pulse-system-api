@@ -25,16 +25,6 @@ En lugar de usar filtros rígidos, el sistema permite a los usuarios buscar inst
     2.  El sistema interpreta la petición y devuelve una lista de las instalaciones que mejor coinciden con la descripción, ordenadas por relevancia.
 -   **Endpoint relacionado**: `GET /facilities/search`
 
-### 3. Consultar Disponibilidad
-
-Antes de hacer una reserva, un socio puede verificar cuándo una instalación específica está libre.
-
--   **Flujo**:
-    1.  El usuario selecciona una instalación y un rango de fechas.
-    2.  El sistema devuelve un calendario o una lista de los horarios ocupados y disponibles para esa instalación en el período seleccionado.
--   **Endpoint relacionado**: `GET /facilities/:id/availability`
--   **Nota**: Este es un endpoint clave que es consumido por el módulo de Reservas.
-
 ## Casos de Uso para Administradores (Admins)
 
 ### 1. Gestión de Instalaciones (CRUD)
@@ -46,9 +36,22 @@ Los administradores tienen control total sobre el catálogo de instalaciones del
 -   **Modificar**: Actualizar los detalles de una instalación existente.
     -   `PUT /facilities/:id`
 -   **Eliminar**: Quitar una instalación del sistema.
-    -   `DELETE /facilities/:id`
+    -   `DELETE /facilities/:id` (No implementado en el handler actual, pero es parte de un CRUD estándar).
 
-### 2. Preparar Datos para Búsqueda Semántica
+### 2. Gestión de Equipamiento y Préstamos
+
+Los administradores pueden gestionar el inventario de equipamiento asociado a las instalaciones y sus préstamos a los socios.
+
+-   **Añadir Equipamiento a una Instalación**: Permite registrar nuevas piezas de equipamiento (ej: raquetas, balones) y asociarlas a una instalación.
+    -   `POST /facilities/:id/equipment`
+-   **Listar Equipamiento de una Instalación**: Muestra todo el equipamiento asociado a una instalación específica.
+    -   `GET /facilities/:id/equipment`
+-   **Prestar Equipamiento a un Socio**: Registra un nuevo préstamo, vinculando una pieza de equipamiento a un socio y estableciendo una fecha de devolución.
+    -   `POST /equipment/:id/loan`
+-   **Registrar Devolución de un Préstamo**: Marca un préstamo como "devuelto" y permite registrar la condición del equipamiento al momento de la devolución.
+    -   `POST /loans/:id/return`
+
+### 3. Preparar Datos para Búsqueda Semántica
 
 Para que la búsqueda en lenguaje natural funcione, un administrador debe ejecutar un proceso que "lee" y "entiende" las descripciones de todas las instalaciones, convirtiéndolas en vectores de búsqueda (embeddings).
 
@@ -57,16 +60,3 @@ Para que la búsqueda en lenguaje natural funcione, un administrador debe ejecut
     2.  El sistema procesa los datos para actualizar el índice de búsqueda.
 -   **Endpoint relacionado**: `POST /facilities/embeddings/generate`
 -   **Nota**: Esta es una operación de mantenimiento técnico.
-
----
-## Funcionalidad Interna (Sin API)
-
-### Gestión de Equipamiento y Préstamos
-
-El sistema está diseñado para soportar la gestión de equipamiento asociado a las instalaciones y el préstamo de dicho equipamiento a los socios.
-
--   **Concepto de Equipamiento**: Se puede definir equipamiento (ej: "Raqueta de Tenis", "Balón de Fútbol") y asociarlo a una instalación específica. Cada pieza de equipamiento tiene un estado (`disponible`, `en_uso`) y una condición (`bueno`, `dañado`).
-
--   **Concepto de Préstamo (`Loan`)**: El sistema puede registrar un préstamo, que vincula una pieza de equipamiento con un socio. El préstamo registra la fecha del préstamo, la fecha de devolución esperada y el estado (`ACTIVO`, `DEVUELTO`, `VENCIDO`). El sistema incluye lógica para detectar automáticamente si un préstamo está vencido.
-
--   **Gestión**: Al igual que con las Becas, actualmente **no existen endpoints en la API** para que los usuarios o administradores gestionen el equipamiento o los préstamos. La creación de equipamiento, el registro de un préstamo y su devolución son capacidades internas del sistema que requerirían manipulación directa de la base de datos o la implementación de nuevos endpoints para ser funcionales.

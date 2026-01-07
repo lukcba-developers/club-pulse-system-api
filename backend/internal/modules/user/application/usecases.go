@@ -133,6 +133,68 @@ func (uc *UserUseCases) RegisterChild(clubID, parentID string, dto RegisterChild
 	return child, nil
 }
 
+type RegisterDependentDTO struct {
+	ParentEmail       string                 `json:"parent_email"`
+	ParentName        string                 `json:"parent_name"`
+	ParentPhone       string                 `json:"parent_phone"`
+	ChildName         string                 `json:"child_name"`
+	ChildSurname      string                 `json:"child_surname"`
+	ChildDOB          *time.Time             `json:"child_dob"`
+	SportsPreferences map[string]interface{} `json:"sports_preferences"`
+}
+
+func (uc *UserUseCases) RegisterDependent(clubID string, dto RegisterDependentDTO) (*domain.User, error) {
+	if dto.ParentEmail == "" {
+		return nil, errors.New("parent email is required")
+	}
+
+	parent, err := uc.repo.GetByEmail(dto.ParentEmail)
+	if err != nil {
+		return nil, err
+	}
+
+	var parentID string
+	if parent == nil {
+		// Create Parent
+		newParent := &domain.User{
+			ID:                    uuid.New().String(),
+			ClubID:                clubID,
+			Name:                  dto.ParentName,
+			Email:                 dto.ParentEmail,
+			Role:                  domain.RoleMember,
+			CreatedAt:             time.Now(),
+			UpdatedAt:             time.Now(),
+			EmergencyContactPhone: dto.ParentPhone,
+		}
+		if err := uc.repo.Create(newParent); err != nil {
+			return nil, err
+		}
+		parentID = newParent.ID
+	} else {
+		parentID = parent.ID
+	}
+
+	// Create Child
+	child := &domain.User{
+		ID:                uuid.New().String(),
+		ClubID:            clubID,
+		Name:              dto.ChildName + " " + dto.ChildSurname,
+		ParentID:          &parentID,
+		SportsPreferences: dto.SportsPreferences,
+		Role:              domain.RoleMember,
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
+		Email:             "child." + uuid.New().String() + "@placeholder.com",
+		DateOfBirth:       dto.ChildDOB,
+	}
+
+	if err := uc.repo.Create(child); err != nil {
+		return nil, err
+	}
+
+	return child, nil
+}
+
 func (uc *UserUseCases) GetStats(clubID, userID string) (*domain.UserStats, error) {
 	user, err := uc.repo.GetByID(clubID, userID)
 	if err != nil {

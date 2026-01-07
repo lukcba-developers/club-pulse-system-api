@@ -15,10 +15,12 @@ func NewChampionshipHandler(useCases *application.ChampionshipUseCases) *Champio
 	return &ChampionshipHandler{useCases: useCases}
 }
 
-func (h *ChampionshipHandler) RegisterRoutes(r *gin.RouterGroup) {
+func (h *ChampionshipHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc, tenantMiddleware gin.HandlerFunc) {
 	group := r.Group("/championships")
+	group.Use(authMiddleware)
+	// group.Use(tenantMiddleware) // Optional: If championships belong to a tenant/club context
 	{
-		group.GET("/", h.ListTournaments)
+		group.GET("/", h.ListTournaments) // Might need to be public or protected? Let's protect it for Admin.
 		group.POST("/", h.CreateTournament)
 		group.POST("/:id/stages", h.AddStage)
 		group.POST("/stages/:id/groups", h.AddGroup)
