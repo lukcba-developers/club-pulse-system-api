@@ -21,9 +21,9 @@ func (r *PostgresChampionshipRepository) CreateTournament(tournament *domain.Tou
 	return r.db.Create(tournament).Error
 }
 
-func (r *PostgresChampionshipRepository) GetTournament(id string) (*domain.Tournament, error) {
+func (r *PostgresChampionshipRepository) GetTournament(clubID, id string) (*domain.Tournament, error) {
 	var tournament domain.Tournament
-	if err := r.db.Preload("Stages.Groups").First(&tournament, "id = ?", id).Error; err != nil {
+	if err := r.db.Preload("Stages.Groups").First(&tournament, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
 		return nil, err
 	}
 	return &tournament, nil

@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
 	clubHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/http"
 	clubRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository"
+	notifService "github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
@@ -21,6 +23,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// Mock Providers for testing
+type mockEmailProvider struct{}
+
+func (m *mockEmailProvider) SendEmail(ctx context.Context, to, subject, body string) (*notifService.DeliveryResult, error) {
+	return &notifService.DeliveryResult{Success: true}, nil
+}
+
+type mockSMSProvider struct{}
+
+func (m *mockSMSProvider) SendSMS(ctx context.Context, to, message string) (*notifService.DeliveryResult, error) {
+	return &notifService.DeliveryResult{Success: true}, nil
+}
 
 func TestSuperAdminAccess(t *testing.T) {
 	// 1. Setup
@@ -37,7 +52,9 @@ func TestSuperAdminAccess(t *testing.T) {
 
 	// Repos & Services
 	cRepo := clubRepo.NewPostgresClubRepository(db)
-	cUC := clubApp.NewClubUseCases(cRepo, cRepo)
+	notifier := notifService.NewNotificationService(&mockEmailProvider{}, &mockSMSProvider{})
+	// NewClubUseCases now requires SponsorRepo, ClubRepo, NewsRepo, NotificationService
+	cUC := clubApp.NewClubUseCases(cRepo, cRepo, cRepo, notifier)
 	cHandler := clubHttp.NewClubHandler(cUC)
 
 	aRepo := authRepo.NewPostgresAuthRepository(db)
@@ -46,7 +63,7 @@ func TestSuperAdminAccess(t *testing.T) {
 	saEmail := "super@admin.com"
 	saName := "Super Admin"
 	// Ensure cleanup
-	existingSA, _ := aRepo.FindUserByEmail(saEmail)
+	existingSA, _ := aRepo.FindUserByEmail(context.Background(), saEmail, "system")
 	if existingSA != nil {
 		db.Unscoped().Delete(existingSA)
 	}
@@ -65,7 +82,7 @@ func TestSuperAdminAccess(t *testing.T) {
 
 	// Create Normal User
 	normEmail := "normal@user.com"
-	existingNorm, _ := aRepo.FindUserByEmail(normEmail)
+	existingNorm, _ := aRepo.FindUserByEmail(context.Background(), normEmail, "club-A")
 	if existingNorm != nil {
 		db.Unscoped().Delete(existingNorm)
 	}
@@ -140,7 +157,7 @@ func TestSuperAdminAccess(t *testing.T) {
 	// 3. Test: Super Admin Can Create Club (Success)
 	t.Run("Super Admin Create Club", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		body := `{"name": "New Club", "domain": "new.club.com"}`
+		body := `{"name": "New Club", "slug": "new-club", "domain": "new.club.com"}`
 		req, _ := http.NewRequest("POST", "/api/v1/admin/clubs", strings.NewReader(body))
 		req.Header.Set("Authorization", "Bearer super-token")
 		// No X-Club-ID header needed for Super Admin if Bypass works!

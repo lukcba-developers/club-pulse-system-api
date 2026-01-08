@@ -1,14 +1,82 @@
-# Módulo de Campeonatos (Championship)
+# Manual de Usuario: Módulo de Campeonatos
 
 ## 1. Propósito
 
-El módulo de **Campeonatos** ofrece una solución completa para organizar y gestionar torneos y competiciones internas del club. Fomenta la participación y el espíritu competitivo entre los socios.
+Este módulo te permite participar y seguir los torneos y competiciones organizados por el club. Fomenta la competencia amistosa y la interacción entre socios.
 
-## 2. Funcionalidades Principales
+## 2. Roles Implicados
 
--   **Creación de Torneos:** Los administradores pueden crear campeonatos para diferentes disciplinas, definiendo el formato (liga, eliminación directa), fechas, reglas y categorías.
--   **Inscripción de Equipos/Jugadores:** Los socios pueden inscribirse en los torneos, ya sea de forma individual o creando y gestionando sus propios equipos a través del **Módulo de Equipos (Team)**.
--   **Generación de Calendarios (Fixture):** El sistema puede generar automáticamente el calendario de partidos, distribuyendo las fechas y los enfrentamientos.
--   **Carga de Resultados:** El personal autorizado puede cargar los resultados de los partidos una vez que han finalizado.
--   **Tablas de Posiciones y Estadísticas:** Las tablas de clasificación, los resultados y las estadísticas de los jugadores se actualizan en tiempo real a medida que se cargan los resultados.
--   **Visualización para Socios:** Todos los socios pueden seguir el desarrollo de los torneos, ver los próximos partidos, las clasificaciones y las estadísticas.
+-   **Socio (`MEMBER`):** Puede ver torneos, inscribir equipos y seguir los resultados.
+-   **Administrador (`ADMIN`):** Puede crear y gestionar todos los aspectos de un torneo.
+
+---
+
+## 3. Guía para Socios (Rol: `MEMBER`)
+
+### 🔹 Cómo Ver los Campeonatos Disponibles
+
+**Paso a paso:**
+1.  **Navega a la sección "Campeonatos"** en la aplicación.
+2.  Verás una lista de los torneos actuales y futuros.
+3.  Haz clic en un torneo para ver sus detalles:
+    -   **Reglamento:** Las reglas específicas del torneo.
+    -   **Fechas:** Fecha de inicio, fin e inscripción.
+    -   **Formato:** (ej: Liga, Eliminación Directa).
+    -   **Equipos Inscritos.**
+
+### 🔹 Cómo Inscribirte a un Campeonato
+
+**Paso a paso:**
+1.  Dentro de la página de detalles de un torneo abierto, busca el botón **"Inscribirme"** o **"Inscribir Equipo"**.
+2.  Si el torneo es por equipos, se te pedirá que selecciones un equipo que hayas creado previamente en el **Módulo de Equipos** o que crees uno nuevo.
+3.  Confirma la inscripción. Puede que se te redirija al **Módulo de Pagos** si la inscripción tiene un costo.
+4.  Una vez inscrito, tu equipo aparecerá en la lista de participantes.
+
+### 🔹 Cómo Seguir un Torneo
+
+**Paso a paso:**
+1.  Entra a la página de detalles del torneo que deseas seguir.
+2.  Navega por las diferentes pestañas para ver:
+    -   **Fixture:** El calendario de todos los partidos.
+    -   **Tabla de Posiciones:** La clasificación de los equipos actualizada en tiempo real.
+    -   **Resultados:** Los marcadores de los partidos que ya se han jugado.
+
+---
+
+## 4. Guía para Administradores (Rol: `ADMIN`)
+
+### 🔸 Cómo Crear un Nuevo Campeonato
+
+**Paso a paso:**
+1.  **Accede al Panel de Administración** y ve a la sección de **"Campeonatos"**.
+2.  Haz clic en **"Nuevo Campeonato"**.
+3.  **Completa el formulario** con toda la información: nombre, disciplina, fechas, formato, reglas, costo de inscripción, etc.
+4.  **Guarda los cambios.** El torneo se publicará y los socios podrán empezar a inscribirse.
+
+### 🔸 Cómo Gestionar un Torneo en Curso
+
+**Paso a paso:**
+1.  Desde el panel de "Campeonatos", selecciona el torneo que deseas gestionar.
+2.  Desde aquí podrás:
+    -   **Aprobar o rechazar inscripciones** de equipos.
+    -   **Generar el fixture** (calendario de partidos) una vez cerradas las inscripciones.
+    -   **Cargar los resultados** de los partidos a medida que se van jugando. La tabla de posiciones se actualizará automáticamente.
+
+---
+
+## 5. Diagrama de Flujo: Inscripción a un Torneo (Socio)
+
+```mermaid
+graph TD
+    A[Inicio] --> B[Explorar Campeonatos];
+    B --> C{Elige un Torneo Abierto};
+    C --> D[Clic en "Inscribir Equipo"];
+    D --> E{¿Equipo ya creado?};
+    E -- Sí --> F[Selecciona tu Equipo];
+    E -- No --> G[Ir a Módulo de Equipos y Crear Equipo];
+    G --> F;
+    F --> H{¿Inscripción tiene costo?};
+    H -- Sí --> I[Ir a Módulo de Pagos];
+    I --> J[Confirmación de Inscripción ✅];
+    H -- No --> J;
+```

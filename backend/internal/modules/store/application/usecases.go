@@ -23,14 +23,21 @@ func (uc *StoreUseCases) GetCatalog(clubID string, category string) ([]domain.Pr
 }
 
 type PurchaseRequest struct {
-	ClubID string             `json:"club_id"`
-	UserID string             `json:"user_id"`
-	Items  []domain.OrderItem `json:"items"`
+	ClubID     string             `json:"club_id"`
+	UserID     *string            `json:"user_id"`
+	GuestName  string             `json:"guest_name"`
+	GuestEmail string             `json:"guest_email"`
+	Items      []domain.OrderItem `json:"items"`
 }
 
 func (uc *StoreUseCases) PurchaseItems(req PurchaseRequest) (*domain.Order, error) {
 	if len(req.Items) == 0 {
 		return nil, errors.New("cannot purchase empty cart")
+	}
+
+	// Validation: Guest or User
+	if req.UserID == nil && req.GuestEmail == "" {
+		return nil, errors.New("must provide UserID or GuestEmail")
 	}
 
 	var totalAmount float64
@@ -64,6 +71,8 @@ func (uc *StoreUseCases) PurchaseItems(req PurchaseRequest) (*domain.Order, erro
 		ID:          uuid.New(),
 		ClubID:      req.ClubID,
 		UserID:      req.UserID,
+		GuestName:   req.GuestName,
+		GuestEmail:  req.GuestEmail,
 		TotalAmount: totalAmount,
 		Status:      "PAID", // Assuming instant payment for this phase
 		Items:       datatypes.JSON(itemsJSON),

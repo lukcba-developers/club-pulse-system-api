@@ -26,7 +26,9 @@ type Product struct {
 type Order struct {
 	ID          uuid.UUID      `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
 	ClubID      string         `json:"club_id" gorm:"not null;index"`
-	UserID      string         `json:"user_id" gorm:"not null;index"`
+	UserID      *string        `json:"user_id" gorm:"index"`
+	GuestName   string         `json:"guest_name,omitempty"`
+	GuestEmail  string         `json:"guest_email,omitempty"`
 	TotalAmount float64        `json:"total_amount" gorm:"type:decimal(10,2);not null"`
 	Status      string         `json:"status" gorm:"default:'PAID'"`     // PAID, PENDING, CANCELLED
 	Items       datatypes.JSON `json:"items" gorm:"type:jsonb;not null"` // [{product_id, qty, unit_price}]

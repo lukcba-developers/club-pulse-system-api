@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -53,15 +54,15 @@ func TestGamificationFlow(t *testing.T) {
 		Password: "password",
 	}
 	// Cleaning if exists
-	existing, _ := authR.FindUserByEmail(email)
+	existing, _ := authR.FindUserByEmail(context.Background(), email, clubID)
 	if existing != nil {
 		db.Unscoped().Delete(existing)
 	}
 
-	_, err := authUC.Register(registerDTO)
+	_, err := authUC.Register(context.Background(), registerDTO, clubID)
 	require.NoError(t, err)
 
-	user, err := authR.FindUserByEmail(email)
+	user, err := authR.FindUserByEmail(context.Background(), email, clubID)
 	require.NoError(t, err)
 
 	// Set ClubID manually

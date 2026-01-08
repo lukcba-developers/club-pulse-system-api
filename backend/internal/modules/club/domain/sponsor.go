@@ -28,6 +28,7 @@ const (
 type AdPlacement struct {
 	ID             uuid.UUID    `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
 	SponsorID      uuid.UUID    `json:"sponsor_id" gorm:"type:uuid;not null;index"`
+	Sponsor        *Sponsor     `json:"sponsor,omitempty" gorm:"foreignKey:SponsorID"`
 	LocationType   LocationType `json:"location_type"`
 	LocationDetail string       `json:"location_detail,omitempty"`
 	ContractStart  *time.Time   `json:"contract_start,omitempty"`

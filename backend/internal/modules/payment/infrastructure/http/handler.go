@@ -64,6 +64,14 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		return
 	}
 
+	clubID := c.GetString("clubID")
+	if clubID == "" {
+		// Defensive: Middleware should ensure this, but handle legacy/error cases
+		// For payments, maybe we want to allow global context? No, strict tenancy.
+		c.JSON(http.StatusBadRequest, gin.H{"error": "club context required for payment"})
+		return
+	}
+
 	payment := &domain.Payment{
 		ID:            uuid.New(),
 		Amount:        decimal.NewFromFloat(req.Amount),
@@ -71,6 +79,7 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		Status:        domain.PaymentStatusPending,
 		Method:        domain.PaymentMethodMercadoPago, // Default for this endpoint
 		PayerID:       userID,
+		ClubID:        clubID,
 		ReferenceID:   refID,
 		ReferenceType: req.ReferenceType,
 	}
@@ -94,6 +103,13 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 
 // HandleWebhook receives notifications from payment providers
 func (h *PaymentHandler) HandleWebhook(c *gin.Context) {
+	// 0. Validate Signature
+	if err := h.gateway.ValidateWebhook(c.Request); err != nil {
+		log.Printf("Invalid Webhook Signature: %v", err)
+		c.JSON(http.StatusForbidden, gin.H{"error": "invalid signature"})
+		return
+	}
+
 	// MP query param type=payment
 	webhookType := c.Query("type")
 
@@ -110,21 +126,33 @@ func (h *PaymentHandler) HandleWebhook(c *gin.Context) {
 
 		if dataID != "" {
 			updatedPayment, err := h.gateway.ProcessWebhook(c.Request.Context(), dataID)
-			if err == nil && updatedPayment != nil {
+			if err != nil {
+				log.Printf("Webhook processing failed (gateway): %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "processing failed"})
+				return
+			}
+
+			if updatedPayment != nil {
 				existing, err := h.repo.GetByID(c.Request.Context(), updatedPayment.ID)
-				if err == nil {
-					existing.Status = updatedPayment.Status
-					existing.PaidAt = updatedPayment.PaidAt
-					existing.ExternalID = updatedPayment.ExternalID
-					if err := h.repo.Update(c.Request.Context(), existing); err != nil {
-						log.Printf("Failed to update payment status: %v", err)
-					}
-					log.Printf("Payment %s updated to %s", existing.ID, existing.Status)
-				} else {
+				if err != nil {
 					log.Printf("Payment not found for update: %s", updatedPayment.ID)
+					// If payment not found, maybe 404? But usually we want to retry if it's a race?
+					// Or if it simply doesn't exist, maybe 200 to stop retry loops?
+					// Let's return 200 to stop retries if we really can't find it.
+					c.Status(http.StatusOK)
+					return
 				}
-			} else {
-				log.Printf("Webhook processing failed: %v", err)
+
+				existing.Status = updatedPayment.Status
+				existing.PaidAt = updatedPayment.PaidAt
+				existing.ExternalID = updatedPayment.ExternalID
+
+				if err := h.repo.Update(c.Request.Context(), existing); err != nil {
+					log.Printf("Failed to update payment status (db): %v", err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "db update failed"})
+					return
+				}
+				log.Printf("Payment %s updated to %s", existing.ID, existing.Status)
 			}
 		}
 	}

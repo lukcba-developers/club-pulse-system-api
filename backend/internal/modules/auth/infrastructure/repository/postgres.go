@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -99,9 +100,10 @@ func (r *PostgresAuthRepository) SaveUser(user *domain.User) error {
 	return nil
 }
 
-func (r *PostgresAuthRepository) FindUserByEmail(email string) (*domain.User, error) {
+func (r *PostgresAuthRepository) FindUserByEmail(ctx context.Context, email, clubID string) (*domain.User, error) {
 	var userModel UserModel
-	result := r.db.Where("email = ?", email).First(&userModel)
+	// Ensure we only find users within the requesting club context
+	result := r.db.WithContext(ctx).Where("email = ? AND club_id = ?", email, clubID).First(&userModel)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -125,9 +127,10 @@ func (r *PostgresAuthRepository) FindUserByEmail(email string) (*domain.User, er
 	}, nil
 }
 
-func (r *PostgresAuthRepository) FindUserByID(id string) (*domain.User, error) {
+func (r *PostgresAuthRepository) FindUserByID(ctx context.Context, id, clubID string) (*domain.User, error) {
 	var userModel UserModel
-	result := r.db.Where("id = ?", id).First(&userModel)
+	// Ensure we only find users within the requesting club context
+	result := r.db.WithContext(ctx).Where("id = ? AND club_id = ?", id, clubID).First(&userModel)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil

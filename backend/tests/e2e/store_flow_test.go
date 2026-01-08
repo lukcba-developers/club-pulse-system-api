@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,6 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	clubApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/application"
+	clubRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository"
+	notifService "github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	storeApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/application"
 	storeDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/domain"
 	storeHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/infrastructure/http"
@@ -16,6 +20,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// Mock Providers for testing
+type mockEmailProvider struct{}
+
+func (m *mockEmailProvider) SendEmail(ctx context.Context, to, subject, body string) (*notifService.DeliveryResult, error) {
+	return &notifService.DeliveryResult{Success: true}, nil
+}
+
+type mockSMSProvider struct{}
+
+func (m *mockSMSProvider) SendSMS(ctx context.Context, to, message string) (*notifService.DeliveryResult, error) {
+	return &notifService.DeliveryResult{Success: true}, nil
+}
 
 func TestStoreFlow(t *testing.T) {
 	// 1. Setup
@@ -28,8 +45,14 @@ func TestStoreFlow(t *testing.T) {
 	_ = db.AutoMigrate(&storeDomain.Product{}, &storeDomain.Order{}, &storeDomain.OrderItem{})
 
 	repo := storeRepo.NewPostgresStoreRepository(db)
-	uc := storeApp.NewStoreUseCases(repo)
-	h := storeHttp.NewStoreHandler(uc)
+	storeUC := storeApp.NewStoreUseCases(repo)
+
+	// Club Dependencies
+	cRepo := clubRepo.NewPostgresClubRepository(db)
+	notifier := notifService.NewNotificationService(&mockEmailProvider{}, &mockSMSProvider{})
+	clubUC := clubApp.NewClubUseCases(cRepo, cRepo, cRepo, notifier)
+
+	h := storeHttp.NewStoreHandler(storeUC, clubUC)
 
 	r := gin.Default()
 	r.Use(func(c *gin.Context) {

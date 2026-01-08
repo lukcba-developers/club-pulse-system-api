@@ -34,7 +34,8 @@ type Payment struct {
 	Currency      string          `json:"currency" gorm:"not null;default:'ARS'"`
 	Status        PaymentStatus   `json:"status" gorm:"not null;default:'PENDING'"`
 	Method        PaymentMethod   `json:"method" gorm:"not null"`
-	ExternalID    string          `json:"external_id"` // ID from Payment Provider
+	ExternalID    string          `json:"external_id"`          // ID from Payment Provider
+	ClubID        string          `json:"club_id" gorm:"index"` // Tenant Isolation
 	PayerID       uuid.UUID       `json:"payer_id" gorm:"type:uuid;not null;index"`
 	ReferenceID   uuid.UUID       `json:"reference_id" gorm:"type:uuid;index"` // Could be Membership ID or Booking ID
 	ReferenceType string          `json:"reference_type"`                      // "MEMBERSHIP", "BOOKING"

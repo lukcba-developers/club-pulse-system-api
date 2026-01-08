@@ -87,14 +87,16 @@ func TestAccessFlow(t *testing.T) {
 	// 3. Create Test Data
 	// Create User
 	email := "access_test_" + uuid.New().String() + "@example.com"
-	_, err = authUC.Register(authApp.RegisterDTO{
+	_, err = authUC.Register(context.Background(), authApp.RegisterDTO{
 		Name:     "Access User",
 		Email:    email,
 		Password: "password",
-	})
+	}, "test-club-1")
 	require.NoError(t, err)
 
-	user, err := authR.FindUserByEmail(email)
+	require.NoError(t, err)
+	user, err := authR.FindUserByEmail(context.Background(), email, "test-club-1")
+	require.NoError(t, err)
 	require.NoError(t, err)
 	require.NotNil(t, user, "User should not be nil")
 	userID := user.ID

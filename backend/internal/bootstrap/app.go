@@ -21,6 +21,7 @@ import (
 
 	userApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/application"
 	userHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/http"
+	userPostgres "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/postgres"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 
 	facilityApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/application"
@@ -239,7 +240,7 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	// --- Module: Club (Super Admin) ---
 	clubRepository := clubRepo.NewPostgresClubRepository(db)
-	clubUseCase := clubApp.NewClubUseCases(clubRepository, clubRepository)
+	clubUseCase := clubApp.NewClubUseCases(clubRepository, clubRepository, clubRepository, notifier)
 	clubHandler := clubHttp.NewClubHandler(clubUseCase)
 
 	// Register Club Routes
@@ -248,19 +249,39 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	// --- Module: Store (Products, Orders) ---
 	storeRepository := storeRepo.NewPostgresStoreRepository(db)
 	storeUseCase := storeApp.NewStoreUseCases(storeRepository)
-	storeHandler := storeHttp.NewStoreHandler(storeUseCase)
+	storeHandler := storeHttp.NewStoreHandler(storeUseCase, clubUseCase) // Pass clubUseCase (reused from SuperAdmin/Club module)
 	storeHttp.RegisterRoutes(api, storeHandler, authMiddleware, tenantMiddleware)
 
 	// --- Module: Championship ---
-	championshipRepo := championshipRepo.NewPostgresChampionshipRepository(db)
+	champRepo := championshipRepo.NewPostgresChampionshipRepository(db)
 	championshipBookingAdapter := championshipSvc.NewChampionshipBookingAdapter(bookingUseCase) // Use bookingApp instance
-	championshipApp := championshipApp.NewChampionshipUseCases(championshipRepo, championshipBookingAdapter, userUseCase)
-	championshipHttp.NewChampionshipHandler(championshipApp).RegisterRoutes(api, authMiddleware, tenantMiddleware)
+	champUseCases := championshipApp.NewChampionshipUseCases(champRepo, championshipBookingAdapter, userUseCase)
 
-	// --- Module: Team (Matches, Availability) ---
+	// Volunteer Service (Gestión de Voluntarios)
+	volunteerRepo := championshipRepo.NewPostgresVolunteerRepository(db)
+	volunteerService := championshipApp.NewVolunteerService(volunteerRepo)
+
+	championshipHttp.NewChampionshipHandler(champUseCases, volunteerService, clubUseCase).RegisterRoutes(api, authMiddleware, tenantMiddleware)
+
+	// --- Module: Team (Matches, Availability, Player Status) ---
 	teamRepository := teamRepo.NewPostgresTeamRepository(db)
 	teamUseCase := teamApp.NewTeamUseCases(teamRepository)
-	teamHandler := teamHttp.NewTeamHandler(teamUseCase)
+
+	// Player Status Service (Semáforo del Jugador)
+	// Necesita acceso a documentos de usuario (creado en Fase 1)
+	userDocumentRepo := userPostgres.NewUserDocumentRepository(db)
+	playerStatusService := teamApp.NewPlayerStatusService(
+		membershipRepository,
+		userDocumentRepo,
+		attendanceRepository,
+		userRepository,
+	)
+
+	// Travel Event Service (Gestión de Viajes)
+	travelEventRepo := teamRepo.NewPostgresTravelEventRepository(db)
+	travelEventService := teamApp.NewTravelEventService(travelEventRepo)
+
+	teamHandler := teamHttp.NewTeamHandler(teamUseCase, playerStatusService, travelEventService)
 	teamHttp.RegisterRoutes(api, teamHandler, authMiddleware, tenantMiddleware)
 
 	// --- Module: Club (Sponsors, Ads) ---

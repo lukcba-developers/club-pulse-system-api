@@ -38,14 +38,17 @@ type LoginDTO struct {
 	Password string `json:"password"`
 }
 
-func (uc *AuthUseCases) Register(dto RegisterDTO) (*domain.Token, error) {
+func (uc *AuthUseCases) Register(ctx context.Context, dto RegisterDTO, clubID string) (*domain.Token, error) {
 	// 1. Validate input (Simple validation for MVP)
 	if dto.Email == "" || dto.Password == "" {
 		return nil, errors.NewValidation("Email and password are required")
 	}
+	if clubID == "" {
+		return nil, errors.NewValidation("Club ID is required")
+	}
 
 	// 2. Check existence
-	existing, _ := uc.repo.FindUserByEmail(dto.Email)
+	existing, _ := uc.repo.FindUserByEmail(ctx, dto.Email, clubID)
 	if existing != nil {
 		return nil, errors.New(errors.ErrorTypeConflict, "User already exists")
 	}
@@ -63,6 +66,7 @@ func (uc *AuthUseCases) Register(dto RegisterDTO) (*domain.Token, error) {
 		Email:     dto.Email,
 		Password:  string(hashedBytes),
 		Role:      domain.RoleMember, // Default role
+		ClubID:    clubID,            // Enforce ClubID
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -85,9 +89,9 @@ func (uc *AuthUseCases) Register(dto RegisterDTO) (*domain.Token, error) {
 	return token, nil
 }
 
-func (uc *AuthUseCases) Login(dto LoginDTO) (*domain.Token, error) {
+func (uc *AuthUseCases) Login(ctx context.Context, dto LoginDTO, clubID string) (*domain.Token, error) {
 	// 1. Find User
-	user, err := uc.repo.FindUserByEmail(dto.Email)
+	user, err := uc.repo.FindUserByEmail(ctx, dto.Email, clubID)
 	if err != nil || user == nil {
 		return nil, errors.New(errors.ErrorTypeUnauthorized, "Invalid credentials")
 	}
@@ -122,7 +126,7 @@ func (uc *AuthUseCases) Login(dto LoginDTO) (*domain.Token, error) {
 	return token, nil
 }
 
-func (uc *AuthUseCases) RefreshToken(refreshToken string) (*domain.Token, error) {
+func (uc *AuthUseCases) RefreshToken(ctx context.Context, refreshToken, clubID string) (*domain.Token, error) {
 	// 1. Get Refresh Token from DB
 	storedToken, err := uc.repo.GetRefreshToken(refreshToken)
 	if err != nil {
@@ -143,7 +147,7 @@ func (uc *AuthUseCases) RefreshToken(refreshToken string) (*domain.Token, error)
 	}
 
 	// 3. Get User
-	user, err := uc.repo.FindUserByID(storedToken.UserID)
+	user, err := uc.repo.FindUserByID(ctx, storedToken.UserID, clubID)
 	if err != nil {
 		return nil, errors.New(errors.ErrorTypeUnauthorized, "User not found")
 	}
@@ -212,7 +216,7 @@ func (uc *AuthUseCases) RevokeSession(sessionID, userID string) error {
 	return uc.repo.RevokeRefreshToken(sessionID)
 }
 
-func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code string) (*domain.Token, error) {
+func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code, clubID string) (*domain.Token, error) {
 	// 1. Get User Info from Google
 	googleUser, err := uc.googleAuth.GetUserInfo(ctx, code)
 	if err != nil {
@@ -220,7 +224,7 @@ func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code string) (*domain.T
 	}
 
 	// 2. Find or Create User
-	user, err := uc.repo.FindUserByEmail(googleUser.Email)
+	user, err := uc.repo.FindUserByEmail(ctx, googleUser.Email, clubID)
 	if err != nil {
 		return nil, err
 	}
@@ -232,6 +236,7 @@ func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code string) (*domain.T
 			Name:      googleUser.Name,
 			Email:     googleUser.Email,
 			Role:      domain.RoleMember,
+			ClubID:    clubID, // Enforce ClubID
 			GoogleID:  googleUser.ID,
 			AvatarURL: googleUser.Picture,
 			CreatedAt: time.Now(),

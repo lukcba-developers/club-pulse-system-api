@@ -61,6 +61,10 @@ func (uc *ChampionshipUseCases) ListTournaments(clubID string) ([]domain.Tournam
 	return uc.repo.ListTournaments(clubID)
 }
 
+func (uc *ChampionshipUseCases) GetTournament(clubID, id string) (*domain.Tournament, error) {
+	return uc.repo.GetTournament(clubID, id)
+}
+
 func (uc *ChampionshipUseCases) GetStandings(groupID string) ([]domain.Standing, error) {
 	return uc.repo.GetStandings(groupID)
 }
@@ -191,6 +195,7 @@ func (uc *ChampionshipUseCases) GenerateGroupFixture(groupID string) ([]domain.T
 }
 
 type UpdateMatchResultInput struct {
+	ClubID    string `json:"club_id"`
 	MatchID   string `json:"match_id"`
 	HomeScore int    `json:"home_score"`
 	AwayScore int    `json:"away_score"`
@@ -213,7 +218,7 @@ func (uc *ChampionshipUseCases) UpdateMatchResult(input UpdateMatchResultInput) 
 	// But simply, let's assume this call finalizes the match.
 	// Update User Stats
 	if uc.userService != nil {
-		tournament, err := uc.repo.GetTournament(match.TournamentID.String())
+		tournament, err := uc.repo.GetTournament(input.ClubID, match.TournamentID.String())
 		if err == nil {
 			clubID := tournament.ClubID.String()
 			homeWon := input.HomeScore > input.AwayScore

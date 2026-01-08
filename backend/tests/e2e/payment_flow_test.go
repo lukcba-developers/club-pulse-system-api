@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -73,4 +74,61 @@ func TestPaymentWebhookFlow(t *testing.T) {
 	// Since our mock webhook handler logs but doesn't fully update DB yet in this simplified Phase 2,
 	// we verify the endpoint is reachable and returns 200.
 	// For full E2E, we would assert repo.GetByID(paymentID) has Status = Completed.
+}
+
+func TestPaymentCheckout(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	database.InitDB()
+	db := database.GetDB()
+	_ = db.AutoMigrate(&domain.Payment{})
+
+	repo := repository.NewPostgresPaymentRepository(db)
+	gateway := gateways.NewMockGateway()
+	handler := paymentHttp.NewPaymentHandler(repo, gateway)
+
+	r := gin.New()
+	// Mock Auth and Tenant Middleware
+	authMw := func(c *gin.Context) {
+		c.Set("userID", uuid.New().String())
+		c.Next()
+	}
+	tenantMw := func(c *gin.Context) {
+		c.Set("clubID", "test-club-id")
+		c.Next()
+	}
+
+	paymentHttp.RegisterRoutes(r.Group("/api/v1"), handler, authMw, tenantMw)
+
+	t.Run("Checkout Success", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		body := `{"amount": 100.00, "description": "Test", "payer_email": "test@test.com", "reference_id": "` + uuid.New().String() + `", "reference_type": "MEMBERSHIP"}`
+		req, _ := http.NewRequest("POST", "/api/v1/payments/checkout", strings.NewReader(body))
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		// Verify DB has payment with ClubID
+		// (We can't easily query the ID from here without parsing response, but success code means it passed validation)
+	})
+
+	t.Run("Checkout Missing ClubID", func(t *testing.T) {
+		// Router without Tenant Middleware
+		r2 := gin.New()
+		authMw := func(c *gin.Context) {
+			c.Set("userID", uuid.New().String())
+			c.Next()
+		}
+		// Empty Tenant Middleware (Simulate failure)
+		tenantMwFail := func(c *gin.Context) {
+			// ClubID not set
+			c.Next()
+		}
+		paymentHttp.RegisterRoutes(r2.Group("/api/v1"), handler, authMw, tenantMwFail)
+
+		w := httptest.NewRecorder()
+		body := `{"amount": 100.00, "description": "Test", "payer_email": "test@test.com", "reference_id": "` + uuid.New().String() + `", "reference_type": "MEMBERSHIP"}`
+		req, _ := http.NewRequest("POST", "/api/v1/payments/checkout", strings.NewReader(body))
+		r2.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
 }

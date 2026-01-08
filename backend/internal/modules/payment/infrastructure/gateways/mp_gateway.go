@@ -7,6 +7,12 @@ import (
 	"strconv"
 	"time"
 
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"net/http"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
 	"github.com/mercadopago/sdk-go/pkg/config"
@@ -15,7 +21,8 @@ import (
 )
 
 type MercadoPagoGateway struct {
-	accessToken string
+	accessToken   string
+	webhookSecret string
 }
 
 func NewMercadoPagoGateway() *MercadoPagoGateway {
@@ -24,8 +31,10 @@ func NewMercadoPagoGateway() *MercadoPagoGateway {
 		// Fallback for dev/test if not set, though SDK might complain
 		token = "TEST-ACCESS-TOKEN-PLACEHOLDER"
 	}
+	secret := os.Getenv("MP_WEBHOOK_SECRET")
 	return &MercadoPagoGateway{
-		accessToken: token,
+		accessToken:   token,
+		webhookSecret: secret,
 	}
 }
 
@@ -128,4 +137,70 @@ func (g *MercadoPagoGateway) ProcessWebhook(ctx context.Context, payload interfa
 		Method:     domain.PaymentMethodMercadoPago,
 		PaidAt:     &now, // Approximate
 	}, nil
+}
+func (g *MercadoPagoGateway) ValidateWebhook(req *http.Request) error {
+	if g.webhookSecret == "" {
+		// If no secret configured (e.g. dev), maybe allow or warn?
+		// For security task, we should block.
+		return fmt.Errorf("webhook secret not configured")
+	}
+
+	// 1. Get Headers
+	xSignature := req.Header.Get("x-signature")
+	xRequestID := req.Header.Get("x-request-id")
+
+	if xSignature == "" || xRequestID == "" {
+		return fmt.Errorf("missing signature headers")
+	}
+
+	// 2. Parse TS and V1
+	// Format: ts=...;v1=...
+	parts := strings.Split(xSignature, ";")
+	var ts, v1 string
+	for _, p := range parts {
+		kv := strings.SplitN(p, "=", 2)
+		if len(kv) == 2 {
+			if kv[0] == "ts" {
+				ts = kv[1]
+			} else if kv[0] == "v1" {
+				v1 = kv[1]
+			}
+		}
+	}
+
+	if ts == "" || v1 == "" {
+		return fmt.Errorf("invalid signature format")
+	}
+
+	// 3. Reconstruct Manifest
+	// Template: "id:[data.id_url_param];request-id:[x-request-id];ts:[ts];"
+	// Wait, MP documentation says:
+	// "id:[data.id];request-id:[x-request-id];ts:[ts];"
+	// Where data.id is from the info.
+	// But we don't have the body/query parsed yet passed to this function easily unless we parse it here.
+	// But `req` is passed.
+	// We need 'data.id'.
+	// In the handler, we extracted it from Query.
+	// Let's assume URL query "data.id".
+	dataID := req.URL.Query().Get("data.id")
+	if dataID == "" {
+		dataID = req.URL.Query().Get("id")
+	}
+	if dataID == "" {
+		// If we can't get ID, we can't validate signature which depends on it.
+		return fmt.Errorf("missing data.id for signature validation")
+	}
+
+	manifest := fmt.Sprintf("id:%s;request-id:%s;ts:%s;", dataID, xRequestID, ts)
+
+	// 4. Compute HMAC
+	mac := hmac.New(sha256.New, []byte(g.webhookSecret))
+	mac.Write([]byte(manifest))
+	computedHash := hex.EncodeToString(mac.Sum(nil))
+
+	if computedHash != v1 {
+		return fmt.Errorf("invalid signature")
+	}
+
+	return nil
 }

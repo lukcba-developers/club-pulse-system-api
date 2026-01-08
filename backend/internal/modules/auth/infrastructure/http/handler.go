@@ -37,7 +37,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	token, err := h.useCase.Register(dto)
+	clubID := c.GetString("clubID")
+	token, err := h.useCase.Register(c.Request.Context(), dto, clubID)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -63,7 +64,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.useCase.Login(dto)
+	clubID := c.GetString("clubID")
+	token, err := h.useCase.Login(c.Request.Context(), dto, clubID)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -88,7 +90,8 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	token, err := h.useCase.RefreshToken(dto.RefreshToken)
+	clubID := c.GetString("clubID")
+	token, err := h.useCase.RefreshToken(c.Request.Context(), dto.RefreshToken, clubID)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -162,7 +165,8 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 		return
 	}
 
-	token, err := h.useCase.GoogleLogin(c.Request.Context(), dto.Code)
+	clubID := c.GetString("clubID")
+	token, err := h.useCase.GoogleLogin(c.Request.Context(), dto.Code, clubID)
 	if err != nil {
 		handleError(c, err)
 		return

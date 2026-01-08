@@ -121,7 +121,9 @@ func (r *PostgresUserRepository) Update(user *domain.User) error {
 		updates["medical_cert_expiry"] = user.MedicalCertExpiry
 	}
 
-	result := r.db.Model(&UserModel{ID: user.ID}).Updates(updates)
+	// Defensive: Ensure we only update the user belonging to this club
+	// (Assuming user struct has ID and ClubID set correctly by the UseCase)
+	result := r.db.Model(&UserModel{}).Where("id = ? AND club_id = ?", user.ID, user.ClubID).Updates(updates)
 
 	return result.Error
 }

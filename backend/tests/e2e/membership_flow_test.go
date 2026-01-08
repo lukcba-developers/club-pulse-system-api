@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -62,13 +63,13 @@ func TestMembershipFlow(t *testing.T) {
 
 	// 2. Create User
 	email := "mem_test_" + uuid.New().String() + "@example.com"
-	_, err := authUC.Register(authApp.RegisterDTO{
+	_, err := authUC.Register(context.Background(), authApp.RegisterDTO{
 		Name:     "Mem User",
 		Email:    email,
 		Password: "password",
-	})
+	}, "test-club-membership")
 	require.NoError(t, err)
-	user, _ := authR.FindUserByEmail(email)
+	user, _ := authR.FindUserByEmail(context.Background(), email, "test-club-membership")
 	userID := user.ID
 
 	// 3. Create Tier (Directly via DB or Handler if exists)

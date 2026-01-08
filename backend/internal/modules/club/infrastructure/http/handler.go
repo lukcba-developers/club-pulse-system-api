@@ -21,6 +21,7 @@ func NewClubHandler(useCases *application.ClubUseCases) *ClubHandler {
 
 type CreateClubRequest struct {
 	Name     string `json:"name" binding:"required"`
+	Slug     string `json:"slug" binding:"required"`
 	Domain   string `json:"domain"`
 	Settings string `json:"settings"`
 }
@@ -31,7 +32,7 @@ func (h *ClubHandler) CreateClub(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	club, err := h.useCases.CreateClub(req.Name, req.Domain, req.Settings)
+	club, err := h.useCases.CreateClub(req.Name, req.Slug, req.Domain, req.Settings)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -46,6 +47,18 @@ func (h *ClubHandler) ListClubs(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": clubs})
+}
+
+func (h *ClubHandler) GetPublicClubBySlug(c *gin.Context) {
+	slug := c.Param("slug")
+	club, err := h.useCases.GetClubBySlug(slug)
+	if err != nil {
+		// Assuming error means not found or DB error.
+		// For stricter 404, we'd check error type.
+		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
+		return
+	}
+	c.JSON(http.StatusOK, club)
 }
 
 // --- Sponsor Handlers ---
@@ -112,21 +125,86 @@ func (h *ClubHandler) GetActiveAds(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": ads})
 }
 
+func (h *ClubHandler) GetPublicActiveAds(c *gin.Context) {
+	slug := c.Param("slug")
+	club, err := h.useCases.GetClubBySlug(slug)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
+		return
+	}
+
+	ads, err := h.useCases.GetActiveAds(club.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": ads})
+}
+
+func (h *ClubHandler) GetPublicNews(c *gin.Context) {
+	slug := c.Param("slug")
+	news, err := h.useCases.GetPublicNews(slug)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": news})
+}
+
+type PublishNewsRequest struct {
+	Title    string `json:"title" binding:"required"`
+	Content  string `json:"content" binding:"required"`
+	ImageURL string `json:"image_url"`
+	Notify   bool   `json:"notify"`
+}
+
+func (h *ClubHandler) PublishNews(c *gin.Context) {
+	var req PublishNewsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	if clubID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClubContext required"})
+		return
+	}
+
+	// Assuming we have a method PublishNews in UseCases
+	news, err := h.useCases.PublishNews(clubID, req.Title, req.Content, req.ImageURL, req.Notify)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, news)
+}
+
 func RegisterRoutes(r *gin.RouterGroup, handler *ClubHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
+	// Public Routes
+	public := r.Group("/public/clubs")
+	{
+		public.GET("/:slug", handler.GetPublicClubBySlug)
+		public.GET("/:slug/ads", handler.GetPublicActiveAds)
+		public.GET("/:slug/news", handler.GetPublicNews)
+	}
+
 	// Super Admin Routes (Clubs)
 	clubs := r.Group("/admin/clubs")
-	clubs.Use(authMiddleware) // Tenant middleware NOT needed for creating clubs? Or maybe logical "system" tenant.
+	clubs.Use(authMiddleware)
 	{
 		clubs.POST("", handler.CreateClub)
 		clubs.GET("", handler.ListClubs)
 	}
 
-	// Club Routes (Sponsors)
+	// Club Routes (Sponsors & News)
 	clubGroup := r.Group("/club")
 	clubGroup.Use(authMiddleware, tenantMiddleware)
 	{
 		clubGroup.POST("/sponsors", handler.RegisterSponsor)
 		clubGroup.POST("/ads", handler.CreateAdPlacement)
 		clubGroup.GET("/ads", handler.GetActiveAds)
+		clubGroup.POST("/news", handler.PublishNews)
 	}
 }

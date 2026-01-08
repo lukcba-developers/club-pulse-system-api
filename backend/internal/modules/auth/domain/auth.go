@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -65,8 +66,8 @@ type Token struct {
 
 type AuthRepository interface {
 	SaveUser(user *User) error
-	FindUserByEmail(email string) (*User, error)
-	FindUserByID(id string) (*User, error)
+	FindUserByEmail(ctx context.Context, email, clubID string) (*User, error)
+	FindUserByID(ctx context.Context, id, clubID string) (*User, error)
 
 	// Refresh Token Methods
 	SaveRefreshToken(token *RefreshToken) error

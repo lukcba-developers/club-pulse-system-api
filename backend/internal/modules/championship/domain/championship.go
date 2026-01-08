@@ -122,7 +122,7 @@ type TournamentMatch struct {
 
 type ChampionshipRepository interface {
 	CreateTournament(tournament *Tournament) error
-	GetTournament(id string) (*Tournament, error)
+	GetTournament(clubID, id string) (*Tournament, error)
 	ListTournaments(clubID string) ([]Tournament, error)
 	CreateStage(stage *TournamentStage) error
 	GetStage(id string) (*TournamentStage, error)

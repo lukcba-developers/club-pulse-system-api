@@ -1,30 +1,98 @@
 package application
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
+	notification "github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 )
 
 type ClubUseCases struct {
 	sponsorRepo domain.SponsorRepository
 	clubRepo    domain.ClubRepository
+	newsRepo    domain.NewsRepository
+	notifier    *notification.NotificationService
 }
 
-func NewClubUseCases(sponsorRepo domain.SponsorRepository, clubRepo domain.ClubRepository) *ClubUseCases {
+func NewClubUseCases(
+	sponsorRepo domain.SponsorRepository,
+	clubRepo domain.ClubRepository,
+	newsRepo domain.NewsRepository,
+	notifier *notification.NotificationService,
+) *ClubUseCases {
 	return &ClubUseCases{
 		sponsorRepo: sponsorRepo,
 		clubRepo:    clubRepo,
+		newsRepo:    newsRepo,
+		notifier:    notifier,
 	}
 }
 
+// ... (Club methods remain)
+
+// --- News Management ---
+
+func (uc *ClubUseCases) PublishNews(clubID, title, content, imageURL string, notify bool) (*domain.News, error) {
+	news := &domain.News{
+		ClubID:    clubID,
+		Title:     title,
+		Content:   content,
+		ImageURL:  imageURL,
+		Published: true, // Auto publish for now
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := uc.newsRepo.CreateNews(news); err != nil {
+		return nil, err
+	}
+
+	if notify && uc.notifier != nil {
+		// Broadcast Notification Async
+		go func() {
+			bgCtx := context.Background()
+			emails, err := uc.clubRepo.GetMemberEmails(clubID)
+			if err != nil {
+				// In production, use a proper logger
+				return
+			}
+
+			for _, email := range emails {
+				subject := "Nueva noticia: " + title
+				body := "Hola,\n\nNueva noticia en tu club:\n\n" + title + "\n\n" + content
+				// Fire and forget
+				_ = uc.notifier.Send(bgCtx, notification.Notification{
+					RecipientID: email,
+					Type:        notification.NotificationTypeEmail,
+					Subject:     subject,
+					Message:     body,
+				})
+			}
+		}()
+	}
+
+	return news, nil
+}
+
+func (uc *ClubUseCases) GetPublicNews(slug string) ([]domain.News, error) {
+	club, err := uc.clubRepo.GetBySlug(slug)
+	if err != nil {
+		return nil, err
+	}
+	return uc.newsRepo.GetPublicNewsByClub(club.ID, 10, 0)
+}
+
+// ... (Sponsor methods below)
+
 // --- Club Management (Super Admin) ---
 
-func (uc *ClubUseCases) CreateClub(name, domainStr, settings string) (*domain.Club, error) {
+func (uc *ClubUseCases) CreateClub(name, slug, domainStr, settings string) (*domain.Club, error) {
 	club := &domain.Club{
-		ID:        uuid.New().String(), // OR use specific slug logic if preferred
+		ID:        uuid.New().String(),
 		Name:      name,
+		Slug:      slug,
 		Domain:    domainStr,
 		Status:    domain.ClubStatusActive,
 		Settings:  settings,
@@ -39,6 +107,10 @@ func (uc *ClubUseCases) CreateClub(name, domainStr, settings string) (*domain.Cl
 
 func (uc *ClubUseCases) GetClub(id string) (*domain.Club, error) {
 	return uc.clubRepo.GetByID(id)
+}
+
+func (uc *ClubUseCases) GetClubBySlug(slug string) (*domain.Club, error) {
+	return uc.clubRepo.GetBySlug(slug)
 }
 
 func (uc *ClubUseCases) ListClubs(limit, offset int) ([]domain.Club, error) {

@@ -2,3 +2,5 @@
 
 # Legacy code migration
 legacy/
+/api
+tasks.md
