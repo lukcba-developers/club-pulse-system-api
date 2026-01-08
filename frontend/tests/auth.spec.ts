@@ -2,6 +2,24 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Authentication Flow', () => {
     test('should login successfully with HttpOnly cookies', async ({ page, context }) => {
+        // 0. Setup: Ensure user exists using default ClubID from axios.ts
+        const CLUB_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+        try {
+            await page.request.post('http://localhost:8080/api/v1/auth/register', {
+                data: {
+                    name: 'System Admin',
+                    email: 'admin@clubpulse.com',
+                    password: 'admin123',
+                },
+                headers: {
+                    'X-Club-ID': CLUB_ID
+                }
+            });
+            console.log('Test user registered or already exists');
+        } catch (e) {
+            console.log('Registration warning (might already exist):', e);
+        }
+
         // 1. Navigate to Login
         await page.goto('/login');
 
