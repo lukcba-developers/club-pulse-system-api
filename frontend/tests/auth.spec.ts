@@ -6,11 +6,14 @@ test.describe('Authentication Flow', () => {
         await page.goto('/login');
 
         // 0. Setup: Register via Browser Context (to bypass Node network issues)
-        await page.evaluate(async () => {
+        // Use apiUrl passed from Node context to ensure it matches environment config (and avoids CSP issues)
+        const apiUrl = process.env.TEST_API_URL || 'http://localhost:8080/api/v1';
+        const uniqueEmail = `admin-${Date.now()}@clubpulse.com`;
+
+        await page.evaluate(async ({ url, email }) => {
             const CLUB_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
             try {
-                // Using 127.0.0.1 to be safe, though localhost usually works in browser
-                const response = await fetch('http://127.0.0.1:8080/api/v1/auth/register', {
+                const response = await fetch(`${url}/auth/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -18,7 +21,7 @@ test.describe('Authentication Flow', () => {
                     },
                     body: JSON.stringify({
                         name: 'System Admin',
-                        email: 'admin@clubpulse.com',
+                        email: email,
                         password: 'admin123',
                     })
                 });
@@ -26,10 +29,10 @@ test.describe('Authentication Flow', () => {
             } catch (e) {
                 console.log('Registration fetch warning:', e);
             }
-        });
+        }, { url: apiUrl, email: uniqueEmail });
 
         // 2. Fill Credentials
-        await page.fill('input[name="email"]', 'admin@clubpulse.com');
+        await page.fill('input[name="email"]', uniqueEmail);
         await page.fill('input[name="password"]', 'admin123');
 
         // 3. Submit
