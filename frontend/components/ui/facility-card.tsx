@@ -1,8 +1,9 @@
-import { MapPin, Users, DollarSign, CalendarPlus } from 'lucide-react';
+import { MapPin, Users, DollarSign, CalendarPlus, Clock, Settings } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { BookingModal } from '@/components/booking-modal';
+import { FacilityScheduleModal } from '@/components/facility-schedule-modal';
 
 
 interface Facility {
@@ -16,6 +17,8 @@ interface Facility {
     capacity: number;
     status: string;
     hourly_rate: number;
+    opening_hour?: number;
+    closing_hour?: number;
 }
 
 const getFacilityImage = (type: string) => {
@@ -33,6 +36,12 @@ export function FacilityCard({ facility }: { facility: Facility }) {
     const isAvailable = facility.status === 'active';
     const imageUrl = getFacilityImage(facility.type);
     const [isBookingModalOpen, setBookingModalOpen] = useState(false);
+    const [isScheduleModalOpen, setScheduleModalOpen] = useState(false);
+
+    // Format schedule for display
+    const formatHour = (hour: number) => `${hour.toString().padStart(2, '0')}:00`;
+    const openingHour = facility.opening_hour ?? 8;
+    const closingHour = facility.closing_hour ?? 22;
 
 
     return (
@@ -98,6 +107,24 @@ export function FacilityCard({ facility }: { facility: Facility }) {
                         {facility.location.name} {facility.location.description ? `- ${facility.location.description}` : ''}
                     </span>
                 </div>
+
+                {/* Schedule Info */}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-zinc-800/50">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                        <Clock className="h-4 w-4 text-brand-500" />
+                        <span className="text-xs font-medium">
+                            {formatHour(openingHour)} - {formatHour(closingHour)}
+                        </span>
+                    </div>
+                    <button
+                        onClick={() => setScheduleModalOpen(true)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded transition-colors"
+                        title="Configurar horarios"
+                    >
+                        <Settings className="h-3.5 w-3.5" />
+                        Editar
+                    </button>
+                </div>
             </div>
 
             {/* Card Footer */}
@@ -121,6 +148,15 @@ export function FacilityCard({ facility }: { facility: Facility }) {
                         onClose={() => setBookingModalOpen(false)}
                         facilityId={facility.id}
                         facilityName={facility.name}
+                    />
+                    <FacilityScheduleModal
+                        isOpen={isScheduleModalOpen}
+                        onClose={() => setScheduleModalOpen(false)}
+                        facilityId={facility.id}
+                        facilityName={facility.name}
+                        currentOpeningHour={openingHour}
+                        currentClosingHour={closingHour}
+                        onSuccess={() => window.location.reload()}
                     />
                 </div>
             </div>

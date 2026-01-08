@@ -19,6 +19,9 @@ const facilitySchema = z.object({
     description: z.string().optional(),
     hourly_rate: z.coerce.number().min(0, 'Rate must be a positive number'),
     capacity: z.coerce.number().int().min(1, 'Capacity must be at least 1'),
+    opening_hour: z.coerce.number().int().min(0).max(23).default(8),
+    closing_hour: z.coerce.number().int().min(0).max(23).default(22),
+    guest_fee: z.coerce.number().min(0).default(0),
     location_name: z.string().min(2, 'Location name is required'),
     location_description: z.string().optional(),
     surface_type: z.string().optional(),
@@ -38,6 +41,9 @@ export default function CreateFacilityPage() {
         defaultValues: {
             hourly_rate: 0,
             capacity: 4,
+            opening_hour: 8,
+            closing_hour: 22,
+            guest_fee: 0,
             lighting: true,
             covered: false
         }
@@ -130,6 +136,44 @@ export default function CreateFacilityPage() {
                             <Label htmlFor="hourly_rate">Tarifa por Hora ($)</Label>
                             <Input id="hourly_rate" type="number" min="0" step="0.01" {...register('hourly_rate')} />
                             {errors.hourly_rate && <p className="text-xs text-red-500 font-medium">{errors.hourly_rate.message}</p>}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="guest_fee">Tarifa por Invitado ($)</Label>
+                            <Input id="guest_fee" type="number" min="0" step="0.01" {...register('guest_fee')} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Schedule Section */}
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm space-y-6">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-200 border-b border-gray-100 dark:border-zinc-800 pb-2">Horarios de Apertura</h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="opening_hour">Hora de Apertura</Label>
+                            <select
+                                id="opening_hour"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                {...register('opening_hour')}
+                            >
+                                {Array.from({ length: 24 }, (_, i) => (
+                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="closing_hour">Hora de Cierre</Label>
+                            <select
+                                id="closing_hour"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                {...register('closing_hour')}
+                            >
+                                {Array.from({ length: 24 }, (_, i) => (
+                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 </div>

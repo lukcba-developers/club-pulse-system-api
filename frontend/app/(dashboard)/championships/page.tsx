@@ -59,7 +59,7 @@ export default function ChampionshipPage() {
     };
 
     // Run effect
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     useState(() => {
         fetchTournaments();
     }); // Simple mount effect equivalent logic via useState initializer or separate useEffect. 

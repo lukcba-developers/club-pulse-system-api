@@ -20,4 +20,5 @@ export interface Membership {
     start_date: string;
     end_date?: string;
     next_billing_date: string;
+    outstanding_balance: number;
 }

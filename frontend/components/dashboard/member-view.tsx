@@ -11,7 +11,7 @@ import { MatchScheduler } from '@/components/team/match-scheduler';
 import { IncidentReportModal } from '@/components/user/incident-report-modal';
 import { SponsorBanner } from '@/components/club/sponsor-banner';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, MapPin, Clock, CreditCard } from 'lucide-react';
+import { Calendar, MapPin, Clock, CreditCard, ArrowRight, Trophy, Sparkles } from 'lucide-react';
 
 import { User } from '@/context/auth-context';
 
@@ -87,47 +87,86 @@ export function MemberDashboardView({ user }: { user: User }) {
 
                     {/* Next Booking Hero Card */}
                     {nextBooking ? (
-                        <Card className="bg-gradient-to-br from-brand-50 to-white dark:from-brand-900/10 dark:to-zinc-900 border-brand-100 dark:border-brand-900/20">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-brand-700 dark:text-brand-400">
-                                    <Calendar className="w-5 h-5" /> Tu Próximo Partido
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex flex-col sm:flex-row justify-between gap-4">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                                            <Clock className="w-4 h-4 text-gray-400" />
-                                            <span className="font-semibold text-lg">
-                                                {formatDate(nextBooking.start_time)}, {formatTime(nextBooking.start_time)} - {formatTime(nextBooking.end_time)}
-                                            </span>
+                        <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600" />
+                            <CardHeader className="bg-gradient-to-br from-brand-50 via-white to-brand-50/30 dark:from-brand-900/40 dark:via-zinc-900 dark:to-zinc-900 pb-2">
+                                <div className="flex justify-between items-start">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 text-brand-600 dark:text-brand-400 font-medium text-sm uppercase tracking-wide">
+                                            <Sparkles className="w-4 h-4" />
+                                            <span>¡Prepárate!</span>
                                         </div>
-                                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                                            <MapPin className="w-4 h-4 text-gray-400" />
-                                            <span>
-                                                {facilities[nextBooking.facility_id]?.name || "Instalación Desconocida"}
-                                                {facilities[nextBooking.facility_id]?.specifications?.surface_type && ` (${facilities[nextBooking.facility_id].specifications.surface_type})`}
-                                            </span>
+                                        <CardTitle className="text-xl sm:text-2xl text-gray-900 dark:text-white">
+                                            Tu próximo juego se acerca 🎾
+                                        </CardTitle>
+                                    </div>
+                                    <div className="bg-white dark:bg-zinc-800 shadow-sm border border-brand-100 dark:border-brand-900/30 px-3 py-1 rounded-full text-xs font-bold text-brand-700 dark:text-brand-300">
+                                        Confirmado
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-6 bg-white dark:bg-zinc-900">
+                                <div className="flex flex-col sm:flex-row justify-between gap-6">
+                                    <div className="space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 bg-brand-50 dark:bg-brand-900/20 rounded-lg text-brand-600 dark:text-brand-400">
+                                                <Clock className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Fecha y Hora</p>
+                                                <p className="text-lg font-bold text-gray-900 dark:text-white">
+                                                    {formatDate(nextBooking.start_time)}
+                                                </p>
+                                                <p className="text-gray-700 dark:text-gray-300">
+                                                    {formatTime(nextBooking.start_time)} - {formatTime(nextBooking.end_time)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 bg-gray-50 dark:bg-zinc-800 rounded-lg text-gray-600 dark:text-gray-400">
+                                                <MapPin className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Ubicación</p>
+                                                <p className="font-semibold text-gray-900 dark:text-white">
+                                                    {facilities[nextBooking.facility_id]?.name || "Instalación Desconocida"}
+                                                </p>
+                                                {facilities[nextBooking.facility_id]?.specifications?.surface_type && (
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                                                        {facilities[nextBooking.facility_id].specifications.surface_type}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center">
-                                        <button className="px-4 py-2 bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-zinc-700 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-700 text-sm font-medium shadow-sm transition-colors">
-                                            Ver Detalles
+
+                                    <div className="flex items-end justify-end sm:justify-start">
+                                        <button className="w-full sm:w-auto px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold shadow-brand-sm hover:shadow-brand-md transition-all flex items-center justify-center gap-2 group">
+                                            Gestionar Reserva
+                                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                         </button>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     ) : (
-                        <Card className="bg-white dark:bg-zinc-900 border-dashed border-2 border-gray-200 dark:border-zinc-800">
-                            <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                                <Calendar className="w-10 h-10 text-gray-300 mb-2" />
-                                <p className="text-gray-500 font-medium">No tienes reservas próximas</p>
+                        <Card className="bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800 rounded-2xl overflow-hidden">
+                            <CardContent className="flex flex-col items-center justify-center py-10 text-center px-4">
+                                <div className="w-16 h-16 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center shadow-sm mb-4">
+                                    <Trophy className="w-8 h-8 text-brand-500 dark:text-brand-400" />
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                                    ¿Sale partido esta semana? 🏃‍♂️
+                                </h3>
+                                <p className="text-gray-500 dark:text-gray-400 max-w-xs mb-6">
+                                    No tienes juegos programados. ¡Es buen momento para reservar cancha y juntar al equipo!
+                                </p>
                                 <button
                                     onClick={() => router.push('/facilities')}
-                                    className="mt-4 text-brand-600 hover:text-brand-700 font-medium text-sm"
+                                    className="px-6 py-2.5 bg-white dark:bg-zinc-800 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-900/50 rounded-xl hover:bg-brand-50 dark:hover:bg-brand-900/20 font-semibold transition-all shadow-sm hover:shadow"
                                 >
-                                    Reservar una cancha
+                                    Buscar Cancha Ahora
                                 </button>
                             </CardContent>
                         </Card>

@@ -89,6 +89,12 @@ export default function FacilitiesPage() {
                                         <DollarSign className="mr-2 h-4 w-4" />
                                         Precio: ${fac.hourly_rate}/hora
                                     </div>
+                                    {(fac as unknown as { opening_hour?: number; closing_hour?: number }).opening_hour !== undefined && (
+                                        <div className="flex items-center text-muted-foreground">
+                                            <span className="mr-2">🕐</span>
+                                            Horario: {String((fac as unknown as { opening_hour: number }).opening_hour).padStart(2, '0')}:00 - {String((fac as unknown as { closing_hour: number }).closing_hour).padStart(2, '0')}:00
+                                        </div>
+                                    )}
                                     {fac.location?.address && (
                                         <div className="flex items-center text-muted-foreground">
                                             <MapPin className="mr-2 h-4 w-4" />

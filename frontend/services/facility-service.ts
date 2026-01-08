@@ -7,6 +7,9 @@ export interface Facility {
     status: string;
     capacity: number;
     hourly_rate: number;
+    opening_hour: number; // 0-23
+    closing_hour: number; // 0-23
+    guest_fee: number;
     specifications: {
         surface_type?: string;
         lighting: boolean;
@@ -27,6 +30,9 @@ export interface CreateFacilityRequest {
     description?: string;
     hourly_rate: number;
     capacity: number;
+    opening_hour?: number; // 0-23
+    closing_hour?: number; // 0-23
+    guest_fee?: number;
     location_name: string;
     location_description?: string;
     surface_type?: string;
@@ -43,6 +49,20 @@ export interface SearchResponse {
     query: string;
     count: number;
     results: SearchResult[];
+}
+
+export interface UpdateFacilityRequest {
+    name?: string;
+    status?: 'active' | 'maintenance' | 'closed';
+    opening_hour?: number; // 0-23
+    closing_hour?: number; // 0-23
+    hourly_rate?: number;
+    guest_fee?: number;
+    specifications?: {
+        surface_type?: string;
+        lighting?: boolean;
+        covered?: boolean;
+    };
 }
 
 export const facilityService = {
@@ -74,6 +94,9 @@ export const facilityService = {
             description: data.description,
             hourly_rate: data.hourly_rate,
             capacity: data.capacity,
+            opening_hour: data.opening_hour ?? 8,
+            closing_hour: data.closing_hour ?? 22,
+            guest_fee: data.guest_fee ?? 0,
             location: {
                 name: data.location_name,
                 description: data.location_description
@@ -104,5 +127,23 @@ export const facilityService = {
     generateEmbeddings: async (): Promise<{ message: string; processed: number }> => {
         const response = await api.post<{ message: string; processed: number }>('/facilities/embeddings/generate');
         return response.data;
+    },
+
+    /**
+     * Update facility details including schedule (opening/closing hours)
+     */
+    update: async (id: string, data: UpdateFacilityRequest): Promise<Facility> => {
+        const response = await api.put<Facility>(`/facilities/${id}`, data);
+        return response.data;
+    },
+
+    /**
+     * Update facility schedule (convenience method)
+     */
+    updateSchedule: async (id: string, openingHour: number, closingHour: number): Promise<Facility> => {
+        return facilityService.update(id, {
+            opening_hour: openingHour,
+            closing_hour: closingHour
+        });
     }
 };

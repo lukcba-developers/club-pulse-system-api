@@ -10,6 +10,16 @@ export interface User {
     family_group_id?: string;
 }
 
+export interface FamilyGroup {
+    id: string;
+    club_id: string;
+    name: string;
+    head_user_id: string;
+    members?: User[];
+    created_at: string;
+    updated_at: string;
+}
+
 export interface UserStats {
     matches_played: number;
     matches_won: number;
@@ -67,5 +77,20 @@ export const userService = {
     logIncident: async (data: { injured_user_id?: string; description: string; witnesses?: string; action_taken?: string }) => {
         const response = await api.post("/users/incidents", data);
         return response.data;
+    },
+
+    // --- Family Groups ---
+    createFamilyGroup: async (name: string) => {
+        const response = await api.post<{ data: FamilyGroup }>('/users/family-groups', { name });
+        return response.data.data;
+    },
+
+    getMyFamilyGroup: async () => {
+        const response = await api.get<{ data: FamilyGroup | null }>('/users/family-groups/me');
+        return response.data.data;
+    },
+
+    addFamilyMember: async (groupId: string, userId: string) => {
+        await api.post(`/users/family-groups/${groupId}/members`, { user_id: userId });
     }
 }

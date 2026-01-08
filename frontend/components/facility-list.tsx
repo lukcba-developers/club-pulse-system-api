@@ -16,6 +16,8 @@ interface Facility {
     capacity: number;
     status: string;
     hourly_rate: number;
+    opening_hour?: number;
+    closing_hour?: number;
 }
 
 export function FacilityList() {

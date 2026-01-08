@@ -46,6 +46,12 @@ export const membershipService = {
         return response.data.data;
     },
 
+    // Admin: List all memberships in the club
+    listAllMemberships: async () => {
+        const response = await api.get<{ data: Membership[] }>('/memberships/admin');
+        return response.data.data;
+    },
+
     // Not yet implemented in Backend
     // cancelMembership: async (id: string) => {
     //     const response = await api.delete<{ message: string }>(`/memberships/${id}`);
