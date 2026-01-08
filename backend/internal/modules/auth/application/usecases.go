@@ -128,7 +128,7 @@ func (uc *AuthUseCases) Login(ctx context.Context, dto LoginDTO, clubID string) 
 
 func (uc *AuthUseCases) RefreshToken(ctx context.Context, refreshToken, clubID string) (*domain.Token, error) {
 	// 1. Get Refresh Token from DB
-	storedToken, err := uc.repo.GetRefreshToken(refreshToken)
+	storedToken, err := uc.repo.GetRefreshToken(ctx, refreshToken, clubID)
 	if err != nil {
 		return nil, errors.New(errors.ErrorTypeUnauthorized, "Invalid refresh token")
 	}
@@ -175,8 +175,8 @@ func (uc *AuthUseCases) RefreshToken(ctx context.Context, refreshToken, clubID s
 	return token, nil
 }
 
-func (uc *AuthUseCases) Logout(refreshToken string) error {
-	storedToken, err := uc.repo.GetRefreshToken(refreshToken)
+func (uc *AuthUseCases) Logout(ctx context.Context, refreshToken, clubID string) error {
+	storedToken, err := uc.repo.GetRefreshToken(ctx, refreshToken, clubID)
 	if err != nil || storedToken == nil {
 		return nil // Already logged out or invalid
 	}

@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 
 	"github.com/gin-gonic/gin"
@@ -94,6 +95,13 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
+	// SECURITY FIX (VUL-008): Only ADMIN/STAFF can list users
+	role := c.GetString("userRole")
+	if role != domain.RoleAdmin && role != domain.RoleSuperAdmin && role != "STAFF" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions to list users"})
+		return
+	}
+
 	limit := 10
 	offset := 0
 	// Parse basic pagination query params if needed, for now defaults
@@ -110,6 +118,13 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {
+	// SECURITY FIX (VUL-009): Only ADMIN can delete users
+	role := c.GetString("userRole")
+	if role != domain.RoleAdmin && role != domain.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role to delete users"})
+		return
+	}
+
 	deleteID := c.Param("id")
 	if deleteID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID required"})
@@ -349,7 +364,96 @@ func RegisterRoutes(r *gin.RouterGroup, handler *UserHandler, authMiddleware, te
 		// Operational
 		users.PUT("/me/emergency", handler.UpdateEmergencyInfo)
 		users.POST("/incidents", handler.LogIncident)
+
+		// Family Groups
+		users.POST("/family-groups", handler.CreateFamilyGroup)
+		users.GET("/family-groups/me", handler.GetMyFamilyGroup)
+		users.POST("/family-groups/:id/members", handler.AddFamilyMember)
 	}
+}
+
+// --- Family Group Handlers ---
+
+type CreateFamilyGroupRequest struct {
+	Name string `json:"name" binding:"required"`
+}
+
+func (h *UserHandler) CreateFamilyGroup(c *gin.Context) {
+	var req CreateFamilyGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, _ := c.Get("userID")
+	clubID := c.GetString("clubID")
+
+	group, err := h.useCases.CreateFamilyGroup(clubID, userID.(string), req.Name)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": group})
+}
+
+func (h *UserHandler) GetMyFamilyGroup(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	clubID := c.GetString("clubID")
+
+	group, err := h.useCases.GetMyFamilyGroup(clubID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": group})
+}
+
+type AddFamilyMemberRequest struct {
+	UserID string `json:"user_id" binding:"required"`
+}
+
+func (h *UserHandler) AddFamilyMember(c *gin.Context) {
+	groupIDStr := c.Param("id")
+	if groupIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Group ID required"})
+		return
+	}
+
+	// SECURITY: Validate authenticated user
+	currentUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var req AddFamilyMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+
+	// Parse group ID
+	groupID, err := uuid.Parse(groupIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID"})
+		return
+	}
+
+	// SECURITY FIX (VUL-002): Validate ownership - only HeadUserID can add members
+	if err := h.useCases.AddFamilyMemberSecure(clubID, groupID, req.UserID, currentUserID.(string)); err != nil {
+		if err.Error() == "only the family head can add members" {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 func (h *UserHandler) RegisterDependentPublic(c *gin.Context) {

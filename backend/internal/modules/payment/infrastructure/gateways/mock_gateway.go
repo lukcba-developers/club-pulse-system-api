@@ -12,6 +12,9 @@ type MockPaymentGateway struct {
 	ShouldFail bool
 }
 
+func NewMockGateway() *MockPaymentGateway {
+	return &MockPaymentGateway{ShouldFail: false}
+}
 func (m *MockPaymentGateway) CreatePreference(ctx context.Context, payment *domain.Payment, payerEmail string, description string) (string, error) {
 	if m.ShouldFail {
 		return "", fmt.Errorf("gateway failure")

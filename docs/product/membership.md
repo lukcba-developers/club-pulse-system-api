@@ -12,10 +12,13 @@ Este módulo es el sistema central para la gestión de la relación con los soci
 -   **Gestión de Estado:** El sistema maneja el estado de la membresía de cada socio, que puede ser `Activa`, `Pendiente de Pago`, `Vencida` o `Cancelada`.
 -   **Control de Acceso:** El estado de la membresía se utiliza para determinar el acceso a los servicios del club, como la creación de nuevas reservas.
 
-### 3. Integración con Facturación
--   **Generación de Deuda:** Se integra con el módulo de Pagos para la generación automática de las facturas recurrentes de las cuotas de membresía.
+### 3. Integración con Facturación y Becas
+-   **Generación de Deuda:** Integrado con el módulo de Pagos para facturación automática.
+-   **Becas (Scholarships):** Soporte para descuentos porcentuales sobre la cuota mensual con motivos y fechas de validez.
+-   **Facturación Robusta:** Manejo coordinado de fechas de cierre (ej: 31 de enero -> 28 de febrero).
 
-## 4. Funcionalidades en Desarrollo
+### 4. Automatización
+-   **Proceso de Cobro Mensual:** Motor para procesar masivamente la deuda de socios activos (`ProcessMonthlyBilling`) aplicando descuentos de becas automáticamente.
 
--   **Automatización de Cobros:** Aunque se genera la deuda, la automatización completa del proceso de cobro (ej: `ProcessMonthlyBilling`) es una funcionalidad del roadmap.
--   **Historial de Cambios:** Un log detallado de los cambios de plan (upgrades/downgrades) por socio es una mejora futura.
+## 5. Funcionalidades en Desarrollo
+-   **Historial de Cambios:** Log detallado de cambios de plan (upgrades/downgrades).

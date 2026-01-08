@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
 	paymentHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/http"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
@@ -25,6 +26,12 @@ func (m *mockPaymentRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Pa
 	return nil, nil
 }
 func (m *mockPaymentRepo) Update(ctx context.Context, p *domain.Payment) error { return nil }
+func (m *mockPaymentRepo) GetByExternalID(ctx context.Context, ext string) (*domain.Payment, error) {
+	return nil, nil
+}
+func (m *mockPaymentRepo) List(ctx context.Context, clubID string, filter domain.PaymentFilter) ([]*domain.Payment, int64, error) {
+	return nil, 0, nil
+}
 
 type mockGatewayStrict struct{}
 
@@ -44,11 +51,12 @@ func (m *mockGatewayStrict) ValidateWebhook(req *http.Request) error {
 func TestPaymentWebhookSecurity(t *testing.T) {
 	// 1. Setup
 	gin.SetMode(gin.TestMode)
-	database.InitDB() // Init DB just in case dependencies need it, though mock repo ignores it
+	database.InitDB() // Init DB just in case dependencies need it
 
 	mockG := &mockGatewayStrict{}
 	mockR := &mockPaymentRepo{}
-	h := paymentHttp.NewPaymentHandler(mockR, mockG)
+	useCases := application.NewPaymentUseCases(mockR, mockG)
+	h := paymentHttp.NewPaymentHandler(useCases)
 
 	r := gin.New()
 	r.POST("/webhook", h.HandleWebhook)
@@ -69,8 +77,7 @@ func TestPaymentWebhookSecurity(t *testing.T) {
 		req.Header.Set("x-request-id", "req-id")
 		r.ServeHTTP(w, req)
 
-		// It should pass validation (mock) and try to process (mock process returns nil, nil so loop ends but no error)
-		// Handler should return 200
+		// It should pass validation (mock) and try to process
 		require.Equal(t, http.StatusOK, w.Code)
 	})
 }

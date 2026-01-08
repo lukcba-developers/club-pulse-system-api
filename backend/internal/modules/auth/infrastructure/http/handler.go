@@ -110,10 +110,16 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCase.Logout(dto.RefreshToken); err != nil {
+	clubID := c.GetString("clubID")
+	if err := h.useCase.Logout(c.Request.Context(), dto.RefreshToken, clubID); err != nil {
 		handleError(c, err)
 		return
 	}
+
+	// Clear cookies on logout
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("access_token", "", -1, "/", "", isSecureCookie(), true)
+	c.SetCookie("refresh_token", "", -1, "/", "", isSecureCookie(), true)
 
 	c.Status(http.StatusNoContent)
 }

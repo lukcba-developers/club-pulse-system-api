@@ -13,8 +13,8 @@ Visibilidad de rayos-X sobre el sistema.
 Uso estratégico de memoria in-memory.
 -   **Rate Limiting**: Protección capa de aplicación contra ataques de fuerza bruta (ej. login) y DDoS.
     -   *Policy*: Token Bucket algorithm (100 req/min default).
--   **Session Store**: Gestión de millones de sesiones activas con latencia sub-milisegundo.
--   **Cache (Roadmap)**: Caché de capa de aplicación para endpoints de alta lectura (`/availability`).
+-   **Session Store**: Gestión de sesiones de usuario persistentes, integradas con **Cookies HttpOnly** para máxima seguridad.
+-   **Cache**: Caché de capa de aplicación para endpoints de alta lectura (`/availability`).
 
 ### 3. Base de Datos (PostgreSQL)
 -   **Motor Relacional**: Integridad referencial fuerte para transacciones financieras y de reservas.

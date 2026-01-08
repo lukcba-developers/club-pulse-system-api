@@ -129,6 +129,7 @@ type ChampionshipRepository interface {
 	CreateGroup(group *Group) error
 	GetGroup(clubID, id string) (*Group, error)
 	CreateMatch(match *TournamentMatch) error
+	CreateMatchesBatch(matches []TournamentMatch) error // Atomic batch creation
 	GetMatch(clubID, id string) (*TournamentMatch, error)
 	GetMatchesByGroup(clubID, groupID string) ([]TournamentMatch, error)
 	UpdateMatchResult(clubID, matchID string, homeScore, awayScore int) error

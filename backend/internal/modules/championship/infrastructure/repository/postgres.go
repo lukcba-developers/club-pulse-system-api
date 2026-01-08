@@ -72,6 +72,19 @@ func (r *PostgresChampionshipRepository) CreateMatch(match *domain.TournamentMat
 	return r.db.Create(match).Error
 }
 
+// CreateMatchesBatch creates multiple matches atomically using a database transaction.
+// If any match fails to create, the entire batch is rolled back.
+func (r *PostgresChampionshipRepository) CreateMatchesBatch(matches []domain.TournamentMatch) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for i := range matches {
+			if err := tx.Create(&matches[i]).Error; err != nil {
+				return err // Transaction will be rolled back
+			}
+		}
+		return nil
+	})
+}
+
 func (r *PostgresChampionshipRepository) GetMatch(clubID, id string) (*domain.TournamentMatch, error) {
 	var match domain.TournamentMatch
 	// Join Tournament to check club_id

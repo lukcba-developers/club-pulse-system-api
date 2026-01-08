@@ -8,11 +8,21 @@ import (
 
 type FamilyGroup struct {
 	ID         uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ClubID     string    `json:"club_id" gorm:"index;not null"`
 	Name       string    `json:"name" gorm:"not null"`
 	HeadUserID string    `json:"head_user_id" gorm:"not null"`
 	Members    []User    `json:"members,omitempty" gorm:"foreignKey:FamilyGroupID"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type FamilyGroupRepository interface {
+	Create(group *FamilyGroup) error
+	GetByID(clubID string, id uuid.UUID) (*FamilyGroup, error)
+	GetByHeadUserID(clubID, headUserID string) (*FamilyGroup, error)
+	GetByMemberID(clubID, userID string) (*FamilyGroup, error)
+	AddMember(clubID string, groupID uuid.UUID, userID string) error
+	RemoveMember(clubID string, groupID uuid.UUID, userID string) error
 }
 
 type User struct {
@@ -47,6 +57,7 @@ const (
 	RoleSuperAdmin = "SUPER_ADMIN"
 	RoleAdmin      = "ADMIN"
 	RoleMember     = "MEMBER"
+	RoleCoach      = "COACH"
 )
 
 type MedicalCertStatus string

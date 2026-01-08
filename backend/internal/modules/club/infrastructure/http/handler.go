@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/middleware"
 )
 
 type ClubHandler struct {
@@ -190,17 +192,17 @@ func RegisterRoutes(r *gin.RouterGroup, handler *ClubHandler, authMiddleware, te
 		public.GET("/:slug/news", handler.GetPublicNews)
 	}
 
-	// Super Admin Routes (Clubs)
+	// Super Admin Routes (Clubs) - CRITICAL: Only SUPER_ADMIN can manage clubs
 	clubs := r.Group("/admin/clubs")
-	clubs.Use(authMiddleware)
+	clubs.Use(authMiddleware, middleware.RequireRole(userDomain.RoleSuperAdmin))
 	{
 		clubs.POST("", handler.CreateClub)
 		clubs.GET("", handler.ListClubs)
 	}
 
-	// Club Routes (Sponsors & News)
+	// Club Routes (Sponsors & News) - Requires ADMIN or SUPER_ADMIN
 	clubGroup := r.Group("/club")
-	clubGroup.Use(authMiddleware, tenantMiddleware)
+	clubGroup.Use(authMiddleware, tenantMiddleware, middleware.RequireRole(userDomain.RoleAdmin, userDomain.RoleSuperAdmin))
 	{
 		clubGroup.POST("/sponsors", handler.RegisterSponsor)
 		clubGroup.POST("/ads", handler.CreateAdPlacement)

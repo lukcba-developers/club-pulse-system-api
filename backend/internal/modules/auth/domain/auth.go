@@ -27,6 +27,7 @@ const (
 	RoleSuperAdmin = "SUPER_ADMIN"
 	RoleAdmin      = "ADMIN"
 	RoleMember     = "MEMBER"
+	RoleCoach      = "COACH"
 )
 
 type UserClaims struct {
@@ -71,7 +72,7 @@ type AuthRepository interface {
 
 	// Refresh Token Methods
 	SaveRefreshToken(token *RefreshToken) error
-	GetRefreshToken(token string) (*RefreshToken, error)
+	GetRefreshToken(ctx context.Context, token, clubID string) (*RefreshToken, error)
 	RevokeRefreshToken(tokenID string) error
 	RevokeAllUserTokens(userID string) error
 	ListUserSessions(userID string) ([]RefreshToken, error)

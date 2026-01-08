@@ -1,9 +1,15 @@
 # Arquitectura del Sistema
 
-## Visión General
-**Club Pulse System** sigue un patrón de **Monolito Modular**. Esto significa que el sistema está desplegado como una sola unidad (un binario) para simplificar la infraestructura y reducir costos (ideal para MVP), pero el código está estructurado internamente en **Módulos** estrictamente separados que se comunican a través de interfaces bien definidas.
+## Visión General y Modelo Multi-Tenant
 
-Esto nos permite migrar fácilmente a Microservicios en el futuro si la escala lo requiere, simplemente extrayendo un módulo a su propio servicio.
+**Club Pulse System** está diseñado como un sistema **Multi-Tenant**, donde cada club deportivo opera como un "inquilino" (tenant) independiente en una única instancia de la aplicación. Esto permite que múltiples clubes usen el sistema de forma segura y aislada, sin que los datos de un club sean visibles para otro.
+
+-   **Aislamiento de Datos:** La clave para el aislamiento es el `club_id`. Casi todas las tablas en la base de datos tienen una columna `club_id`. El aislamiento se garantiza mediante:
+    1.  **Context Injection:** El `TenantMiddleware` extrae el `club_id` y lo inyecta en el `context.Context` de Go.
+    2.  **Repository Enforcement:** Los métodos de los repositorios aceptan explícitamente el `club_id` y lo utilizan en las cláusulas `WHERE` de todas las consultas GORM, evitando fugas de datos accidentales.
+-   **Identificación del Tenant:** El sistema identifica al tenant actual a través de un header o el `slug` del club en la URL. El middleware resuelve el ID interno y lo propaga hacia las capas inferiores.
+
+El sistema sigue un patrón de **Monolito Modular**. Está estructurado en **Módulos** independientes que se comunican a través de interfaces, facilitando el mantenimiento y la escalabilidad.
 
 ## Estructura de Directorios (Clean Architecture)
 
@@ -51,6 +57,9 @@ graph TD
         Payment
         Access
         Notification
+        Attendance
+        Family
+        Championship
     end
 
     Booking -->|Locking/Conflict| DB[(PostgreSQL + pgvector)]
@@ -69,8 +78,8 @@ graph TD
 
 ## Nuevas Capacidades Tecnológicas (Fase 2-6)
 1.  **Seguridad Avanzada**:
-    -   **HttpOnly Cookies**: Eliminación de `localStorage` para tokens, prevención de XSS.
-    -   **BOLA Protection**: Validación estricta de Tenancy (`club_id`) en cada request.
+    -   **HttpOnly & Secure Cookies**: Autenticación robusta eliminando el uso de `localStorage` para tokens JWT, protegiendo contra ataques XSS.
+    -   **Multi-tenant Isolation**: Validación estricta de `club_id` requerida en las firmas de los métodos de repositorio.
 2.  **Observabilidad**:
     -   **OpenTelemetry**: Trazabilidad distribuida para detectar cuellos de botella.
     -   **Logs Estructurados**: Formato JSON compatible con sistemas de análisis.

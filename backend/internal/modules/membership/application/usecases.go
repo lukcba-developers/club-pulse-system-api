@@ -28,6 +28,21 @@ func NewMembershipUseCases(repo domain.MembershipRepository, scholarshipRepo dom
 	}
 }
 
+// addMonthsRobust adds months to a date while handling end-of-month edge cases.
+// For example: Jan 31 + 1 month = Feb 28 (or 29 in leap year), not March 3.
+func addMonthsRobust(t time.Time, months int) time.Time {
+	originalDay := t.Day()
+	result := t.AddDate(0, months, 0)
+
+	// If the day changed, we overflowed into the next month
+	// (e.g., Jan 31 + 1 month = March 3 instead of Feb 28)
+	if result.Day() != originalDay {
+		// Go back to the last day of the previous month
+		result = result.AddDate(0, 0, -result.Day())
+	}
+	return result
+}
+
 func (uc *MembershipUseCases) ListTiers(ctx context.Context, clubID string) ([]domain.MembershipTier, error) {
 	return uc.repo.ListTiers(ctx, clubID)
 }
@@ -46,15 +61,15 @@ func (uc *MembershipUseCases) CreateMembership(ctx context.Context, clubID strin
 
 	switch req.BillingCycle {
 	case domain.BillingCycleMonthly:
-		nextBilling = now.AddDate(0, 1, 0)
+		nextBilling = addMonthsRobust(now, 1)
 	case domain.BillingCycleQuarterly:
-		nextBilling = now.AddDate(0, 3, 0)
+		nextBilling = addMonthsRobust(now, 3)
 	case domain.BillingCycleSemiAnnual:
-		nextBilling = now.AddDate(0, 6, 0)
+		nextBilling = addMonthsRobust(now, 6)
 	case domain.BillingCycleAnnual:
-		nextBilling = now.AddDate(1, 0, 0)
+		nextBilling = addMonthsRobust(now, 12)
 	default:
-		nextBilling = now.AddDate(0, 1, 0)
+		nextBilling = addMonthsRobust(now, 1)
 	}
 
 	membership := &domain.Membership{
@@ -109,8 +124,8 @@ func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID 
 		// Calculate new balance
 		newBalance := m.OutstandingBalance.Add(fee)
 
-		// Calculate next billing date (next month)
-		nextBilling := m.NextBillingDate.AddDate(0, 1, 0)
+		// Calculate next billing date (next month) - using robust function for end-of-month handling
+		nextBilling := addMonthsRobust(m.NextBillingDate, 1)
 
 		if err := uc.repo.UpdateBalance(ctx, clubID, m.ID, newBalance, nextBilling); err == nil {
 			processedCount++

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,7 +51,7 @@ func (uc *ClubUseCases) PublishNews(clubID, title, content, imageURL string, not
 	}
 
 	if notify && uc.notifier != nil {
-		// Broadcast Notification Async
+		// Broadcast Notification Async with restricted concurrency
 		go func() {
 			bgCtx := context.Background()
 			emails, err := uc.clubRepo.GetMemberEmails(clubID)
@@ -59,17 +60,31 @@ func (uc *ClubUseCases) PublishNews(clubID, title, content, imageURL string, not
 				return
 			}
 
+			// Semaphore to limit concurrency (e.g., 10 concurrent sends)
+			sem := make(chan struct{}, 10)
+			var wg sync.WaitGroup
+
 			for _, email := range emails {
-				subject := "Nueva noticia: " + title
-				body := "Hola,\n\nNueva noticia en tu club:\n\n" + title + "\n\n" + content
-				// Fire and forget
-				_ = uc.notifier.Send(bgCtx, notification.Notification{
-					RecipientID: email,
-					Type:        notification.NotificationTypeEmail,
-					Subject:     subject,
-					Message:     body,
-				})
+				wg.Add(1)
+				sem <- struct{}{} // Acquire token
+
+				go func(recipient string) {
+					defer wg.Done()
+					defer func() { <-sem }() // Release token
+
+					subject := "Nueva noticia: " + title
+					body := "Hola,\n\nNueva noticia en tu club:\n\n" + title + "\n\n" + content
+
+					// Fire and forget, but now controlled
+					_ = uc.notifier.Send(bgCtx, notification.Notification{
+						RecipientID: recipient,
+						Type:        notification.NotificationTypeEmail,
+						Subject:     subject,
+						Message:     body,
+					})
+				}(email)
 			}
+			wg.Wait()
 		}()
 	}
 

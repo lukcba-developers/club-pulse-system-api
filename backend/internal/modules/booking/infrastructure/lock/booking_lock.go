@@ -69,7 +69,46 @@ func (l *BookingLock) GetLockHolder(ctx context.Context, facilityID string, star
 }
 
 // ExtendLock extends the TTL of an existing lock (for long checkout processes)
-func (l *BookingLock) ExtendLock(ctx context.Context, facilityID string, start, end time.Time, additionalTTL time.Duration) error {
+// SECURITY: Verifies that the requesting user owns the lock before extending
+func (l *BookingLock) ExtendLock(ctx context.Context, facilityID string, start, end time.Time, userID string, additionalTTL time.Duration) error {
 	key := lockKey(facilityID, start, end)
-	return l.redis.Expire(ctx, key, additionalTTL)
+
+	// Lua script to verify ownership and extend TTL atomically
+	// KEYS[1]: lock key
+	// ARGV[1]: user ID (expected owner)
+	// ARGV[2]: new TTL duration (in seconds/milliseconds depending on redis version, but usually Go client handles duration)
+
+	// Note: redis.call("expire", ...) returns 1 if timeout was set, 0 if key does not exist.
+	// We want to ensure we own it first.
+	script := `
+		if redis.call("get", KEYS[1]) == ARGV[1] then
+			return redis.call("expire", KEYS[1], ARGV[2])
+		else
+			return 0
+		end
+	`
+
+	// Execute the script
+	res, err := l.redis.Eval(ctx, script, []string{key}, userID, additionalTTL).Result()
+	if err != nil {
+		return fmt.Errorf("failed to extend lock: %w", err)
+	}
+
+	// Result can he int64(1) or int64(0). If 0, it means either key didn't exist or we didn't own it.
+	// Since Eval returns interface{}, we need to care about type assertion depending on driver version,
+	// but go-redis usually handles basic types well.
+
+	val, ok := res.(int64)
+	if !ok {
+		// Try minimal casting fallback if needed or assume success if err is nil?
+		// Actually go-redis Eval returns whatever redis returns.
+		// Redis EXPIRE returns integer 1 or 0. Lua script returns what expire returns.
+		return fmt.Errorf("unexpected result from redis script")
+	}
+
+	if val == 0 {
+		return fmt.Errorf("lock extension failed: lock not found or not owned by user")
+	}
+
+	return nil
 }

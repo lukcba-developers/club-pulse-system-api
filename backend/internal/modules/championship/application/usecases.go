@@ -195,10 +195,9 @@ func (uc *ChampionshipUseCases) GenerateGroupFixture(clubID, groupID string) ([]
 		}
 	}
 
-	for _, m := range matches {
-		if err := uc.repo.CreateMatch(&m); err != nil {
-			return nil, err
-		}
+	// Create all matches atomically in a single transaction
+	if err := uc.repo.CreateMatchesBatch(matches); err != nil {
+		return nil, err
 	}
 
 	return matches, nil
@@ -220,7 +219,10 @@ func (uc *ChampionshipUseCases) UpdateMatchResult(input UpdateMatchResultInput) 
 	// 1. Get Match to find GroupID
 	match, err := uc.repo.GetMatch(input.ClubID, input.MatchID)
 	if err != nil {
-		return err // Log warning?
+		return err
+	}
+	if match == nil {
+		return errors.New("match not found after update")
 	}
 
 	// Update User Stats
@@ -323,7 +325,9 @@ func (uc *ChampionshipUseCases) recalculateStandings(clubID, groupID string) err
 	}
 
 	for _, s := range stats {
-		_ = uc.repo.UpdateStanding(s)
+		if err := uc.repo.UpdateStanding(s); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -52,6 +52,7 @@ import (
 	disciplineHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/infrastructure/http"
 	disciplineRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/infrastructure/repository"
 
+	paymentApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/application"
 	paymentGateway "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/gateways"
 	paymentHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/http"
 	paymentRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/repository"
@@ -159,7 +160,8 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	// --- Module: User ---
 	userRepository := userRepo.NewPostgresUserRepository(db)
-	userUseCase := userApp.NewUserUseCases(userRepository)
+	familyGroupRepository := userRepo.NewPostgresFamilyGroupRepository(db)
+	userUseCase := userApp.NewUserUseCases(userRepository, familyGroupRepository)
 	userHandler := userHttp.NewUserHandler(userUseCase)
 
 	userHttp.RegisterRoutes(api, userHandler, authMiddleware, tenantMiddleware)
@@ -233,9 +235,10 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	disciplineHttp.RegisterRoutes(api, dHandler, authMiddleware, tenantMiddleware)
 
 	// --- Module: Payment ---
-	paymentRepo := paymentRepo.NewPostgresPaymentRepository(db)
-	paymentProc := paymentGateway.NewMercadoPagoGateway()
-	paymentHandler := paymentHttp.NewPaymentHandler(paymentRepo, paymentProc)
+	paymentRepository := paymentRepo.NewPostgresPaymentRepository(db)
+	paymentGw := paymentGateway.NewMercadoPagoGateway()
+	paymentUseCases := paymentApp.NewPaymentUseCases(paymentRepository, paymentGw)
+	paymentHandler := paymentHttp.NewPaymentHandler(paymentUseCases)
 	paymentHttp.RegisterRoutes(api, paymentHandler, authMiddleware, tenantMiddleware)
 
 	// --- Module: Club (Super Admin) ---

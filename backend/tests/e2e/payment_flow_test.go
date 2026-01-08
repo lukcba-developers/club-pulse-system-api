@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/gateways"
 	paymentHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/http"
@@ -19,11 +20,10 @@ import (
 )
 
 func TestPaymentWebhookFlow(t *testing.T) {
-	// 1. Setup Environment (Mock DB or Test DB)
-	// For E2E in this context, we'll try to use the real Handler setup but with a Mock Processor
+	// 1. Setup Environment
 	gin.SetMode(gin.TestMode)
 
-	database.InitDB() // Use local DB (ensure it's running)
+	database.InitDB()
 	db := database.GetDB()
 
 	// Clean state
@@ -36,14 +36,14 @@ func TestPaymentWebhookFlow(t *testing.T) {
 	// Repositories & Services
 	repo := repository.NewPostgresPaymentRepository(db)
 	gateway := gateways.NewMockGateway()
-	handler := paymentHttp.NewPaymentHandler(repo, gateway)
+	useCases := application.NewPaymentUseCases(repo, gateway)
+	handler := paymentHttp.NewPaymentHandler(useCases)
 
 	// Router
 	r := gin.Default()
 	paymentHttp.RegisterRoutes(r.Group("/api/v1"), handler, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
 
-	// 2. Prepare Data: Create a pending payment manually in DB to simulate initiation
-	// Convert float to Decimal
+	// 2. Prepare Data: Create a pending payment manually in DB
 	amount := decimal.NewFromFloat(5000.00)
 
 	paymentID := uuid.New()
@@ -53,8 +53,8 @@ func TestPaymentWebhookFlow(t *testing.T) {
 		Currency:      "ARS",
 		Status:        domain.PaymentStatusPending,
 		Method:        domain.PaymentMethodMercadoPago,
-		PayerID:       uuid.New(), // Random User
-		ReferenceID:   uuid.New(), // Random Membership
+		PayerID:       uuid.New(),
+		ReferenceID:   uuid.New(),
 		ReferenceType: "MEMBERSHIP",
 	}
 
@@ -62,18 +62,12 @@ func TestPaymentWebhookFlow(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 3. Simulate Webhook Call (Success)
-	// /api/v1/payments/webhook?type=payment&id=...
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/v1/payments/webhook?type=payment", nil)
 	r.ServeHTTP(w, req)
 
 	// 4. Verification
 	assert.Equal(t, http.StatusOK, w.Code)
-
-	// In a real integration, the webhook would trigger a background update or immediate update.
-	// Since our mock webhook handler logs but doesn't fully update DB yet in this simplified Phase 2,
-	// we verify the endpoint is reachable and returns 200.
-	// For full E2E, we would assert repo.GetByID(paymentID) has Status = Completed.
 }
 
 func TestPaymentCheckout(t *testing.T) {
@@ -84,7 +78,8 @@ func TestPaymentCheckout(t *testing.T) {
 
 	repo := repository.NewPostgresPaymentRepository(db)
 	gateway := gateways.NewMockGateway()
-	handler := paymentHttp.NewPaymentHandler(repo, gateway)
+	useCases := application.NewPaymentUseCases(repo, gateway)
+	handler := paymentHttp.NewPaymentHandler(useCases)
 
 	r := gin.New()
 	// Mock Auth and Tenant Middleware
@@ -106,8 +101,6 @@ func TestPaymentCheckout(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		// Verify DB has payment with ClubID
-		// (We can't easily query the ID from here without parsing response, but success code means it passed validation)
 	})
 
 	t.Run("Checkout Missing ClubID", func(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/domain"
 	disciplineHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/infrastructure/http"
 	disciplineRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/infrastructure/repository"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/stretchr/testify/assert"
@@ -53,6 +54,7 @@ func TestChampionshipsFlow(t *testing.T) {
 	authMiddleware := func(c *gin.Context) {
 		c.Set("userID", "admin-user")
 		c.Set("clubID", clubID)
+		c.Set("userRole", userDomain.RoleAdmin) // Fix for RBAC
 		c.Next()
 	}
 	disciplineHttp.RegisterRoutes(r.Group("/api/v1"), dHandler, authMiddleware, func(c *gin.Context) { c.Next() })

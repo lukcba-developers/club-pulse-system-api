@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/application"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
 type MembershipHandler struct {
@@ -76,10 +76,31 @@ func (h *MembershipHandler) GetMembership(c *gin.Context) {
 		return
 	}
 
+	// SECURITY: Get authenticated user
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	role := c.GetString("userRole")
 	clubID := c.GetString("clubID")
+
 	membership, err := h.useCases.GetMembership(c.Request.Context(), clubID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if membership == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "membership not found"})
+		return
+	}
+
+	// SECURITY FIX (VUL-004): Validate ownership or admin role
+	if membership.UserID.String() != userID.(string) &&
+		role != userDomain.RoleAdmin &&
+		role != userDomain.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
 	}
 
@@ -106,6 +127,13 @@ func (h *MembershipHandler) ListMemberships(c *gin.Context) {
 
 // ListAllMemberships returns all memberships for admin dashboard
 func (h *MembershipHandler) ListAllMemberships(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can list all memberships
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	clubID := c.GetString("clubID")
 	memberships, err := h.useCases.ListAllMemberships(c.Request.Context(), clubID)
 	if err != nil {
@@ -116,7 +144,13 @@ func (h *MembershipHandler) ListAllMemberships(c *gin.Context) {
 }
 
 func (h *MembershipHandler) ProcessBilling(c *gin.Context) {
-	// In production, this would be restricted to ADMIN role.
+	// RBAC: Only ADMIN or SUPER_ADMIN can process billing
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	clubID := c.GetString("clubID")
 	count, err := h.useCases.ProcessMonthlyBilling(c.Request.Context(), clubID)
 	if err != nil {
@@ -130,6 +164,13 @@ func (h *MembershipHandler) ProcessBilling(c *gin.Context) {
 }
 
 func (h *MembershipHandler) AssignScholarship(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can assign scholarships
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	var req application.AssignScholarshipRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

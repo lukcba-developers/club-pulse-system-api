@@ -21,12 +21,15 @@ El motor de **Reservas** es una de las funcionalidades centrales para el socio. 
     -   Si un horario está ocupado, un usuario puede unirse a una lista de espera (`POST /bookings/waitlist`).
     -   Si la reserva original se cancela, el sistema automáticamente promueve al primer usuario de la lista de espera, creándole una reserva y notificándole.
 
+-   **Reservas Recurrentes:** Capacidad de crear patrones de reserva (ej: todos los lunes de 18:00 a 19:00) mediante reglas de recurrencia que materializan reservas automáticamente.
+-   **Validación de Salud:** Bloqueo preventivo de reservas si el socio no cuenta con un **Certificado Médico** vigente.
+
 -   **Ciclo de Vida de la Reserva:**
-    -   El modelo de dominio actual soporta los estados: `CONFIRMED` y `CANCELLED`.
+    -   El modelo de dominio soporta los estados: `CONFIRMED` y `CANCELLED`.
 
 ## 3. Funcionalidades en Desarrollo (No Implementadas)
 
--   **Reservas Recurrentes:** La capacidad de crear patrones de reserva (ej. "todos los lunes") está definida en el código pero no es funcional.
--   **Estados Adicionales:** Los estados como `Pending` (esperando pago), `Completed` (completada) o `No-Show` (ausente) son parte de la visión del producto pero no están implementados en el modelo de dominio actual.
+-   **Seguimiento de Asistencia (No-Show):** Detección automática de ausencias para penalizaciones o liberación de slots.
+-   **Matchmaking:** Sistema para encontrar compañeros de juego basado en nivel y proximidad.
 
 *Este documento refleja el estado actual del código y se actualizará a medida que las funcionalidades en desarrollo se completen.*

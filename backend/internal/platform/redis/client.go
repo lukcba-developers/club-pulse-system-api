@@ -138,6 +138,11 @@ func (r *RedisClient) Subscribe(ctx context.Context, channel string) *redis.PubS
 	return r.rdb.Subscribe(ctx, channel)
 }
 
+// Eval executes a Lua script
+func (r *RedisClient) Eval(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd {
+	return r.rdb.Eval(ctx, script, keys, args...)
+}
+
 // --- List Operations (for Audit Queue) ---
 
 // LPush pushes a value to the head of a list

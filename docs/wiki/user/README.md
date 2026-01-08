@@ -17,6 +17,7 @@ A continuación, se presenta la lista de módulos documentados. Haz clic en cual
 *   [**Disciplinas (Disciplines)**](./disciplines/README.md) - Gestión de deportes y grupos de entrenamiento.
 *   [**Equipos (Team)**](./team/README.md) - Gestión de equipos para campeonatos.
 *   [**Instalaciones (Facilities)**](./facilities/README.md) - Gestión de las instalaciones deportivas.
+*   [**Grupos Familiares (Family)**](./family/README.md) - Vinculación de socios y facturación unificada.
 *   [**Membresías (Membership)**](./membership/README.md) - Administración de tipos de membresía, socios y planes.
 *   [**Notificaciones (Notification)**](./notification/README.md) - Sistema de envío de notificaciones a los usuarios.
 *   [**Pagos (Payment)**](./payment/README.md) - Procesamiento de pagos y gestión de facturas.

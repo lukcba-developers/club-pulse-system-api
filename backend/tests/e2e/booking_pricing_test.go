@@ -22,10 +22,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Mock Notifier
-type MockNotifier struct{}
+// Mock Notifier for pricing test
+type BookingPricingMockNotifier struct{}
 
-func (m *MockNotifier) Send(ctx context.Context, n service.Notification) error {
+func (m *BookingPricingMockNotifier) Send(ctx context.Context, n service.Notification) error {
 	return nil
 }
 
@@ -44,7 +44,7 @@ func TestBookingPricing(t *testing.T) {
 	rRepo := bookingRepo.NewPostgresRecurringRepository(db)
 	fRepo := facilityRepo.NewPostgresFacilityRepository(db)
 	uRepo := userRepo.NewPostgresUserRepository(db)
-	notifier := &MockNotifier{}
+	notifier := &BookingPricingMockNotifier{}
 
 	useCases := bookingApp.NewBookingUseCases(bRepo, rRepo, fRepo, uRepo, notifier)
 	handler := bookingHttp.NewBookingHandler(useCases)

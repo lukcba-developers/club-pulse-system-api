@@ -33,25 +33,25 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 	}
 }
 
-// CORSMiddleware configures Cross-Origin Resource Sharing
-func CORSMiddleware() gin.HandlerFunc {
+// CORSMiddleware configures Cross-Origin Resource Sharing with a whitelist
+func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
+	// Build origin map for O(1) lookup
+	originSet := make(map[string]bool)
+	for _, o := range allowedOrigins {
+		originSet[o] = true
+	}
+
 	return func(c *gin.Context) {
-		// In production, replace "*" with specific allowed origins from config
-		// origin := c.Request.Header.Get("Origin")
-		// if isAllowedOrigin(origin) {
-		// 	c.Header("Access-Control-Allow-Origin", origin)
-		// }
-
-		// For MVP/Dev, we can be slightly permissive but strict on methods/headers
 		origin := c.Request.Header.Get("Origin")
-		// fmt.Printf("DEBUG CORS: Origin=%s Method=%s Path=%s\n", origin, c.Request.Method, c.Request.URL.Path)
 
-		if origin != "" {
-			c.Header("Access-Control-Allow-Origin", origin) // Dynamic allow for localhost:3000
+		// SECURITY: Only allow origins in whitelist
+		if originSet[origin] {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Credentials", "true")
 		}
+
 		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Club-ID")
-		c.Header("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)

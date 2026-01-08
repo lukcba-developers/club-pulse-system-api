@@ -1,15 +1,15 @@
 package http
 
 import (
-	"net/http"
-	"strconv"
-
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/application"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	platformRedis "github.com/lukcba/club-pulse-system-api/backend/internal/platform/redis"
 )
 
@@ -48,6 +48,13 @@ func RegisterRoutes(r *gin.RouterGroup, handler *FacilityHandler, authMiddleware
 }
 
 func (h *FacilityHandler) Create(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can create facilities
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	var dto application.CreateFacilityDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -125,6 +132,13 @@ func (h *FacilityHandler) Get(c *gin.Context) {
 }
 
 func (h *FacilityHandler) Update(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can update facilities
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	id := c.Param("id")
 	var dto application.UpdateFacilityDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {
@@ -144,6 +158,13 @@ func (h *FacilityHandler) Update(c *gin.Context) {
 }
 
 func (h *FacilityHandler) AddEquipment(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can add equipment
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	facilityID := c.Param("id")
 	var dto application.AddEquipmentDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {

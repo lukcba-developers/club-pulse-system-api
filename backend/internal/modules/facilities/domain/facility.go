@@ -105,6 +105,7 @@ type FacilityRepository interface {
 
 	// Maintenance Extensions
 	HasConflict(clubID, facilityID string, startTime, endTime time.Time) (bool, error)
+	ListMaintenanceByFacility(facilityID string) ([]*MaintenanceTask, error)
 
 	// Semantic Search Extensions
 	SemanticSearch(clubID string, embedding []float32, limit int) ([]*FacilityWithSimilarity, error)

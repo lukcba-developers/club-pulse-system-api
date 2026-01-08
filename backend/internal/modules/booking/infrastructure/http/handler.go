@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	platformRedis "github.com/lukcba/club-pulse-system-api/backend/internal/platform/redis"
 )
 
@@ -191,8 +192,12 @@ func (h *BookingHandler) GetAvailability(c *gin.Context) {
 }
 
 func (h *BookingHandler) CreateRecurringRule(c *gin.Context) {
-	// Simple RBAC check (MVP: hardcode checks or assume middleware handles basic auth)
-	// In production: check if user is admin/manager
+	// RBAC: Only ADMIN or SUPER_ADMIN can create recurring rules
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
 
 	var dto application.CreateRecurringRuleDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {
@@ -211,12 +216,16 @@ func (h *BookingHandler) CreateRecurringRule(c *gin.Context) {
 }
 
 func (h *BookingHandler) GenerateBookings(c *gin.Context) {
-	// Admin only
-	// Check query param for weeks
-	// weeks := c.Query("weeks") ... parse int
+	// RBAC: Only ADMIN or SUPER_ADMIN can generate bookings
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	clubID := c.GetString("clubID")
 
-	if err := h.useCases.GenerateBookingsFromRules(clubID, 4); err != nil { // Default 4 weeks
+	if err := h.useCases.GenerateBookingsFromRules(c.Request.Context(), clubID, 4); err != nil { // Default 4 weeks
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

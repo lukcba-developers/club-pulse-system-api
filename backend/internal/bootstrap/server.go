@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +21,21 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+// getAllowedOrigins returns the list of allowed CORS origins.
+// Reads from ALLOWED_ORIGINS env var (comma-separated), with dev defaults.
+func getAllowedOrigins() []string {
+	envOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if envOrigins != "" {
+		return strings.Split(envOrigins, ",")
+	}
+	// Development defaults
+	return []string{
+		"http://localhost:3000",
+		"http://localhost:8080",
+		"http://127.0.0.1:3000",
+	}
+}
 
 type Server struct {
 	Engine         *gin.Engine
@@ -46,7 +62,10 @@ func NewServer() *Server {
 	router.Use(otelgin.Middleware("club-pulse-backend"))
 
 	router.Use(middlewares.SecurityHeadersMiddleware())
-	router.Use(middlewares.CORSMiddleware())
+
+	// SECURITY: CORS with whitelist (configurable via ALLOWED_ORIGINS env, comma-separated)
+	allowedOrigins := getAllowedOrigins()
+	router.Use(middlewares.CORSMiddleware(allowedOrigins))
 
 	// Swagger UI
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

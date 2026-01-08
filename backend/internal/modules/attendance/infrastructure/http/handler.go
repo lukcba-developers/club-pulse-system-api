@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/application"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
 type AttendanceHandler struct {
@@ -23,6 +24,13 @@ func NewAttendanceHandler(useCases *application.AttendanceUseCases) *AttendanceH
 // GetGroupAttendance
 // GET /attendance/groups/:group?date=2024-01-01
 func (h *AttendanceHandler) GetGroupAttendance(c *gin.Context) {
+	// RBAC: Only COACH, ADMIN or SUPER_ADMIN can manage attendance
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleCoach && role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires COACH or ADMIN role"})
+		return
+	}
+
 	group := c.Param("group")
 	dateStr := c.Query("date")
 
@@ -94,6 +102,13 @@ func (h *AttendanceHandler) GetTrainingGroupAttendance(c *gin.Context) {
 // SubmitAttendance
 // POST /attendance/:listID/records
 func (h *AttendanceHandler) SubmitAttendance(c *gin.Context) {
+	// RBAC: Only COACH, ADMIN or SUPER_ADMIN can submit attendance
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleCoach && role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires COACH or ADMIN role"})
+		return
+	}
+
 	listIDStr := c.Param("listID")
 	listID, err := uuid.Parse(listIDStr)
 	if err != nil {

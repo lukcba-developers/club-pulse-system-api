@@ -39,6 +39,23 @@ CREATE TABLE IF NOT EXISTS users (
 );
 COMMENT ON COLUMN users.is_eligible IS 'Cached eligibility status based on document validation (updated by background job)';
 
+-- Family Groups Table (Merged from 010_family_groups.sql)
+CREATE TABLE IF NOT EXISTS family_groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id VARCHAR(100) NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    head_user_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_family_groups_club ON family_groups(club_id);
+CREATE INDEX IF NOT EXISTS idx_family_groups_head ON family_groups(head_user_id);
+
+COMMENT ON TABLE family_groups IS 'Groups multiple users (parent + children) for consolidated billing';
+COMMENT ON COLUMN family_groups.head_user_id IS 'The primary account holder responsible for billing';
+
+
 -- User Documents Table (From 002_user_documents.sql)
 CREATE TABLE IF NOT EXISTS user_documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -134,9 +151,12 @@ CREATE TABLE IF NOT EXISTS bookings (
     -- Added from 009_add_booking_pricing.sql
     total_price DECIMAL(10, 2) DEFAULT 0,
     guest_details JSONB,
+    -- Security Fix (VUL-001)
+    payment_expiry TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE INDEX idx_bookings_payment_expiry ON bookings(payment_expiry) WHERE payment_expiry IS NOT NULL;
 
 -- Membership Tiers Table
 CREATE TABLE IF NOT EXISTS membership_tiers (

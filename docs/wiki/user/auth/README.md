@@ -1,8 +1,12 @@
 # Manual de Usuario: Módulo de Autenticación (Auth)
 
-## 1. Propósito
+## 1. Propósito y Contexto de Club
 
-Este módulo gestiona tu acceso a la plataforma. Se encarga de la creación de cuentas, el inicio de sesión y la seguridad para asegurar que tu información esté protegida.
+Este módulo gestiona tu acceso a la plataforma. Se encarga de la creación de cuentas, el inicio de sesión y la seguridad.
+
+Es fundamental entender que el sistema es **multi-club (multi-tenant)**. Esto significa que tu cuenta de usuario es global, pero tu acceso y tus roles son **específicos para cada club**. Por ejemplo, puedes ser `ADMIN` en un club y `MEMBER` en otro con el mismo correo y contraseña.
+
+El inicio de sesión siempre se realiza en el contexto de un club específico, generalmente determinado por la URL que estás visitando (ej: `mi-club.com` o `plataforma.com/mi-club`).
 
 ## 2. Roles Implicados
 
@@ -17,43 +21,37 @@ Este módulo gestiona tu acceso a la plataforma. Se encarga de la creación de c
 Si es tu primera vez en la plataforma, necesitarás crear una cuenta.
 
 **Paso a paso:**
-1.  Desde la página de inicio, haz clic en el botón **"Registrarse"**.
+1.  Desde la página de inicio del club al que quieres unirte, haz clic en **"Registrarse"**.
 2.  Serás dirigido a un formulario de registro.
 3.  Completa los campos requeridos:
     -   **Nombre Completo**
-    -   **Correo Electrónico** (Este será tu nombre de usuario)
+    -   **Correo Electrónico** (Este será tu nombre de usuario global)
     -   **Contraseña** (Elige una contraseña segura)
-4.  Haz clic en el botón **"Crear Cuenta"**.
-5.  Si todo es correcto, tu cuenta será creada y serás redirigido a la página de inicio de sesión o directamente a tu panel de control.
+4.  Al crear la cuenta, quedarás asociado al club desde donde te registraste, usualmente con el rol de `MEMBER`.
 
 ### 🔹 Cómo Iniciar Sesión
 
-Una vez que tienes una cuenta, puedes acceder a la plataforma.
-
 **Paso a paso:**
-1.  Navega a la página de **"Iniciar Sesión"**.
-2.  Introduce tu **Correo Electrónico** y **Contraseña** en los campos correspondientes.
-3.  Haz clic en el botón **"Iniciar Sesión"**.
-4.  Si las credenciales son correctas, accederás a tu panel de control personalizado.
+1.  Navega a la página de **"Iniciar Sesión"** del club específico.
+2.  Introduce tu **Correo Electrónico** y **Contraseña**.
+3.  Haz clic en **"Iniciar Sesión"**.
+4.  Si las credenciales son correctas, accederás al panel de control de **ese club en particular**. Si tienes acceso a otros clubes, podrás cambiar de contexto desde tu panel de usuario.
 
 ### 🔹 Cómo Cerrar Sesión
 
-Es importante cerrar sesión si estás en un ordenador compartido.
-
 **Paso a paso:**
-1.  Busca el **ícono de tu perfil** o tu nombre, generalmente ubicado en la esquina superior derecha de la pantalla.
-2.  Haz clic sobre él para desplegar un menú.
-3.  Selecciona la opción **"Cerrar Sesión"**.
-4.  Serás redirigido de forma segura a la página de inicio.
+1.  Busca el **ícono de tu perfil** o tu nombre.
+2.  Haz clic para desplegar el menú.
+3.  Selecciona **"Cerrar Sesión"**. Esto cerrará tu sesión en todos los clubes.
 
 ### 🔹 Cómo Restablecer tu Contraseña
 
-Si has olvidado tu contraseña, puedes recuperarla de forma segura.
+Si has olvidado tu contraseña, el proceso es global.
 
 **Paso a paso:**
-1.  En la página de "Iniciar Sesión", haz clic en el enlace **"¿Olvidaste tu contraseña?"**.
-2.  Introduce la dirección de correo electrónico con la que te registraste.
-3.  Recibirás un correo electrónico con un enlace e instrucciones para crear una nueva contraseña.
+1.  En cualquier página de "Iniciar Sesión", haz clic en **"¿Olvidaste tu contraseña?"**.
+2.  Introduce tu dirección de correo electrónico.
+3.  Recibirás un correo con instrucciones para crear una nueva contraseña, que será válida para todos los clubes a los que tengas acceso.
 
 ---
 
@@ -61,10 +59,13 @@ Si has olvidado tu contraseña, puedes recuperarla de forma segura.
 
 ```mermaid
 graph TD
-    A[Inicio] --> B[Navega a la página de Login];
+    A[Inicio en la página de un Club Específico] --> B[Navega a Login];
     B --> C[Introduce Email y Contraseña];
     C --> D{¿Credenciales Válidas?};
-    D -- Sí --> E[Acceso al Panel de Control ✅];
-    D -- No --> F[Muestra Mensaje de Error];
-    F --> C;
+    D -- Sí --> E{¿Usuario tiene acceso a este Club?};
+    E -- Sí --> F[Acceso al Panel de Control del Club ✅];
+    E -- No --> G[Error: Acceso denegado a este club];
+    D -- No --> H[Error: Credenciales incorrectas];
+    G --> C;
+    H --> C;
 ```

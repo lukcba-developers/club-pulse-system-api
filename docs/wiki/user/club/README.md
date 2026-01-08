@@ -1,29 +1,35 @@
-# Manual de Usuario: Módulo de Club
+# Manual de Usuario: Módulo de Club (Tenant)
 
-## 1. Propósito
+## 1. Propósito y Rol Central
 
-Este módulo es el centro de control para la información general de tu club. Aquí los administradores pueden configurar los datos de contacto, los horarios y publicar noticias para todos los socios.
+El módulo de **Club** es la entidad fundamental del sistema. En la arquitectura multi-tenant de la plataforma, cada `Club` funciona como un **inquilino (tenant)** independiente y aislado.
+
+**Funcionalidades clave:**
+-   **Aislamiento de Datos:** Cada club tiene su propio conjunto de usuarios, productos, campeonatos, etc. La información no se comparte entre clubes.
+-   **Punto de Acceso:** Cada club tiene un `slug` único (un identificador para la URL, ej: `mi-club-favorito`), que define el punto de acceso a toda su información (ej: `plataforma.com/mi-club-favorito`).
+-   **Configuración General:** Actúa como el centro de control donde los administradores del club gestionan la información general, publican noticias y configuran parámetros para otros módulos.
 
 ## 2. Roles Implicados
 
--   **Administrador (`ADMIN`):** Gestiona toda la información y configuración del club.
--   **Socio (`MEMBER`):** Ve la información y las noticias publicadas.
+-   **Super Administrador (`SUPER_ADMIN`):** Gestiona la creación y el ciclo de vida de todos los clubes en la plataforma.
+-   **Administrador de Club (`ADMIN`):** Gestiona la información y configuración de su propio club.
+-   **Socio (`MEMBER`):** Ve la información y las noticias publicadas para su club.
 
 ---
 
-## 3. Guía para Administradores (Rol: `ADMIN`)
+## 3. Guía para Administradores de Club (Rol: `ADMIN`)
 
 ### 🔸 Cómo Editar la Información General del Club
 
 **Paso a paso:**
-1.  **Accede al Panel de Administración.**
+1.  **Accede al Panel de Administración** de tu club.
 2.  Navega a la sección **"Configuración del Club"** o "Información General".
 3.  Desde aquí, podrás **editar los campos** principales:
     -   Nombre del Club.
     -   Dirección y teléfono de contacto.
     -   Horarios generales de apertura y cierre.
     -   Subir o cambiar el logotipo del club.
-4.  **Guarda los cambios.** La información se actualizará en toda la plataforma (ej: en el pie de página y en la página de contacto).
+4.  **Guarda los cambios.** La información se actualizará en toda la plataforma para los usuarios de tu club.
 
 ### 🔸 Cómo Publicar una Noticia o Anuncio
 
@@ -31,12 +37,7 @@ Este módulo es el centro de control para la información general de tu club. Aq
 1.  En el Panel de Administración, ve a la sección de **"Noticias"** o **"Anuncios"**.
 2.  Haz clic en **"Crear Noticia"**.
 3.  Escribe un **título y el contenido** del anuncio.
-4.  Haz clic en **"Publicar"**. La noticia aparecerá en el panel principal para todos los socios cuando inicien sesión.
-
-### 🔸 Cómo Configurar otros Módulos
-
-Desde la configuración del club, también puedes ajustar parámetros de otros módulos.
--   **Ejemplo:** En la sección de "Reservas", puedes establecer la **política de cancelación** (ej: "cancelaciones permitidas hasta 24 horas antes").
+4.  Haz clic en **"Publicar"**. La noticia aparecerá en el panel principal para todos los socios de tu club.
 
 ---
 
@@ -45,8 +46,8 @@ Desde la configuración del club, también puedes ajustar parámetros de otros m
 ### 🔹 Cómo Ver la Información y Noticias del Club
 
 **Paso a paso:**
-1.  **Inicia sesión** en la plataforma.
-2.  En el **panel principal o dashboard**, verás la sección de **"Últimas Noticias"** con los anuncios más recientes del club.
+1.  **Inicia sesión** en la plataforma en el contexto de tu club.
+2.  En el **panel principal o dashboard**, verás la sección de **"Últimas Noticias"** con los anuncios más recientes.
 3.  Para ver la información de contacto o los horarios, generalmente encontrarás un enlace en el pie de página o en una sección llamada **"El Club"** o **"Contacto"**.
 
 ---
@@ -55,9 +56,9 @@ Desde la configuración del club, también puedes ajustar parámetros de otros m
 
 ```mermaid
 graph TD
-    A[Inicio: Panel de Admin] --> B[Ir a "Gestión de Noticias"];
+    A[Inicio: Panel de Admin del Club] --> B[Ir a "Gestión de Noticias"];
     B --> C[Clic en "Crear Noticia"];
     C --> D[Escribir Título y Contenido];
     D --> E[Clic en "Publicar"];
-    E --> F[Noticia visible para todos los socios ✅];
+    E --> F[Noticia visible para los socios del Club ✅];
 ```

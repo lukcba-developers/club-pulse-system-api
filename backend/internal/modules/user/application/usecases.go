@@ -9,12 +9,14 @@ import (
 )
 
 type UserUseCases struct {
-	repo domain.UserRepository
+	repo            domain.UserRepository
+	familyGroupRepo domain.FamilyGroupRepository
 }
 
-func NewUserUseCases(repo domain.UserRepository) *UserUseCases {
+func NewUserUseCases(repo domain.UserRepository, familyGroupRepo domain.FamilyGroupRepository) *UserUseCases {
 	return &UserUseCases{
-		repo: repo,
+		repo:            repo,
+		familyGroupRepo: familyGroupRepo,
 	}
 }
 
@@ -358,4 +360,80 @@ func (uc *UserUseCases) UpdateMatchStats(clubID, userID string, won bool, xpGain
 	// Check UserRepo.Update implementation.
 	// For now assume Update works.
 	return uc.repo.Update(user)
+}
+
+// --- Family Group Use Cases ---
+
+func (uc *UserUseCases) CreateFamilyGroup(clubID, headUserID, name string) (*domain.FamilyGroup, error) {
+	if uc.familyGroupRepo == nil {
+		return nil, errors.New("family groups not enabled")
+	}
+	if name == "" {
+		return nil, errors.New("family group name is required")
+	}
+
+	// Check if user already has a family group as head
+	existing, _ := uc.familyGroupRepo.GetByHeadUserID(clubID, headUserID)
+	if existing != nil {
+		return nil, errors.New("user already has a family group")
+	}
+
+	group := &domain.FamilyGroup{
+		ClubID:     clubID,
+		Name:       name,
+		HeadUserID: headUserID,
+	}
+
+	if err := uc.familyGroupRepo.Create(group); err != nil {
+		return nil, err
+	}
+
+	// Add head user to the group
+	_ = uc.familyGroupRepo.AddMember(clubID, group.ID, headUserID)
+
+	return group, nil
+}
+
+func (uc *UserUseCases) GetMyFamilyGroup(clubID, userID string) (*domain.FamilyGroup, error) {
+	if uc.familyGroupRepo == nil {
+		return nil, errors.New("family groups not enabled")
+	}
+	return uc.familyGroupRepo.GetByMemberID(clubID, userID)
+}
+
+func (uc *UserUseCases) AddFamilyMember(clubID string, groupID uuid.UUID, memberUserID string) error {
+	if uc.familyGroupRepo == nil {
+		return errors.New("family groups not enabled")
+	}
+	return uc.familyGroupRepo.AddMember(clubID, groupID, memberUserID)
+}
+
+// AddFamilyMemberSecure validates that the requesting user is the family head before adding members.
+// SECURITY FIX (VUL-002): Prevents IDOR by ensuring ownership validation.
+func (uc *UserUseCases) AddFamilyMemberSecure(clubID string, groupID uuid.UUID, memberUserID, requestingUserID string) error {
+	if uc.familyGroupRepo == nil {
+		return errors.New("family groups not enabled")
+	}
+
+	// Validate ownership - only HeadUserID can add members
+	group, err := uc.familyGroupRepo.GetByID(clubID, groupID)
+	if err != nil {
+		return errors.New("group not found")
+	}
+	if group == nil {
+		return errors.New("group not found")
+	}
+
+	if group.HeadUserID != requestingUserID {
+		return errors.New("only the family head can add members")
+	}
+
+	return uc.familyGroupRepo.AddMember(clubID, groupID, memberUserID)
+}
+
+func (uc *UserUseCases) RemoveFamilyMember(clubID string, groupID uuid.UUID, memberUserID string) error {
+	if uc.familyGroupRepo == nil {
+		return errors.New("family groups not enabled")
+	}
+	return uc.familyGroupRepo.RemoveMember(clubID, groupID, memberUserID)
 }

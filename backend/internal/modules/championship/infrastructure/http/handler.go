@@ -8,6 +8,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/domain"
 	clubApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/application"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
 type ChampionshipHandler struct {
@@ -101,6 +102,13 @@ func (h *ChampionshipHandler) GetPublicTournament(c *gin.Context) {
 // ... (Existing methods remain unchanged, appending new methods)
 
 func (h *ChampionshipHandler) AssignVolunteer(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can assign volunteers
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	matchIDStr := c.Param("id")
 	matchID, err := uuid.Parse(matchIDStr)
 	if err != nil {
@@ -119,14 +127,15 @@ func (h *ChampionshipHandler) AssignVolunteer(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get ClubID and AssignerID from context
-	clubID := c.Query("club_id")
+	// SECURITY FIX (VUL-005): Use clubID from context, get assignerID from token
+	clubID := c.GetString("clubID")
 	if clubID == "" {
-		clubID = "default-club-id" // Placeholder if not in context/query
+		c.JSON(http.StatusBadRequest, gin.H{"error": "club context required"})
+		return
 	}
-	assignerID := "admin-id" // Placeholder or from auth token
+	assignerID, _ := c.Get("userID")
 
-	if err := h.volunteerService.AssignVolunteer(c.Request.Context(), clubID, matchID, input.UserID, input.Role, assignerID, input.Notes); err != nil {
+	if err := h.volunteerService.AssignVolunteer(c.Request.Context(), clubID, matchID, input.UserID, input.Role, assignerID.(string), input.Notes); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -142,9 +151,11 @@ func (h *ChampionshipHandler) GetMatchVolunteers(c *gin.Context) {
 		return
 	}
 
-	clubID := c.Query("club_id")
+	// SECURITY FIX (VUL-005): Use clubID from context
+	clubID := c.GetString("clubID")
 	if clubID == "" {
-		clubID = "default-club-id"
+		c.JSON(http.StatusBadRequest, gin.H{"error": "club context required"})
+		return
 	}
 
 	summary, err := h.volunteerService.GetVolunteerSummary(c.Request.Context(), clubID, matchID)
@@ -157,6 +168,13 @@ func (h *ChampionshipHandler) GetMatchVolunteers(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) RemoveVolunteer(c *gin.Context) {
+	// RBAC: Only ADMIN can remove volunteers
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	assignmentIDStr := c.Param("id")
 	assignmentID, err := uuid.Parse(assignmentIDStr)
 	if err != nil {
@@ -164,9 +182,11 @@ func (h *ChampionshipHandler) RemoveVolunteer(c *gin.Context) {
 		return
 	}
 
-	clubID := c.Query("club_id")
+	// SECURITY FIX (VUL-005): Use clubID from context
+	clubID := c.GetString("clubID")
 	if clubID == "" {
-		clubID = "default-club-id"
+		c.JSON(http.StatusBadRequest, gin.H{"error": "club context required"})
+		return
 	}
 
 	if err := h.volunteerService.RemoveVolunteer(c.Request.Context(), clubID, assignmentID); err != nil {
@@ -225,6 +245,13 @@ func (h *ChampionshipHandler) GetMatchesByGroup(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) ScheduleMatch(c *gin.Context) {
+	// SECURITY FIX (VUL-003): Only ADMIN can schedule matches
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	var input application.ScheduleMatchInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -240,6 +267,13 @@ func (h *ChampionshipHandler) ScheduleMatch(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) UpdateMatchResult(c *gin.Context) {
+	// SECURITY FIX (VUL-003): Only ADMIN/STAFF can update match results
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin && role != "STAFF") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN or STAFF role"})
+		return
+	}
+
 	var input application.UpdateMatchResultInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -255,6 +289,13 @@ func (h *ChampionshipHandler) UpdateMatchResult(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) CreateTournament(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can create tournaments
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	var input application.CreateTournamentInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -271,6 +312,13 @@ func (h *ChampionshipHandler) CreateTournament(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) AddStage(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can add stages
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	var input application.AddStageInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -292,6 +340,13 @@ func (h *ChampionshipHandler) AddStage(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) AddGroup(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can add groups
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	var input application.AddGroupInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -313,6 +368,13 @@ func (h *ChampionshipHandler) AddGroup(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) RegisterTeam(c *gin.Context) {
+	// SECURITY FIX (VUL-003): Only ADMIN can register teams
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	clubID := c.GetString("clubID")
 	var input application.RegisterTeamInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -330,6 +392,13 @@ func (h *ChampionshipHandler) RegisterTeam(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) GenerateFixture(c *gin.Context) {
+	// SECURITY FIX (VUL-003): Only ADMIN can generate fixtures
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	clubID := c.GetString("clubID")
 	groupID := c.Param("id")
 	matches, err := h.useCases.GenerateGroupFixture(clubID, groupID)

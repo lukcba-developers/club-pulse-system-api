@@ -33,7 +33,7 @@ func TestUserProfileCategory(t *testing.T) {
 	db.Exec("DISCARD ALL")
 
 	repo := repository.NewPostgresUserRepository(db)
-	useCase := application.NewUserUseCases(repo)
+	useCase := application.NewUserUseCases(repo, nil) // nil FamilyGroupRepo for this test
 	handler := userHttp.NewUserHandler(useCase)
 
 	r := gin.Default()

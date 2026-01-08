@@ -40,7 +40,7 @@ func TestGamificationFlow(t *testing.T) {
 	authUC := authApp.NewAuthUseCases(authR, tokenService, nil)
 
 	userR := userRepo.NewPostgresUserRepository(db)
-	userUC := userApp.NewUserUseCases(userR)
+	userUC := userApp.NewUserUseCases(userR, nil) // nil FamilyGroupRepo for this test
 	userH := userHttp.NewUserHandler(userUC)
 
 	r := gin.New()

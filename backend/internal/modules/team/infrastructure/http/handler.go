@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/domain"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
 type TeamHandler struct {
@@ -34,6 +35,13 @@ type ScheduleMatchRequest struct {
 }
 
 func (h *TeamHandler) ScheduleMatch(c *gin.Context) {
+	// RBAC: Only COACH, ADMIN or SUPER_ADMIN can schedule matches
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleCoach && role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires COACH or ADMIN role"})
+		return
+	}
+
 	clubID := c.GetString("clubID")
 	var req ScheduleMatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -169,6 +177,13 @@ func (h *TeamHandler) GetPlayerIssues(c *gin.Context) {
 // CreateTravelEvent crea un nuevo evento de viaje
 // POST /events
 func (h *TeamHandler) CreateTravelEvent(c *gin.Context) {
+	// RBAC: Only COACH, ADMIN or SUPER_ADMIN can create travel events
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleCoach && role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires COACH or ADMIN role"})
+		return
+	}
+
 	clubID := c.GetString("clubID")
 	createdBy := c.GetString("user_id")
 

@@ -3,31 +3,71 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
+	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 )
 
 func main() {
-	log.Println("Starting Billing Scheduler Job...")
+	log.Println("🚀 Starting Billing Scheduler Service...")
 
 	// 1. Initialize Database
 	database.InitDB()
 	db := database.GetDB()
 
-	// 2. Setup Dependencies
-	// Note: We need to iterate over ALL clubs.
-	// For MVP, we'll assume a single tenant or iterate if we had a ClubRepository.
-	// The current ProcessMonthlyBilling requires a ClubID.
-	// We will query distinct ClubIDs from the memberships table to be robust.
-
-	if err := processAllClubs(db); err != nil {
-		log.Fatalf("Job Failed: %v", err)
+	// 2. Check for one-shot mode
+	if len(os.Args) > 1 && os.Args[1] == "--run-once" {
+		log.Println("Running in one-shot mode...")
+		if err := processAllClubs(db); err != nil {
+			log.Fatalf("Job Failed: %v", err)
+		}
+		log.Println("✅ Billing Job Completed Successfully.")
+		return
 	}
 
-	log.Println("Billing Scheduler Job Completed Successfully.")
+	// 3. Setup Cron Scheduler
+	c := cron.New(cron.WithSeconds())
+
+	// Schedule billing job to run daily at 2:00 AM (low traffic time)
+	// Format: Second Minute Hour DayOfMonth Month DayOfWeek
+	cronSchedule := os.Getenv("BILLING_CRON_SCHEDULE")
+	if cronSchedule == "" {
+		cronSchedule = "0 0 2 * * *" // Default: 2:00 AM daily
+	}
+
+	_, err := c.AddFunc(cronSchedule, func() {
+		log.Printf("⏰ [%s] Starting scheduled billing job...", time.Now().Format(time.RFC3339))
+		if err := processAllClubs(db); err != nil {
+			log.Printf("❌ Billing job failed: %v", err)
+		} else {
+			log.Printf("✅ [%s] Billing job completed successfully", time.Now().Format(time.RFC3339))
+		}
+	})
+	if err != nil {
+		log.Fatalf("Failed to schedule cron job: %v", err)
+	}
+
+	log.Printf("📅 Scheduled billing job with pattern: %s", cronSchedule)
+
+	// 4. Start scheduler
+	c.Start()
+
+	// 5. Wait for shutdown signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("🛑 Shutting down scheduler...")
+	ctx := c.Stop()
+	<-ctx.Done()
+	log.Println("👋 Scheduler stopped gracefully")
 }
 
 func processAllClubs(db *gorm.DB) error {
@@ -38,20 +78,35 @@ func processAllClubs(db *gorm.DB) error {
 		return result.Error
 	}
 
+	if len(clubIDs) == 0 {
+		log.Println("ℹ️ No clubs found with active memberships")
+		return nil
+	}
+
 	membershipRepo := repository.NewPostgresMembershipRepository(db)
 	scholarshipRepo := repository.NewPostgresScholarshipRepository(db)
 	useCases := application.NewMembershipUseCases(membershipRepo, scholarshipRepo)
 
 	ctx := context.Background()
+	totalProcessed := 0
+	failedClubs := []string{}
 
 	for _, clubID := range clubIDs {
-		log.Printf("Processing Club: %s", clubID)
+		log.Printf("  📋 Processing Club: %s", clubID)
 		count, err := useCases.ProcessMonthlyBilling(ctx, clubID)
 		if err != nil {
-			log.Printf("Error processing club %s: %v", clubID, err)
+			log.Printf("  ⚠️ Error processing club %s: %v", clubID, err)
+			failedClubs = append(failedClubs, clubID)
 			continue // Continue with next club
 		}
-		log.Printf("Processed %d memberships for club %s", count, clubID)
+		log.Printf("  ✅ Processed %d memberships for club %s", count, clubID)
+		totalProcessed += count
+	}
+
+	// Summary
+	log.Printf("📊 Billing Summary: %d memberships processed across %d clubs", totalProcessed, len(clubIDs)-len(failedClubs))
+	if len(failedClubs) > 0 {
+		log.Printf("⚠️ Failed clubs: %v", failedClubs)
 	}
 
 	return nil

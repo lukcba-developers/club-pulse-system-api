@@ -144,6 +144,14 @@ func (m *MockFacilityRepo) UpdateEquipment(equipment *facilityDomain.Equipment) 
 	return args.Error(0)
 }
 
+func (m *MockFacilityRepo) ListMaintenanceByFacility(facilityID string) ([]*facilityDomain.MaintenanceTask, error) {
+	args := m.Called(facilityID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*facilityDomain.MaintenanceTask), args.Error(1)
+}
+
 type MockNotificationSender struct {
 	mock.Mock
 }

@@ -172,9 +172,13 @@ func (r *PostgresAuthRepository) SaveRefreshToken(token *domain.RefreshToken) er
 	return nil
 }
 
-func (r *PostgresAuthRepository) GetRefreshToken(token string) (*domain.RefreshToken, error) {
+func (r *PostgresAuthRepository) GetRefreshToken(ctx context.Context, token, clubID string) (*domain.RefreshToken, error) {
 	var tokenModel RefreshTokenModel
-	result := r.db.Where("token = ?", token).First(&tokenModel)
+	// SECURITY: Validate token belongs to a user within the requesting club
+	result := r.db.WithContext(ctx).
+		Joins("JOIN users ON users.id = refresh_tokens.user_id").
+		Where("refresh_tokens.token = ? AND users.club_id = ?", token, clubID).
+		First(&tokenModel)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil

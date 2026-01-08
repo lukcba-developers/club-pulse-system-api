@@ -1,27 +1,26 @@
 package http
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
-	"github.com/shopspring/decimal"
 )
 
+// PaymentHandler handles HTTP requests for payments.
+// Following Clean Architecture: handlers only parse HTTP, delegate logic to use cases.
 type PaymentHandler struct {
-	repo    domain.PaymentRepository
-	gateway domain.PaymentGateway
+	useCases *application.PaymentUseCases
 }
 
-func NewPaymentHandler(repo domain.PaymentRepository, gateway domain.PaymentGateway) *PaymentHandler {
-	return &PaymentHandler{
-		repo:    repo,
-		gateway: gateway,
-	}
+// NewPaymentHandler creates a new PaymentHandler.
+func NewPaymentHandler(useCases *application.PaymentUseCases) *PaymentHandler {
+	return &PaymentHandler{useCases: useCases}
 }
 
+// CheckoutRequest is the HTTP request body for checkout.
 type CheckoutRequest struct {
 	Amount        float64 `json:"amount" binding:"required"`
 	Description   string  `json:"description" binding:"required"`
@@ -30,16 +29,17 @@ type CheckoutRequest struct {
 	ReferenceType string  `json:"reference_type" binding:"required"` // MEMBERSHIP, BOOKING
 }
 
+// OfflinePaymentRequest is the HTTP request body for offline payments.
 type OfflinePaymentRequest struct {
 	Amount        float64 `json:"amount" binding:"required"`
 	Method        string  `json:"method" binding:"required,oneof=CASH LABOR_EXCHANGE TRANSFER"`
 	PayerID       string  `json:"payer_id" binding:"required"`
-	ReferenceID   string  `json:"reference_id"`   // Optional if generic payment
-	ReferenceType string  `json:"reference_type"` // Optional
+	ReferenceID   string  `json:"reference_id"`
+	ReferenceType string  `json:"reference_type"`
 	Notes         string  `json:"notes"`
 }
 
-// Checkout creates a payment Intent and returns the MP Preference URL
+// Checkout creates a payment intent and returns the MP Preference URL.
 func (h *PaymentHandler) Checkout(c *gin.Context) {
 	var req CheckoutRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -47,23 +47,15 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		return
 	}
 
-	// 1. Create Payment Record (Pending)
-	// We assume PayerID comes from Context (Auth Middleware)
 	userIDStr := c.GetString("userID")
-	var userID uuid.UUID
-	var err error
-
-	if userIDStr != "" {
-		userID, err = uuid.Parse(userIDStr)
-		if err != nil {
-			log.Printf("Invalid User ID in context: %v", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user session"})
-			return
-		}
-	} else {
-		// If not authenticated (should be prevented by middleware), fail or prompt login
-		// For now, we return 401
+	if userIDStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user session"})
 		return
 	}
 
@@ -75,118 +67,65 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 
 	clubID := c.GetString("clubID")
 	if clubID == "" {
-		// Defensive: Middleware should ensure this, but handle legacy/error cases
-		// For payments, maybe we want to allow global context? No, strict tenancy.
 		c.JSON(http.StatusBadRequest, gin.H{"error": "club context required for payment"})
 		return
 	}
 
-	payment := &domain.Payment{
-		ID:            uuid.New(),
-		Amount:        decimal.NewFromFloat(req.Amount),
-		Currency:      "ARS",
-		Status:        domain.PaymentStatusPending,
-		Method:        domain.PaymentMethodMercadoPago, // Default for this endpoint
-		PayerID:       userID,
-		ClubID:        clubID,
+	url, err := h.useCases.Checkout(c.Request.Context(), application.CheckoutRequest{
+		Amount:        req.Amount,
+		Description:   req.Description,
+		PayerEmail:    req.PayerEmail,
 		ReferenceID:   refID,
 		ReferenceType: req.ReferenceType,
-	}
-
-	if err := h.repo.Create(c.Request.Context(), payment); err != nil {
-		log.Printf("Failed to create payment: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create payment record", "details": err.Error()})
-		return
-	}
-
-	// 2. Call Gateway
-	url, err := h.gateway.CreatePreference(c.Request.Context(), payment, req.PayerEmail, req.Description)
+		UserID:        userID,
+		ClubID:        clubID,
+	})
 	if err != nil {
-		log.Printf("Gateway Error: %v", err)
-		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to contact payment gateway"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"url": url})
 }
 
-// HandleWebhook receives notifications from payment providers
+// HandleWebhook receives notifications from payment providers.
 func (h *PaymentHandler) HandleWebhook(c *gin.Context) {
-	// 0. Validate Signature
-	if err := h.gateway.ValidateWebhook(c.Request); err != nil {
-		log.Printf("Invalid Webhook Signature: %v", err)
+	// 1. Validate Signature (delegates to use case which uses gateway)
+	if err := h.useCases.ValidateWebhook(c.Request); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "invalid signature"})
 		return
 	}
 
-	// MP query param type=payment
+	// 2. Parse webhook type from query params
 	webhookType := c.Query("type")
-
-	// Sometimes MP sends topic=payment
 	if webhookType == "" {
-		webhookType = c.Query("topic")
+		webhookType = c.Query("topic") // MP sometimes sends "topic" instead
 	}
 
-	if webhookType == "payment" {
-		dataID := c.Query("data.id")
-		if dataID == "" {
-			dataID = c.Query("id")
-		}
-
-		if dataID != "" {
-			updatedPayment, err := h.gateway.ProcessWebhook(c.Request.Context(), dataID)
-			if err != nil {
-				log.Printf("Webhook processing failed (gateway): %v", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "processing failed"})
-				return
-			}
-
-			if updatedPayment != nil {
-				existing, err := h.repo.GetByID(c.Request.Context(), updatedPayment.ID)
-				if err != nil {
-					log.Printf("Payment not found for update: %s", updatedPayment.ID)
-					// If payment not found, maybe 404? But usually we want to retry if it's a race?
-					// Or if it simply doesn't exist, maybe 200 to stop retry loops?
-					// Let's return 200 to stop retries if we really can't find it.
-					c.Status(http.StatusOK)
-					return
-				}
-
-				existing.Status = updatedPayment.Status
-				existing.PaidAt = updatedPayment.PaidAt
-				existing.ExternalID = updatedPayment.ExternalID
-
-				if err := h.repo.Update(c.Request.Context(), existing); err != nil {
-					log.Printf("Failed to update payment status (db): %v", err)
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "db update failed"})
-					return
-				}
-				log.Printf("Payment %s updated to %s", existing.ID, existing.Status)
-			}
-		}
+	dataID := c.Query("data.id")
+	if dataID == "" {
+		dataID = c.Query("id")
 	}
 
+	// 3. Delegate to use case
+	result, err := h.useCases.ProcessWebhook(c.Request.Context(), application.ProcessWebhookRequest{
+		Type:   webhookType,
+		DataID: dataID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return 200 to acknowledge receipt (even if not found, to stop retries)
 	c.Status(http.StatusOK)
+	_ = result // Result logged internally, no need to expose
 }
 
-func RegisterRoutes(r *gin.RouterGroup, handler *PaymentHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
-	payments := r.Group("/payments")
-	{
-		// Protected
-		payments.POST("/checkout", authMiddleware, tenantMiddleware, handler.Checkout)
-		payments.POST("/offline", authMiddleware, tenantMiddleware, handler.CreateOfflinePayment)
-		payments.GET("", authMiddleware, tenantMiddleware, handler.ListPayments)
-
-		// Public (Webhook)
-		payments.POST("/webhook", handler.HandleWebhook)
-	}
-}
-
-// ListPayments returns filtered payments for the dashboard
+// ListPayments returns filtered payments for the dashboard.
 func (h *PaymentHandler) ListPayments(c *gin.Context) {
 	clubID := c.GetString("clubID")
 
-	// Parse Filters
 	var filter domain.PaymentFilter
 
 	if payerID := c.Query("payer_id"); payerID != "" {
@@ -199,11 +138,9 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 		filter.Status = domain.PaymentStatus(status)
 	}
 
-	// Pagination
 	filter.Limit = 20 // Default
-	// Parse other pagination params if needed (offset, limit from query)
 
-	payments, total, err := h.repo.List(c.Request.Context(), clubID, filter)
+	payments, total, err := h.useCases.ListPayments(c.Request.Context(), clubID, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list payments"})
 		return
@@ -215,8 +152,16 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 	})
 }
 
-// CreateOfflinePayment registers a payment made outside the system
+// CreateOfflinePayment registers a payment made outside the system.
+// SECURITY: Only ADMIN and STAFF can register offline payments.
 func (h *PaymentHandler) CreateOfflinePayment(c *gin.Context) {
+	// RBAC Check
+	role := c.GetString("userRole")
+	if role != "ADMIN" && role != "STAFF" && role != "SUPER_ADMIN" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions to create offline payments"})
+		return
+	}
+
 	var req OfflinePaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -225,37 +170,44 @@ func (h *PaymentHandler) CreateOfflinePayment(c *gin.Context) {
 
 	clubID := c.GetString("clubID")
 
-	// Validate Payer
 	payerUUID, err := uuid.Parse(req.PayerID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payer_id"})
 		return
 	}
 
-	// Optional Reference
 	var refID uuid.UUID
 	if req.ReferenceID != "" {
 		refID, _ = uuid.Parse(req.ReferenceID)
 	}
 
-	payment := &domain.Payment{
-		ID:            uuid.New(),
-		Amount:        decimal.NewFromFloat(req.Amount),
-		Currency:      "ARS",
-		Status:        domain.PaymentStatusCompleted, // Offline payments are usually recorded when completed
+	payment, err := h.useCases.CreateOfflinePayment(c.Request.Context(), application.CreateOfflinePaymentRequest{
+		Amount:        req.Amount,
 		Method:        domain.PaymentMethod(req.Method),
 		PayerID:       payerUUID,
-		ClubID:        clubID,
 		ReferenceID:   refID,
 		ReferenceType: req.ReferenceType,
 		Notes:         req.Notes,
-	}
-
-	if err := h.repo.Create(c.Request.Context(), payment); err != nil {
-		log.Printf("Failed to create offline payment: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record payment"})
+		ClubID:        clubID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"data": payment})
+}
+
+// RegisterRoutes registers payment HTTP routes.
+func RegisterRoutes(r *gin.RouterGroup, handler *PaymentHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
+	payments := r.Group("/payments")
+	{
+		// Protected endpoints
+		payments.POST("/checkout", authMiddleware, tenantMiddleware, handler.Checkout)
+		payments.POST("/offline", authMiddleware, tenantMiddleware, handler.CreateOfflinePayment)
+		payments.GET("", authMiddleware, tenantMiddleware, handler.ListPayments)
+
+		// Public endpoint (Webhook)
+		payments.POST("/webhook", handler.HandleWebhook)
+	}
 }

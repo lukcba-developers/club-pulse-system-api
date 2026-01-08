@@ -2,12 +2,12 @@ package http
 
 import (
 	"net/http"
-
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/application"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
 type DisciplineHandler struct {
@@ -68,6 +68,13 @@ type CreateTournamentRequest struct {
 }
 
 func (h *DisciplineHandler) CreateTournament(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can create tournaments
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	var req CreateTournamentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -135,6 +142,13 @@ type ScheduleMatchRequest struct {
 }
 
 func (h *DisciplineHandler) ScheduleMatch(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can schedule matches
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	tournamentID := c.Param("id")
 	var req ScheduleMatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -168,6 +182,13 @@ type UpdateMatchResultRequest struct {
 }
 
 func (h *DisciplineHandler) UpdateMatchResult(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can update match results
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
 	matchID := c.Param("id")
 	var req UpdateMatchResultRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

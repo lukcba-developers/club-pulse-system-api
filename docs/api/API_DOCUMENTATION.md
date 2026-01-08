@@ -5,7 +5,7 @@ Esta API impulsa el Sistema Club Pulse, gestionando la autenticación de usuario
 Está construida siguiendo una Arquitectura Limpia (Clean Architecture) y un patrón de Monolito Modular.
 
 - **Base URL**: `http://localhost:8081/api/v1`
-- **Autenticación**: Bearer Token (JWT)
+- **Autenticación**: El sistema utiliza **Cookies HttpOnly** (`access_token` y `refresh_token`). No es necesario incluir el header manual `Authorization` en el navegador después del login.
 
 ## 1. Módulo de Autenticación (Auth)
 
@@ -23,8 +23,8 @@ Crea una nueva cuenta de usuario.
   }
   ```
 
-### Iniciar Sesión
-Autentica a un usuario y devuelve un token JWT.
+### Iniciar Sesión (Login)
+Autentica a un usuario y establece cookies seguras.
 - **Endpoint**: `POST /auth/login`
 - **Público**
 - **Body**:
@@ -34,13 +34,25 @@ Autentica a un usuario y devuelve un token JWT.
     "password": "securePassword123"
   }
   ```
-- **Respuesta**:
+- **Respuesta**: `200 OK`
   ```json
-  {
-    "access_token": "eyJhbGciOi...",
-    "expires_in": 86400
-  }
+  { "message": "Login successful" }
   ```
+- **Cookies**: Se establecen `access_token` (24h) y `refresh_token` (7d).
+
+### Login Social (Google)
+Inicia sesión utilizando un código de intercambio de Google OAuth.
+- **Endpoint**: `POST /auth/google`
+- **Público**
+- **Body**: `{ "code": "4/0A..." }`
+
+### Ver Sesiones Activas
+Lista todas las sesiones activas del usuario actual.
+- **Endpoint**: `GET /auth/sessions`
+
+### Revocar Sesión
+Cierra una sesión específica.
+- **Endpoint**: `DELETE /auth/sessions/:id`
 
 ## 2. Módulo de Usuarios (Users)
 
@@ -128,7 +140,19 @@ Obtiene todos los planes de membresía disponibles.
 ### Obtener Mi Membresía
 Obtiene el estado de la suscripción del usuario actual.
 - **Endpoint**: `GET /memberships`
-- **Headers**: `Authorization: Bearer <token>`
+
+### Becas (Scholarships) - Admin
+Gestiona descuentos especiales para socios.
+- **Endpoint**: `POST /memberships/scholarships`
+- **Body**:
+  ```json
+  {
+    "user_id": "uuid",
+    "percentage": 50,
+    "reason": "Deportista Federado",
+    "valid_until": "2025-12-31T23:59:59Z"
+  }
+  ```
 
 ## 5. Módulo de Reservas (Bookings)
 
@@ -145,13 +169,12 @@ Reserva una instalación para un horario específico.
     "guest_details": [
       {
         "name": "Nombre del Invitado",
-        "dni": "12345678",
-        "fee_amount": 1500.00
+        "dni": "12345678"
       }
     ]
   }
   ```
-- **Notas**: El `user_id` se obtiene automáticamente del token de autenticación. `guest_details` es opcional.
+- **Notas**: El `user_id` se obtiene automáticamente del token de autenticación. `guest_details` es opcional. Se requiere **Certificado Médico** válido para procesar la reserva.
 - **Errores**:
   - `409 Conflict`: Si el horario ya está ocupado.
 
@@ -200,14 +223,29 @@ Obtiene los slots de tiempo y su estado para una instalación y fecha.
   ```
 
 ### Unirse a la Lista de Espera
-Añade al usuario a la lista de espera para un recurso en una fecha/hora específica.
+Añade al usuario a la lista de espera para una instalación en un horario específico.
 - **Endpoint**: `POST /bookings/waitlist`
-- **Headers**: `Authorization: Bearer <token>`
 - **Body**:
   ```json
   {
     "resource_id": "uuid-de-instalacion",
     "target_date": "2025-10-20T10:00:00Z"
+  }
+  ```
+
+### Reservas Recurrentes (Admin)
+Define una regla de reserva fija (ej: todos los lunes).
+- **Endpoint**: `POST /bookings/recurring-rules`
+- **Body**:
+  ```json
+  {
+    "facility_id": "uuid",
+    "type": "WEEKLY",
+    "day_of_week": 1,
+    "start_time": "18:00",
+    "end_time": "19:00",
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31"
   }
   ```
 
@@ -217,30 +255,24 @@ Añade al usuario a la lista de espera para un recurso en una fecha/hora especí
 ### Iniciar Pago (Checkout)
 Genera una preferencia de pago y devuelve la URL para redirigir al usuario.
 - **Endpoint**: `POST /payments/checkout`
-- **Headers**: `Authorization: Bearer <token>`
+### Registrar Pago Offline (Admin)
+Registra un pago realizado en efectivo o mediante intercambio de mano de obra.
+- **Endpoint**: `POST /payments`
 - **Body**:
   ```json
   {
     "amount": 5000.00,
-    "currency": "ARS",
-    "description": "Cuota Mensual - Enero",
-    "payer_email": "user@example.com",
-    "reference_id": "membership-uuid", // ID de lo que se paga
-    "reference_type": "MEMBERSHIP"
-  }
-  ```
-- **Respuesta**:
-  ```json
-  {
-    "init_point": "https://www.mercadopago.com.ar/checkout/v1/redirect/...",
-    "preference_id": "..."
+    "method": "CASH", // "CASH", "LABOR_EXCHANGE", "TRANSFER"
+    "payer_id": "uuid-del-socio",
+    "reference_id": "uuid-factura",
+    "notes": "Detalle del pago o trabajo realizado"
   }
   ```
 
 ### Integración Webhook (MercadoPago)
-Endpoint para recibir notificaciones de estado de pagos.
+Endpoint para recibir notificaciones de estado de pagos digitales.
 - **Endpoint**: `POST /payments/webhook`
-- **Público** (Debe validar firma en producción)
+- **Público**
 - **Query Params**:
   - `type`: Tipo de evento (ej. `payment`).
 - **Body**: Payload del proveedor de pagos.
@@ -304,7 +336,6 @@ Obtiene o crea la lista de asistencia para un grupo/categoría en una fecha.
 ### Marcar Asistencia
 Actualiza el estado de un alumno en la lista.
 - **Endpoint**: `POST /attendance/:listID/records`
-- **Headers**: `Authorization: Bearer <token>`
 - **Body**:
   ```json
   {
@@ -313,4 +344,16 @@ Actualiza el estado de un alumno en la lista.
     "notes": "Llegó tarde por tráfico"
   }
   ```
+
+## 9. Módulo de Grupos Familiares (Family)
+
+### Crear Grupo Familiar
+Crea un grupo para vincular múltiples socios bajo una misma unidad de facturación.
+- **Endpoint**: `POST /family/groups`
+- **Body**: `{ "name": "Familia García" }`
+
+### Invitar a Miembro
+Añade un miembro al grupo familiar.
+- **Endpoint**: `POST /family/groups/:id/members`
+- **Body**: `{ "user_id": "uuid-miembro", "role": "MEMBER" }`
 - **Respuesta**: `200 OK`

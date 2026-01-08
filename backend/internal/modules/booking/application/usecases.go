@@ -72,7 +72,8 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 	}
 
 	// 2. Business Rule Validation (Facility Status & Conflicts)
-	if err := uc.validateBookingRules(clubID, dto.FacilityID, facilityID, dto.StartTime, dto.EndTime); err != nil {
+	facility, err := uc.validateBookingRules(clubID, dto.FacilityID, facilityID, dto.StartTime, dto.EndTime)
+	if err != nil {
 		return nil, err
 	}
 
@@ -81,29 +82,36 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 		return nil, err
 	}
 
-	// 2.2 Calculate Price
-	facility, err := uc.facilityRepo.GetByID(clubID, facilityID.String())
-	if err != nil {
-		return nil, err
-	}
+	// 2.2 Calculate Price (Using already fetched facility)
 	dtoDuration := dto.EndTime.Sub(dto.StartTime).Hours()
 	basePrice := dtoDuration * facility.HourlyRate
 	guestPrice := float64(len(dto.GuestDetails)) * facility.GuestFee
 	totalPrice := basePrice + guestPrice
 
 	// 3. Entity Construction
+	// Determine initial status based on whether payment is required
+	initialStatus := bookingDomain.BookingStatusConfirmed
+	var paymentExpiry *time.Time
+	if totalPrice > 0 {
+		initialStatus = bookingDomain.BookingStatusPendingPayment
+		// SECURITY FIX (VUL-001): Set payment expiry to 15 minutes
+		expiry := time.Now().Add(15 * time.Minute)
+		paymentExpiry = &expiry
+	}
+
 	booking := &bookingDomain.Booking{
-		ID:           uuid.New(),
-		UserID:       userID,
-		FacilityID:   facilityID,
-		ClubID:       clubID,
-		StartTime:    dto.StartTime,
-		EndTime:      dto.EndTime,
-		TotalPrice:   totalPrice,
-		Status:       bookingDomain.BookingStatusConfirmed,
-		GuestDetails: dto.GuestDetails,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:            uuid.New(),
+		UserID:        userID,
+		FacilityID:    facilityID,
+		ClubID:        clubID,
+		StartTime:     dto.StartTime,
+		EndTime:       dto.EndTime,
+		TotalPrice:    totalPrice,
+		Status:        initialStatus,
+		GuestDetails:  dto.GuestDetails,
+		PaymentExpiry: paymentExpiry,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	// 4. Persistence
@@ -111,8 +119,10 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 		return nil, err
 	}
 
-	// 5. Side Effects (Notifications) - Async
-	uc.notifyAsync(userID.String(), booking.ID.String())
+	// 5. Side Effects (Notifications) - Only send confirmation if no payment required
+	if initialStatus == bookingDomain.BookingStatusConfirmed {
+		uc.notifyAsync(userID.String(), booking.ID.String())
+	}
 
 	return booking, nil
 }
@@ -206,6 +216,28 @@ func (uc *BookingUseCases) GetAvailability(clubID, facilityID string, date time.
 		return nil, err
 	}
 
+	// 1.5. OPTIMIZATION: Fetch Maintenance Tasks Upfront (Avoid N+1)
+	allMaintenance, err := uc.facilityRepo.ListMaintenanceByFacility(facilityID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter maintenance for this day (Simple In-Memory Filter)
+	// In a real high-scale system, we'd add 'ListMaintenanceByDateRange' to the repository.
+	dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	dayEnd := dayStart.Add(24 * time.Hour)
+
+	var dailyMaintenance []facilityDomain.MaintenanceTask
+	for _, m := range allMaintenance {
+		// active status check
+		if m.Status == facilityDomain.MaintenanceStatusScheduled || m.Status == facilityDomain.MaintenanceStatusInProgress {
+			// overlap check
+			if m.StartTime.Before(dayEnd) && m.EndTime.After(dayStart) {
+				dailyMaintenance = append(dailyMaintenance, *m)
+			}
+		}
+	}
+
 	// 2. Calculate Slots
 	startHour := facility.OpeningHour
 	endHour := facility.ClosingHour
@@ -222,7 +254,8 @@ func (uc *BookingUseCases) GetAvailability(clubID, facilityID string, date time.
 		slotStart := time.Date(date.Year(), date.Month(), date.Day(), h, 0, 0, 0, date.Location())
 		slotEnd := slotStart.Add(1 * time.Hour)
 
-		status := uc.determineSlotStatus(clubID, facilityID, slotStart, slotEnd, bookings)
+		// Pass pre-fetched maintenance to helper
+		status := uc.determineSlotStatusInMemory(slotStart, slotEnd, bookings, dailyMaintenance)
 
 		slots = append(slots, map[string]interface{}{
 			"start_time": slotStart.Format("15:04"),
@@ -272,8 +305,7 @@ func (uc *BookingUseCases) CreateRecurringRule(clubID string, dto CreateRecurrin
 
 // GenerateBookingsFromRules looks ahead and materializes recurring bookings.
 // Refactored to separate logic from loop complexity.
-func (uc *BookingUseCases) GenerateBookingsFromRules(clubID string, weeks int) error {
-	ctx := context.Background()
+func (uc *BookingUseCases) GenerateBookingsFromRules(ctx context.Context, clubID string, weeks int) error {
 	rules, err := uc.recurringRepo.GetAllActive(ctx, clubID)
 	if err != nil {
 		return err
@@ -311,38 +343,38 @@ func parseBookingIDs(dto CreateBookingDTO) (uuid.UUID, uuid.UUID, error) {
 	return usrID, facID, nil
 }
 
-func (uc *BookingUseCases) validateBookingRules(clubID, facilityIDStr string, facilityID uuid.UUID, start, end time.Time) error {
+func (uc *BookingUseCases) validateBookingRules(clubID, facilityIDStr string, facilityID uuid.UUID, start, end time.Time) (*facilityDomain.Facility, error) {
 	// 1. Check Facility Existence & Status
 	facility, err := uc.facilityRepo.GetByID(clubID, facilityIDStr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if facility == nil {
-		return errors.New("facility not found")
+		return nil, errors.New("facility not found")
 	}
 	if facility.Status != facilityDomain.FacilityStatusActive {
-		return errors.New("facility is not active (current status: " + string(facility.Status) + ")")
+		return nil, errors.New("facility is not active (current status: " + string(facility.Status) + ")")
 	}
 
 	// 2. Check Existing Bookings
 	conflict, err := uc.repo.HasTimeConflict(clubID, facilityID, start, end)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if conflict {
-		return errors.New("booking time conflict: facility is already booked for this requested time")
+		return nil, errors.New("booking time conflict: facility is already booked for this requested time")
 	}
 
 	// 3. Check Maintenance Schedules
 	maintConflict, err := uc.facilityRepo.HasConflict(clubID, facilityIDStr, start, end)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if maintConflict {
-		return errors.New("booking time conflict: facility is scheduled for maintenance during this time")
+		return nil, errors.New("booking time conflict: facility is scheduled for maintenance during this time")
 	}
 
-	return nil
+	return facility, nil
 }
 
 func (uc *BookingUseCases) validateUserHealth(clubID, userID string) error {
@@ -380,7 +412,7 @@ func (uc *BookingUseCases) notifyAsync(userID, bookingID string) {
 	}()
 }
 
-func (uc *BookingUseCases) determineSlotStatus(clubID, facilityID string, start, end time.Time, bookings []bookingDomain.Booking) string {
+func (uc *BookingUseCases) determineSlotStatusInMemory(start, end time.Time, bookings []bookingDomain.Booking, maintenance []facilityDomain.MaintenanceTask) string {
 	// 1. Check Overlap with Bookings
 	for _, b := range bookings {
 		if b.StartTime.Before(end) && b.EndTime.After(start) {
@@ -388,13 +420,11 @@ func (uc *BookingUseCases) determineSlotStatus(clubID, facilityID string, start,
 		}
 	}
 
-	// 2. Check overlap with Maintenance
-	// Note: In detailed logic, facilityRepo.HasConflict checks DB.
-	// For high performance, maintenance intervals should be pre-fetched along with bookings within the date range,
-	// avoiding N+1 queries inside this loop. Keeping N+1 for MVP parity but noting it.
-	maint, _ := uc.facilityRepo.HasConflict(clubID, facilityID, start, end)
-	if maint {
-		return "maintenance"
+	// 2. Check Overlap with Maintenance (In-Memory)
+	for _, m := range maintenance {
+		if m.StartTime.Before(end) && m.EndTime.After(start) {
+			return "maintenance"
+		}
 	}
 
 	return "available"

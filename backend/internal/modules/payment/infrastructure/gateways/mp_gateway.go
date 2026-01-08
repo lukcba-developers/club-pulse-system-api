@@ -140,9 +140,9 @@ func (g *MercadoPagoGateway) ProcessWebhook(ctx context.Context, payload interfa
 }
 func (g *MercadoPagoGateway) ValidateWebhook(req *http.Request) error {
 	if g.webhookSecret == "" {
-		// If no secret configured (e.g. dev), maybe allow or warn?
-		// For security task, we should block.
-		return fmt.Errorf("webhook secret not configured")
+		// SECURITY FIX (VUL-007): Log critical security warning
+		fmt.Println("[SECURITY] CRITICAL: MP_WEBHOOK_SECRET not configured - webhook signature validation disabled")
+		return fmt.Errorf("SECURITY: webhook signature validation disabled - MP_WEBHOOK_SECRET not configured")
 	}
 
 	// 1. Get Headers
