@@ -252,8 +252,9 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 }
 
 // RegisterRoutes sets up authentication endpoints.
-func RegisterRoutes(r *gin.RouterGroup, h *AuthHandler, authMiddleware gin.HandlerFunc) {
+func RegisterRoutes(r *gin.RouterGroup, h *AuthHandler, authMiddleware gin.HandlerFunc, tenantMiddleware gin.HandlerFunc) {
 	authGroup := r.Group("/auth")
+	authGroup.Use(tenantMiddleware)
 	{
 		authGroup.POST("/register", h.Register)
 		authGroup.POST("/login", h.Login)

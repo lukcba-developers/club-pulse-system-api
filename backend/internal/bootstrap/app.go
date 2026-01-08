@@ -165,7 +165,7 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	authHandler := authHttp.NewAuthHandler(authUseCase)
 	authMiddleware := authHttp.AuthMiddleware(tokenService)
 
-	authHttp.RegisterRoutes(api, authHandler, authMiddleware)
+	authHttp.RegisterRoutes(api, authHandler, authMiddleware, tenantMiddleware)
 
 	// --- Module: User ---
 	userRepository := userRepo.NewPostgresUserRepository(db)

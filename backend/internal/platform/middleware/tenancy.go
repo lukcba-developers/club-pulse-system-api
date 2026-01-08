@@ -14,7 +14,9 @@ const ContextUserRole = "userRole"
 
 func TenantMiddleware(clubRepo clubDomain.ClubRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Public Routes Bypass
+		clubID := c.GetHeader(HeaderClubID)
+
+		// Public Routes Bypass (But set ClubID if provided in header)
 		publicPaths := map[string]bool{
 			"/api/v1/health":        true,
 			"/api/v1/auth/login":    true,
@@ -23,11 +25,12 @@ func TenantMiddleware(clubRepo clubDomain.ClubRepository) gin.HandlerFunc {
 			"/api/v1/auth/google":   true,
 		}
 		if publicPaths[c.Request.URL.Path] {
+			if clubID != "" {
+				c.Set(ContextClubID, clubID)
+			}
 			c.Next()
 			return
 		}
-
-		clubID := c.GetHeader(HeaderClubID)
 
 		// 1. Get Auth Context
 		role, _ := c.Get(ContextUserRole)

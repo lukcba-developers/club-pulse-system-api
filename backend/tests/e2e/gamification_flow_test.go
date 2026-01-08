@@ -49,9 +49,11 @@ func TestGamificationFlow(t *testing.T) {
 	// Create User
 	email := "gamer@test.com"
 	registerDTO := authApp.RegisterDTO{
-		Name:     "Gamer One",
-		Email:    email,
-		Password: "password",
+		Name:                 "Gamer One",
+		Email:                email,
+		Password:             "password",
+		AcceptTerms:          true,
+		PrivacyPolicyVersion: "2026-01",
 	}
 	// Cleaning if exists
 	existing, _ := authR.FindUserByEmail(context.Background(), email, clubID)

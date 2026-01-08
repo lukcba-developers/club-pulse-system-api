@@ -22,8 +22,8 @@ func TestOddTeamsFixtureGeneration(t *testing.T) {
 	db := database.GetDB()
 
 	// Clean tables
-	_ = db.Migrator().DropTable(&domain.Tournament{}, &domain.TournamentStage{}, &domain.Group{}, &domain.Standing{}, &domain.TournamentMatch{})
-	_ = db.AutoMigrate(&domain.Tournament{}, &domain.TournamentStage{}, &domain.Group{}, &domain.Standing{}, &domain.TournamentMatch{})
+	_ = db.Migrator().DropTable(&domain.Tournament{}, &domain.TournamentStage{}, &domain.Group{}, &domain.Standing{}, &domain.TournamentMatch{}, &domain.Team{})
+	_ = db.AutoMigrate(&domain.Tournament{}, &domain.TournamentStage{}, &domain.Group{}, &domain.Standing{}, &domain.TournamentMatch{}, &domain.Team{})
 
 	repo := championshipRepo.NewPostgresChampionshipRepository(db)
 	uc := championshipApp.NewChampionshipUseCases(repo, nil, nil)
@@ -52,12 +52,15 @@ func TestOddTeamsFixtureGeneration(t *testing.T) {
 	teams := []string{"Team A", "Team B", "Team C"}
 	for range teams {
 		tID := uuid.New()
-		db.Create(&domain.Standing{
+		err := db.Create(&domain.Standing{
 			ID:      uuid.New(),
 			GroupID: groupID,
 			TeamID:  tID,
 			// Simplified standing, enough for fixture generation
-		})
+		}).Error
+		if err != nil {
+			t.Fatalf("Failed to create standing: %v", err)
+		}
 	}
 
 	t.Run("Generate Fixture with 3 Teams", func(t *testing.T) {
@@ -65,7 +68,7 @@ func TestOddTeamsFixtureGeneration(t *testing.T) {
 		h.RegisterRoutes(group, authMw, func(c *gin.Context) { c.Next() })
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/api/v1/groups/"+groupID.String()+"/fixture", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/championships/groups/"+groupID.String()+"/fixture", nil)
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusCreated, w.Code)

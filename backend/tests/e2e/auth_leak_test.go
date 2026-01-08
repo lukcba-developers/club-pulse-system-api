@@ -45,7 +45,7 @@ func TestAuthDataLeak(t *testing.T) {
 		c.Next()
 	})
 
-	authHttp.RegisterRoutes(r.Group("/api/v1"), authH, func(c *gin.Context) { c.Next() })
+	authHttp.RegisterRoutes(r.Group("/api/v1"), authH, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
 
 	// 2. Create User in CLUB A
 	email := "leaker@test.com"
@@ -54,9 +54,11 @@ func TestAuthDataLeak(t *testing.T) {
 
 	// Register in Club A (Direct UseCase call)
 	_, err := authUC.Register(context.Background(), authApp.RegisterDTO{
-		Name:     "Leaker User",
-		Email:    email,
-		Password: "password",
+		Name:                 "Leaker User",
+		Email:                email,
+		Password:             "password",
+		AcceptTerms:          true,
+		PrivacyPolicyVersion: "2026-01",
 	}, clubA)
 	require.NoError(t, err)
 

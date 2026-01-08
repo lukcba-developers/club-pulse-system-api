@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Authentication Flow', () => {
     test('should login successfully with HttpOnly cookies', async ({ page, context }) => {
+        // Debug: Log browser console messages to debug CI failures
+
+
         // 1. Navigate to Login (required for page context)
         await page.goto('/login');
 
@@ -12,22 +15,27 @@ test.describe('Authentication Flow', () => {
 
         await page.evaluate(async ({ url, email }) => {
             const CLUB_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-            try {
-                const response = await fetch(`${url}/auth/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Club-ID': CLUB_ID
-                    },
-                    body: JSON.stringify({
-                        name: 'System Admin',
-                        email: email,
-                        password: 'admin123',
-                    })
-                });
-                console.log('Registration status:', response.status);
-            } catch (e) {
-                console.log('Registration fetch warning:', e);
+
+            // Force ClubID in localStorage to ensure axios uses it matches our registration
+            localStorage.setItem('clubID', CLUB_ID);
+
+            const response = await fetch(`${url}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Club-ID': CLUB_ID
+                },
+                body: JSON.stringify({
+                    name: 'System Admin',
+                    email: email,
+                    password: 'admin123',
+                    accept_terms: true,
+                    privacy_policy_version: '2026-01'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Registration failed with status ${response.status}`);
             }
         }, { url: apiUrl, email: uniqueEmail });
 
@@ -42,8 +50,7 @@ test.describe('Authentication Flow', () => {
         await expect(page).toHaveURL('/');
 
         // 5. Verify Dashboard Content
-        // Assuming "Bienvenido" or user name is shown.
-        await expect(page.getByText('Bienvenido, System Admin')).toBeVisible();
+        await expect(page.getByText('Hola, System Admin')).toBeVisible();
 
         // 6. Verify LocalStorage is Clean (Security Requirement)
         const token = await page.evaluate(() => localStorage.getItem('token'));

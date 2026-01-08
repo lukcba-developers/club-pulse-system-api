@@ -13,6 +13,7 @@ import (
 
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	paymentDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 
 	"gorm.io/gorm"
 )
@@ -46,6 +47,10 @@ func InitInfrastructure() (*Infrastructure, error) {
 	}
 	if err := db.AutoMigrate(&bookingDomain.RecurringRule{}); err != nil {
 		logger.Error(fmt.Sprintf("Failed to migrate recurring_rule table: %v", err))
+	}
+	// Migrate User table to ensure columns like google_id exist
+	if err := db.AutoMigrate(&userDomain.User{}); err != nil {
+		logger.Error(fmt.Sprintf("Failed to migrate users table: %v", err))
 	}
 
 	return &Infrastructure{

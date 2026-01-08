@@ -19,6 +19,7 @@ import (
 	paymentApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/application"
 	paymentDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
 	paymentRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/repository"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -29,6 +30,9 @@ func TestCancellationRefundFlow(t *testing.T) {
 	// 1. Setup
 	gin.SetMode(gin.TestMode)
 	db := SetupTestDB(t)
+
+	// Ensure UserStats and Wallet tables exist
+	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 
 	// Repos
 	bRepo := bookingRepo.NewPostgresBookingRepository(db)
@@ -84,31 +88,40 @@ func TestCancellationRefundFlow(t *testing.T) {
 	}
 	db.Create(testUser)
 
+	// Create default Stats and Wallet
+	db.Create(&userDomain.UserStats{UserID: userID, Level: 1})
+	db.Create(&userDomain.Wallet{UserID: userID, Balance: 0})
+
 	// Create test facility
 	facID := uuid.New()
-	testFacility := map[string]interface{}{
-		"id":           facID,
-		"club_id":      clubID,
-		"name":         "Test Court",
-		"type":         "CANCHA",
-		"status":       "ACTIVE",
-		"hourly_rate":  100.0,
-		"guest_fee":    0.0,
-		"opening_hour": 8,
-		"closing_hour": 22,
-		"created_at":   time.Now(),
-		"updated_at":   time.Now(),
+	// Create test facility using struct to ensure defaults and types are correct
+	testFacility := &facilitiesRepo.FacilityModel{
+		ID:          facID.String(),
+		ClubID:      clubID,
+		Name:        "Test Court",
+		Type:        "CANCHA",
+		Status:      "active",
+		HourlyRate:  100.0,
+		GuestFee:    0.0,
+		OpeningHour: 8,
+		ClosingHour: 22,
+		Capacity:    10,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
-	db.Table("facilities").Create(&testFacility)
+	db.Create(testFacility)
 
 	// 2. Scenario: Create booking
 	startTime := time.Now().Add(48 * time.Hour).Truncate(time.Hour)
 	endTime := startTime.Add(1 * time.Hour)
 
-	body := `{"facility_id": "` + facID.String() + `", "start_time": "` + startTime.Format(time.RFC3339) + `", "end_time": "` + endTime.Format(time.RFC3339) + `"}`
+	body := `{"user_id": "` + userID + `", "facility_id": "` + facID.String() + `", "start_time": "` + startTime.Format(time.RFC3339) + `", "end_time": "` + endTime.Format(time.RFC3339) + `"}`
 	w1 := httptest.NewRecorder()
 	req1, _ := http.NewRequest("POST", "/bookings", strings.NewReader(body))
 	r.ServeHTTP(w1, req1)
+	if w1.Code != http.StatusCreated {
+		t.Logf("Booking Failed Body: %s", w1.Body.String())
+	}
 	require.Equal(t, http.StatusCreated, w1.Code)
 
 	var bookingCreated bookingDomain.Booking

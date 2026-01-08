@@ -18,6 +18,7 @@ import (
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
 	facilitiesRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func TestBookingAdvancedFlow(t *testing.T) {
 	db := database.GetDB()
 
 	_ = db.Migrator().DropTable(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{})
-	_ = db.AutoMigrate(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{})
+	_ = db.AutoMigrate(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{}, &userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 
 	facRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
 	bookRepo := bookingRepo.NewPostgresBookingRepository(db)

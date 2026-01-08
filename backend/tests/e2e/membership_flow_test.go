@@ -65,9 +65,11 @@ func TestMembershipFlow(t *testing.T) {
 	// 2. Create User
 	email := "mem_test_" + uuid.New().String() + "@example.com"
 	_, err := authUC.Register(context.Background(), authApp.RegisterDTO{
-		Name:     "Mem User",
-		Email:    email,
-		Password: "password",
+		Name:                 "Mem User",
+		Email:                email,
+		Password:             "password",
+		AcceptTerms:          true,
+		PrivacyPolicyVersion: "2026-01",
 	}, "test-club-membership")
 	require.NoError(t, err)
 	user, _ := authR.FindUserByEmail(context.Background(), email, "test-club-membership")

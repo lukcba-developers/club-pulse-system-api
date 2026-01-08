@@ -13,6 +13,7 @@ import (
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
 	facilitiesRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,8 @@ func TestMultiTenantIsolation(t *testing.T) {
 
 	// Clean
 	db.Exec("TRUNCATE TABLE bookings CASCADE")
+	// Ensure UserStats and Wallet exist (Booking flow might access them)
+	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 
 	// Dependencies
 	bookRepo := bookingRepo.NewPostgresBookingRepository(db)
@@ -63,39 +66,47 @@ func TestMultiTenantIsolation(t *testing.T) {
 	futureExpiry := time.Now().Add(365 * 24 * time.Hour)
 	db.Exec("DELETE FROM users WHERE email = ?", "test-multi@test.com")
 	testUser := &userRepo.UserModel{
-		ID:                userIDClubA,
-		Name:              "Test User A",
-		Email:             "test-multi@test.com",
-		Role:              "MEMBER",
-		ClubID:            "club-a",
-		Password:          "$2a$10$placeholder",
-		MedicalCertStatus: validStatus,
-		MedicalCertExpiry: &futureExpiry,
-		CreatedAt:         time.Now(),
-		UpdatedAt:         time.Now(),
+		ID:                   userIDClubA,
+		Name:                 "Test User A",
+		Email:                "test-multi@test.com",
+		Role:                 "MEMBER",
+		ClubID:               "club-a",
+		Password:             "$2a$10$placeholder",
+		MedicalCertStatus:    validStatus,
+		MedicalCertExpiry:    &futureExpiry,
+		TermsAcceptedAt:      &futureExpiry, // Just needs to be non-nil
+		PrivacyPolicyVersion: "2026-01",
+		CreatedAt:            time.Now(),
+		UpdatedAt:            time.Now(),
 	}
 	db.Create(testUser)
+
+	// Create default Stats and Wallet
+	db.Create(&userDomain.UserStats{UserID: userIDClubA, Level: 1})
+	db.Create(&userDomain.Wallet{UserID: userIDClubA, Balance: 0})
 
 	// Create test facility for Club A
 	facID := uuid.New()
 	db.Exec("DELETE FROM facilities WHERE id = ?", facID)
-	testFacility := map[string]interface{}{
-		"id":           facID,
-		"club_id":      "club-a",
-		"name":         "Test Court A",
-		"type":         "CANCHA",
-		"status":       "ACTIVE",
-		"hourly_rate":  0.0, // Free to avoid payment flow
-		"guest_fee":    0.0,
-		"opening_hour": 8,
-		"closing_hour": 22,
-		"created_at":   time.Now(),
-		"updated_at":   time.Now(),
+	// Create test facility using struct to ensure defaults and types are correct
+	testFacility := &facilitiesRepo.FacilityModel{
+		ID:          facID.String(),
+		ClubID:      "club-a",
+		Name:        "Test Court A",
+		Type:        "CANCHA",
+		Status:      "active",
+		HourlyRate:  0.0,
+		GuestFee:    0.0,
+		OpeningHour: 8,
+		ClosingHour: 22,
+		Capacity:    10,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
-	db.Table("facilities").Create(&testFacility)
+	db.Create(testFacility)
 
 	// 2. Scenario: Create in Club A, should NOT see in Club B
-	body := `{"facility_id": "` + facID.String() + `", "start_time": "2025-01-01T10:00:00Z", "end_time": "2025-01-01T11:00:00Z"}`
+	body := `{"user_id": "` + userIDClubA + `", "facility_id": "` + facID.String() + `", "start_time": "2025-01-01T10:00:00Z", "end_time": "2025-01-01T11:00:00Z"}`
 
 	w1 := httptest.NewRecorder()
 	req1, _ := http.NewRequest("POST", "/a/bookings", strings.NewReader(body))

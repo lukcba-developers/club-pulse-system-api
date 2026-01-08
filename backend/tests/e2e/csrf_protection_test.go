@@ -39,9 +39,11 @@ func TestCSRFProtection(t *testing.T) {
 	// Clean up and create test user
 	db.Exec("DELETE FROM users WHERE email = ?", testEmail)
 	_, err := authUC.Register(context.Background(), authApp.RegisterDTO{
-		Name:     "CSRF Test",
-		Email:    testEmail,
-		Password: "password123",
+		Name:                 "CSRF Test",
+		Email:                testEmail,
+		Password:             "password123",
+		AcceptTerms:          true,
+		PrivacyPolicyVersion: "2026-01",
 	}, clubID)
 	if err != nil {
 		t.Logf("User may already exist, continuing: %v", err)
@@ -62,7 +64,7 @@ func TestCSRFProtection(t *testing.T) {
 	// CSRF Middleware
 	r.Use(middleware.CSRFMiddleware())
 
-	authHttp.RegisterRoutes(r.Group("/api/v1"), authH, func(c *gin.Context) { c.Next() })
+	authHttp.RegisterRoutes(r.Group("/api/v1"), authH, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
 
 	// 2. Test: Login should work without CSRF (it's in exclusion list)
 	t.Run("Login Without CSRF Token Succeeds", func(t *testing.T) {

@@ -46,7 +46,7 @@ func TestAccessFlow(t *testing.T) {
 	// AutoMigrate test dependencies
 	// Note: Auth Repo typically migrates 'users' but might miss 'club_id' if using an older model definition.
 	// We force migration with UserRepo's model which has it.
-	_ = db.AutoMigrate(&userRepo.UserModel{})
+	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 	// MembershipTier and Membership are migrated by NewPostgresMembershipRepository
 
 	// 2. Setup Dependencies
@@ -89,9 +89,11 @@ func TestAccessFlow(t *testing.T) {
 	// Create User
 	email := "access_test_" + uuid.New().String() + "@example.com"
 	_, err = authUC.Register(context.Background(), authApp.RegisterDTO{
-		Name:     "Access User",
-		Email:    email,
-		Password: "password",
+		Name:                 "Access User",
+		Email:                email,
+		Password:             "password",
+		AcceptTerms:          true,
+		PrivacyPolicyVersion: "2026-01",
 	}, "test-club-1")
 	require.NoError(t, err)
 
