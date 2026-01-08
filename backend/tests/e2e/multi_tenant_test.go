@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -49,13 +50,52 @@ func TestMultiTenantIsolation(t *testing.T) {
 	}
 
 	// Route for Club A
-	r.POST("/a/bookings", tenantMw("club-a"), authMw, bookH.Create)
+	userIDClubA := uuid.New().String()
+	r.POST("/a/bookings", tenantMw("club-a"), func(c *gin.Context) {
+		c.Set("userID", userIDClubA)
+		c.Next()
+	}, bookH.Create)
 	// Route for Club B
 	r.GET("/b/bookings", tenantMw("club-b"), authMw, bookH.List)
 
+	// Create test user with valid medical certificate for Club A
+	validStatus := "VALID"
+	futureExpiry := time.Now().Add(365 * 24 * time.Hour)
+	db.Exec("DELETE FROM users WHERE email = ?", "test-multi@test.com")
+	testUser := &userRepo.UserModel{
+		ID:                userIDClubA,
+		Name:              "Test User A",
+		Email:             "test-multi@test.com",
+		Role:              "MEMBER",
+		ClubID:            "club-a",
+		Password:          "$2a$10$placeholder",
+		MedicalCertStatus: validStatus,
+		MedicalCertExpiry: &futureExpiry,
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
+	}
+	db.Create(testUser)
+
+	// Create test facility for Club A
+	facID := uuid.New()
+	db.Exec("DELETE FROM facilities WHERE id = ?", facID)
+	testFacility := map[string]interface{}{
+		"id":           facID,
+		"club_id":      "club-a",
+		"name":         "Test Court A",
+		"type":         "CANCHA",
+		"status":       "ACTIVE",
+		"hourly_rate":  0.0, // Free to avoid payment flow
+		"guest_fee":    0.0,
+		"opening_hour": 8,
+		"closing_hour": 22,
+		"created_at":   time.Now(),
+		"updated_at":   time.Now(),
+	}
+	db.Table("facilities").Create(&testFacility)
+
 	// 2. Scenario: Create in Club A, should NOT see in Club B
-	facID := uuid.New().String()
-	body := `{"facility_id": "` + facID + `", "start_time": "2025-01-01T10:00:00Z", "end_time": "2025-01-01T11:00:00Z"}`
+	body := `{"facility_id": "` + facID.String() + `", "start_time": "2025-01-01T10:00:00Z", "end_time": "2025-01-01T11:00:00Z"}`
 
 	w1 := httptest.NewRecorder()
 	req1, _ := http.NewRequest("POST", "/a/bookings", strings.NewReader(body))
@@ -68,5 +108,5 @@ func TestMultiTenantIsolation(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w2.Code)
 
 	// Response body should have 0 bookings for Club B
-	assert.Equal(t, "[]", w2.Body.String())
+	assert.Equal(t, `{"data":[]}`, w2.Body.String())
 }

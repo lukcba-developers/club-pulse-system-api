@@ -145,3 +145,33 @@ func (r *PostgresAttendanceRepository) mapToDomain(model *AttendanceListModel) *
 		UpdatedAt:       model.UpdatedAt,
 	}
 }
+
+// GetAttendanceStats returns the count of present sessions (PRESENT or LATE) and total sessions for a user in a date range.
+func (r *PostgresAttendanceRepository) GetAttendanceStats(clubID, userID string, from, to time.Time) (present, total int, err error) {
+	// Count total records for this user in this club within the date range
+	var totalCount int64
+	err = r.db.Table("attendance_records ar").
+		Joins("JOIN attendance_lists al ON ar.attendance_list_id = al.id").
+		Where("al.club_id = ?", clubID).
+		Where("ar.user_id = ?", userID).
+		Where("al.date >= ? AND al.date <= ?", from, to).
+		Count(&totalCount).Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Count present records (PRESENT or LATE)
+	var presentCount int64
+	err = r.db.Table("attendance_records ar").
+		Joins("JOIN attendance_lists al ON ar.attendance_list_id = al.id").
+		Where("al.club_id = ?", clubID).
+		Where("ar.user_id = ?", userID).
+		Where("al.date >= ? AND al.date <= ?", from, to).
+		Where("ar.status IN (?, ?)", string(domain.StatusPresent), string(domain.StatusLate)).
+		Count(&presentCount).Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return int(presentCount), int(totalCount), nil
+}

@@ -359,6 +359,10 @@ func RegisterRoutes(r *gin.RouterGroup, handler *UserHandler, authMiddleware, te
 		users.GET("/family-groups/me", handler.GetMyFamilyGroup)
 		users.POST("/family-groups/:id/members", handler.AddFamilyMember)
 
+		// GDPR Rights Endpoints
+		users.GET("/me/data-export", handler.ExportMyData)       // Article 20 - Portability
+		users.DELETE("/me/gdpr-erasure", handler.RequestErasure) // Article 17 - Right to erasure
+
 		// Admin Routes (Protected by RBAC Middleware)
 		adminOnly := users.Group("")
 		adminOnly.Use(middleware.RequireRole(domain.RoleAdmin, domain.RoleSuperAdmin))
@@ -486,4 +490,62 @@ func RegisterPublicRoutes(r *gin.RouterGroup, handler *UserHandler) {
 	{
 		users.POST("/register-dependent", handler.RegisterDependentPublic)
 	}
+}
+
+// --- GDPR Compliance Handlers ---
+
+// ExportMyData implements GDPR Article 20 - Right to data portability
+// GET /users/me/data-export
+func (h *UserHandler) ExportMyData(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	role := c.GetString("userRole")
+	if role == domain.RoleSuperAdmin {
+		clubID = "system"
+	}
+
+	exportData, err := h.useCases.ExportUserData(clubID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set headers for file download
+	c.Header("Content-Disposition", "attachment; filename=my_data_export.json")
+	c.Header("Content-Type", "application/json")
+	c.JSON(http.StatusOK, exportData)
+}
+
+// RequestErasure implements GDPR Article 17 - Right to erasure (Right to be forgotten)
+// DELETE /users/me/gdpr-erasure
+// Note: This anonymizes the user's own data. For admin deletion, use DELETE /users/:id
+func (h *UserHandler) RequestErasure(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	role := c.GetString("userRole")
+	if role == domain.RoleSuperAdmin {
+		clubID = "system"
+	}
+
+	// Users can request erasure of their own data
+	// This will anonymize their data rather than delete it, preserving referential integrity
+	if err := h.useCases.DeleteUserGDPR(clubID, userID.(string), "SELF_REQUEST"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Your data has been anonymized. Your account is now deactivated.",
+		"details": "Personal identifying information has been removed in compliance with GDPR Article 17.",
+	})
 }

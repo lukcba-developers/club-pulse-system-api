@@ -9,7 +9,16 @@ const api = axios.create({
     withCredentials: true, // Enable sending cookies
 });
 
-// Add a request interceptor to Add Log and Club ID
+// Helper to read a cookie by name
+function getCookie(name: string): string | undefined {
+    if (typeof document === 'undefined') return undefined;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift();
+    return undefined;
+}
+
+// Add a request interceptor to Add Log, Club ID, and CSRF Token
 api.interceptors.request.use(
     (config) => {
         // Client-side only
@@ -17,6 +26,15 @@ api.interceptors.request.use(
             // Inject Club ID (Priority: LocalStorage > Env > Default)
             const clubID = localStorage.getItem('clubID') || process.env.NEXT_PUBLIC_DEFAULT_CLUB_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
             config.headers['X-Club-ID'] = clubID;
+
+            // Inject CSRF Token for state-changing methods
+            const method = config.method?.toUpperCase();
+            if (method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH') {
+                const csrfToken = getCookie('csrf_token');
+                if (csrfToken) {
+                    config.headers['X-CSRF-Token'] = csrfToken;
+                }
+            }
         }
 
         // Enhanced Logging

@@ -260,6 +260,12 @@ func (m *MockUserRepo) ListByIDs(clubID string, ids []string) ([]userDomain.User
 	return args.Get(0).([]userDomain.User), args.Error(1)
 }
 
+// AnonymizeForGDPR implements GDPR Article 17 - Right to Erasure
+func (m *MockUserRepo) AnonymizeForGDPR(clubID, id string) error {
+	args := m.Called(clubID, id)
+	return args.Error(0)
+}
+
 // --- Tests ---
 
 func TestCreateBooking(t *testing.T) {

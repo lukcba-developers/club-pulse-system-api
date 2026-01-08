@@ -437,3 +437,105 @@ func (uc *UserUseCases) RemoveFamilyMember(clubID string, groupID uuid.UUID, mem
 	}
 	return uc.familyGroupRepo.RemoveMember(clubID, groupID, memberUserID)
 }
+
+// --- GDPR Compliance Use Cases ---
+
+// GDPRExportData represents the data package for right to portability (GDPR Article 20)
+type GDPRExportData struct {
+	ExportedAt  string                   `json:"exported_at"`
+	UserProfile map[string]interface{}   `json:"user_profile"`
+	Children    []map[string]interface{} `json:"children,omitempty"`
+	FamilyGroup *map[string]interface{}  `json:"family_group,omitempty"`
+}
+
+// ExportUserData implements GDPR Article 20 - Right to data portability
+// Returns all personal data for the user in a structured, portable format
+func (uc *UserUseCases) ExportUserData(clubID, userID string) (*GDPRExportData, error) {
+	user, err := uc.repo.GetByID(clubID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	// Build user profile export (excluding sensitive internal fields)
+	profile := map[string]interface{}{
+		"id":                      user.ID,
+		"name":                    user.Name,
+		"email":                   user.Email,
+		"role":                    user.Role,
+		"club_id":                 user.ClubID,
+		"created_at":              user.CreatedAt.Format(time.RFC3339),
+		"updated_at":              user.UpdatedAt.Format(time.RFC3339),
+		"emergency_contact_name":  user.EmergencyContactName,
+		"emergency_contact_phone": user.EmergencyContactPhone,
+		"insurance_provider":      user.InsuranceProvider,
+		"insurance_number":        user.InsuranceNumber,
+	}
+
+	if user.DateOfBirth != nil {
+		profile["date_of_birth"] = user.DateOfBirth.Format("2006-01-02")
+	}
+	if user.SportsPreferences != nil {
+		profile["sports_preferences"] = user.SportsPreferences
+	}
+	if user.MedicalCertStatus != nil {
+		profile["medical_cert_status"] = string(*user.MedicalCertStatus)
+	}
+	if user.MedicalCertExpiry != nil {
+		profile["medical_cert_expiry"] = user.MedicalCertExpiry.Format("2006-01-02")
+	}
+	if user.TermsAcceptedAt != nil {
+		profile["terms_accepted_at"] = user.TermsAcceptedAt.Format(time.RFC3339)
+	}
+	if user.PrivacyPolicyVersion != "" {
+		profile["privacy_policy_version"] = user.PrivacyPolicyVersion
+	}
+
+	export := &GDPRExportData{
+		ExportedAt:  time.Now().Format(time.RFC3339),
+		UserProfile: profile,
+	}
+
+	// Export children data if any
+	children, err := uc.repo.FindChildren(clubID, userID)
+	if err == nil && len(children) > 0 {
+		childExports := make([]map[string]interface{}, len(children))
+		for i, child := range children {
+			childExports[i] = map[string]interface{}{
+				"id":    child.ID,
+				"name":  child.Name,
+				"email": child.Email,
+			}
+			if child.DateOfBirth != nil {
+				childExports[i]["date_of_birth"] = child.DateOfBirth.Format("2006-01-02")
+			}
+		}
+		export.Children = childExports
+	}
+
+	// Export family group if member
+	if uc.familyGroupRepo != nil {
+		group, err := uc.familyGroupRepo.GetByMemberID(clubID, userID)
+		if err == nil && group != nil {
+			fg := map[string]interface{}{
+				"id":      group.ID.String(),
+				"name":    group.Name,
+				"is_head": group.HeadUserID == userID,
+			}
+			export.FamilyGroup = &fg
+		}
+	}
+
+	return export, nil
+}
+
+// DeleteUserGDPR implements GDPR Article 17 - Right to erasure
+// Uses anonymization instead of simple deletion
+func (uc *UserUseCases) DeleteUserGDPR(clubID, id string, requesterID string) error {
+	if id == requesterID {
+		return errors.New("cannot delete yourself")
+	}
+	return uc.repo.AnonymizeForGDPR(clubID, id)
+}

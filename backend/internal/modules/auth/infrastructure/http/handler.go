@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/core/errors"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/application"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/middleware"
 )
 
 // isSecureCookie returns true in production (GIN_MODE=release) for Secure cookies.
@@ -88,6 +89,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		setAuthCookie(c, "refresh_token", token.RefreshToken, 86400*7) // 7 days
 	}
 
+	// Set CSRF token cookie for Double Submit Cookie protection
+	_ = middleware.SetCSRFCookie(c)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
@@ -146,10 +150,11 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	// Clear cookies on logout
+	// Clear cookies on logout (including CSRF token)
 	c.SetSameSite(http.SameSiteStrictMode)
 	c.SetCookie("access_token", "", -1, "/", "", isSecureCookie(), true)
 	c.SetCookie("refresh_token", "", -1, "/", "", isSecureCookie(), true)
+	middleware.ClearCSRFCookie(c)
 
 	c.Status(http.StatusNoContent)
 }
@@ -239,6 +244,9 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	if token.RefreshToken != "" {
 		setAuthCookie(c, "refresh_token", token.RefreshToken, 86400*7)
 	}
+
+	// Set CSRF token cookie for Double Submit Cookie protection
+	_ = middleware.SetCSRFCookie(c)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Google login successful"})
 }

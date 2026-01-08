@@ -106,7 +106,16 @@ func NewApp() (*App, error) {
 	// Instead, we will pass it to modules that need it, to be applied AFTER Auth.
 	tenantMiddleware := middleware.TenantMiddleware(clubRepository)
 
-	registerModules(v1, infra, tenantMiddleware)
+	// CSRF Middleware for state-changing requests (Double Submit Cookie pattern)
+	// Applied globally but the middleware itself skips GET/HEAD/OPTIONS methods.
+	// Exclusions are handled inside the middleware by checking for the cookie presence.
+	// Routes that don't need CSRF (webhooks, login, register) won't have the cookie yet.
+	csrfMiddleware := middleware.CSRFMiddleware()
+
+	// Apply CSRF globally to v1 group - it will auto-skip safe methods
+	v1.Use(csrfMiddleware)
+
+	registerModules(v1, infra, tenantMiddleware, csrfMiddleware)
 
 	return &App{
 		Infrastructure: infra,
@@ -136,7 +145,7 @@ func (app *App) Run() {
 	logger.Info("Server exited properly")
 }
 
-func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddleware gin.HandlerFunc) {
+func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddleware gin.HandlerFunc, csrfMiddleware gin.HandlerFunc) {
 	db := infra.DB
 
 	// --- Module: Auth ---

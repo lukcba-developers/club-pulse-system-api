@@ -61,6 +61,11 @@ func InitDB() {
 		sqlDB.SetMaxOpenConns(100)
 		sqlDB.SetConnMaxLifetime(time.Hour)
 
+		// Enable UUID extension
+		if err := DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error; err != nil {
+			log.Printf("Warning: Failed to create uuid-ossp extension: %v", err)
+		}
+
 		log.Println("Database connection established successfully")
 	})
 }

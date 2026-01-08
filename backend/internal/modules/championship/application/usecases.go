@@ -358,3 +358,74 @@ func (uc *ChampionshipUseCases) ScheduleMatch(input ScheduleMatchInput) error {
 	// 2. Update Match with BookingID and Date
 	return uc.repo.UpdateMatchScheduling(input.ClubID, input.MatchID, input.StartTime, *bookingID)
 }
+
+// GenerateKnockoutBracketInput defines the input for generating a knockout bracket.
+type GenerateKnockoutBracketInput struct {
+	ClubID    string   `json:"club_id"`
+	StageID   string   `json:"stage_id"`
+	SeedOrder []string `json:"seed_order"` // Team IDs in seed order (1st vs 8th, 2nd vs 7th, etc.)
+}
+
+// GenerateKnockoutBracket generates elimination bracket matches for a stage.
+// It pairs teams based on seeding: #1 vs #N, #2 vs #(N-1), etc.
+// Supports 2, 4, 8, 16, 32 team brackets (must be power of 2).
+func (uc *ChampionshipUseCases) GenerateKnockoutBracket(input GenerateKnockoutBracketInput) ([]domain.TournamentMatch, error) {
+	// 1. Validate stage exists and is KNOCKOUT type
+	stage, err := uc.repo.GetStage(input.ClubID, input.StageID)
+	if err != nil {
+		return nil, err
+	}
+	if stage == nil {
+		return nil, errors.New("stage not found")
+	}
+	if stage.Type != domain.StageKnockout {
+		return nil, errors.New("stage must be of type KNOCKOUT to generate bracket")
+	}
+
+	// 2. Validate seed order count (must be power of 2 and >= 2)
+	numTeams := len(input.SeedOrder)
+	if numTeams < 2 {
+		return nil, errors.New("need at least 2 teams to generate knockout bracket")
+	}
+	if (numTeams & (numTeams - 1)) != 0 {
+		return nil, errors.New("number of teams must be a power of 2 (e.g., 2, 4, 8, 16, 32)")
+	}
+
+	// 3. Parse team UUIDs
+	teamIDs := make([]uuid.UUID, numTeams)
+	for i, idStr := range input.SeedOrder {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			return nil, errors.New("invalid team ID at position " + string(rune(i+1)))
+		}
+		teamIDs[i] = id
+	}
+
+	// 4. Generate bracket pairings (seed-based: 1 vs N, 2 vs N-1, ...)
+	var matches []domain.TournamentMatch
+	numMatches := numTeams / 2
+
+	for i := 0; i < numMatches; i++ {
+		homeTeam := teamIDs[i]            // Seed 1, 2, 3...
+		awayTeam := teamIDs[numTeams-1-i] // Seed N, N-1, N-2...
+
+		match := domain.TournamentMatch{
+			ID:           uuid.New(),
+			TournamentID: stage.TournamentID,
+			StageID:      stage.ID,
+			GroupID:      nil, // Knockout has no group
+			HomeTeamID:   homeTeam,
+			AwayTeamID:   awayTeam,
+			Status:       domain.MatchScheduled,
+			Date:         time.Now().Add(time.Hour * 24 * 7), // Scheduled 1 week out by default
+		}
+		matches = append(matches, match)
+	}
+
+	// 5. Create all matches atomically
+	if err := uc.repo.CreateMatchesBatch(matches); err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}

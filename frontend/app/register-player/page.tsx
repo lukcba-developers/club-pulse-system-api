@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 
 function RegisterForm() {
@@ -21,6 +22,11 @@ function RegisterForm() {
         child_dob: "",
         sport: "TENNIS",
     });
+
+    // GDPR Consent checkboxes
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+    const [parentalConsent, setParentalConsent] = useState(false);
 
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [errorMessage, setErrorMessage] = useState("");
@@ -40,6 +46,13 @@ function RegisterForm() {
             return;
         }
 
+        // GDPR: Validate all consents are given
+        if (!acceptTerms || !acceptPrivacy || !parentalConsent) {
+            setStatus("error");
+            setErrorMessage("Debe aceptar todos los términos y dar consentimiento parental para continuar.");
+            return;
+        }
+
         try {
             const payload = {
                 parent_email: formData.parent_email,
@@ -50,7 +63,11 @@ function RegisterForm() {
                 child_dob: new Date(formData.child_dob).toISOString(),
                 sports_preferences: {
                     primary: formData.sport
-                }
+                },
+                // GDPR Consent fields
+                accept_terms: acceptTerms,
+                privacy_policy_version: "2026-01",
+                parental_consent: parentalConsent,
             };
 
             const res = await fetch(`http://localhost:8080/api/v1/users/public/register-dependent?club_id=${clubID}`, {
@@ -159,9 +176,71 @@ function RegisterForm() {
                         </div>
                     </div>
 
+                    {/* GDPR Consent Section */}
+                    <div className="space-y-3 pt-4 border-t">
+                        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Consentimientos Requeridos</h3>
+
+                        <div className="flex items-start space-x-3">
+                            <Checkbox
+                                id="accept_terms"
+                                checked={acceptTerms}
+                                onCheckedChange={(checked) => setAcceptTerms(checked as boolean)}
+                                required
+                            />
+                            <Label htmlFor="accept_terms" className="text-sm leading-relaxed cursor-pointer">
+                                He leído y acepto los{" "}
+                                <a href="/legal/terms" target="_blank" className="text-blue-600 underline hover:text-blue-800">
+                                    Términos y Condiciones
+                                </a>{" "}
+                                del club. <span className="text-red-500">*</span>
+                            </Label>
+                        </div>
+
+                        <div className="flex items-start space-x-3">
+                            <Checkbox
+                                id="accept_privacy"
+                                checked={acceptPrivacy}
+                                onCheckedChange={(checked) => setAcceptPrivacy(checked as boolean)}
+                                required
+                            />
+                            <Label htmlFor="accept_privacy" className="text-sm leading-relaxed cursor-pointer">
+                                He leído y acepto la{" "}
+                                <a href="/legal/privacy" target="_blank" className="text-blue-600 underline hover:text-blue-800">
+                                    Política de Privacidad
+                                </a>{" "}
+                                y autorizo el tratamiento de datos personales conforme a la misma. <span className="text-red-500">*</span>
+                            </Label>
+                        </div>
+
+                        <div className="flex items-start space-x-3 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                            <Checkbox
+                                id="parental_consent"
+                                checked={parentalConsent}
+                                onCheckedChange={(checked) => setParentalConsent(checked as boolean)}
+                                required
+                            />
+                            <Label htmlFor="parental_consent" className="text-sm leading-relaxed cursor-pointer">
+                                <span className="font-medium text-amber-800">Consentimiento Parental:</span>{" "}
+                                <span className="text-amber-700">
+                                    Como padre/madre o tutor legal, autorizo el registro de mi hijo/a y el tratamiento de sus datos personales,
+                                    incluyendo datos de salud (certificados médicos) necesarios para la práctica deportiva. <span className="text-red-500">*</span>
+                                </span>
+                            </Label>
+                        </div>
+
+                        <p className="text-xs text-gray-500 mt-2">
+                            <span className="text-red-500">*</span> Campos obligatorios.
+                            Puede ejercer sus derechos de acceso, rectificación, supresión y portabilidad contactando al club.
+                        </p>
+                    </div>
+
                     {errorMessage && <div className="text-red-500 text-sm font-medium bg-red-50 p-2 rounded">{errorMessage}</div>}
 
-                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={status === "loading"}>
+                    <Button
+                        type="submit"
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                        disabled={status === "loading" || !acceptTerms || !acceptPrivacy || !parentalConsent}
+                    >
                         {status === "loading" ? "Registrando..." : "Registrar"}
                     </Button>
                 </form>
@@ -177,3 +256,4 @@ export default function RegisterPlayerPage() {
         </Suspense>
     )
 }
+

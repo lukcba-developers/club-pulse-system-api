@@ -34,6 +34,7 @@ func TestOddTeamsFixtureGeneration(t *testing.T) {
 	authMw := func(c *gin.Context) {
 		c.Set("userID", "test-admin")
 		c.Set("clubID", clubID)
+		c.Set("userRole", "ADMIN")
 		c.Next()
 	}
 

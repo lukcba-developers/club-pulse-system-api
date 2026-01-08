@@ -67,12 +67,45 @@ func TestCancellationRefundFlow(t *testing.T) {
 	r.POST("/bookings", tenantMw, authMw, h.Create)
 	r.DELETE("/bookings/:id", tenantMw, authMw, h.Cancel)
 
+	// Create test user with valid medical certificate
+	validStatus := "VALID"
+	futureExpiry := time.Now().Add(365 * 24 * time.Hour)
+	testUser := &userRepo.UserModel{
+		ID:                userID,
+		Name:              "Test User",
+		Email:             "test-refund@test.com",
+		Role:              "MEMBER",
+		ClubID:            clubID,
+		Password:          "$2a$10$placeholder",
+		MedicalCertStatus: validStatus,
+		MedicalCertExpiry: &futureExpiry,
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
+	}
+	db.Create(testUser)
+
+	// Create test facility
+	facID := uuid.New()
+	testFacility := map[string]interface{}{
+		"id":           facID,
+		"club_id":      clubID,
+		"name":         "Test Court",
+		"type":         "CANCHA",
+		"status":       "ACTIVE",
+		"hourly_rate":  100.0,
+		"guest_fee":    0.0,
+		"opening_hour": 8,
+		"closing_hour": 22,
+		"created_at":   time.Now(),
+		"updated_at":   time.Now(),
+	}
+	db.Table("facilities").Create(&testFacility)
+
 	// 2. Scenario: Create booking
-	facID := uuid.New().String()
 	startTime := time.Now().Add(48 * time.Hour).Truncate(time.Hour)
 	endTime := startTime.Add(1 * time.Hour)
 
-	body := `{"facility_id": "` + facID + `", "start_time": "` + startTime.Format(time.RFC3339) + `", "end_time": "` + endTime.Format(time.RFC3339) + `"}`
+	body := `{"facility_id": "` + facID.String() + `", "start_time": "` + startTime.Format(time.RFC3339) + `", "end_time": "` + endTime.Format(time.RFC3339) + `"}`
 	w1 := httptest.NewRecorder()
 	req1, _ := http.NewRequest("POST", "/bookings", strings.NewReader(body))
 	r.ServeHTTP(w1, req1)

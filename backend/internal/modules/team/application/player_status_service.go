@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	attendanceDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/domain"
@@ -145,22 +146,23 @@ func (s *PlayerStatusService) GetTeamPlayersWithStatus(ctx context.Context, club
 
 // calculateAttendanceRate calcula el porcentaje de asistencia del último mes
 func (s *PlayerStatusService) calculateAttendanceRate(clubID, userID string) float64 {
-	// TODO: Implementar lógica real de cálculo de asistencia
-	// Por ahora retornamos un valor placeholder
+	// Calcular rango del último mes
+	now := time.Now()
+	oneMonthAgo := now.AddDate(0, -1, 0)
 
-	// La lógica debería:
-	// 1. Obtener todas las listas de asistencia del último mes
-	// 2. Contar cuántas veces el usuario estuvo presente
-	// 3. Dividir por el total de listas
+	// Consultar estadísticas reales desde el repositorio
+	present, total, err := s.attendanceRepo.GetAttendanceStats(clubID, userID, oneMonthAgo, now)
+	if err != nil {
+		// En caso de error, retornar 0 (desconocido)
+		return 0.0
+	}
 
-	// Ejemplo:
-	// oneMonthAgo := time.Now().AddDate(0, -1, 0)
-	// lists := s.attendanceRepo.GetListsByUserAndDateRange(clubID, userID, oneMonthAgo, time.Now())
-	// present := countPresent(lists)
-	// total := len(lists)
-	// return float64(present) / float64(total)
+	if total == 0 {
+		// Sin registros de asistencia, no se puede calcular
+		return 0.0
+	}
 
-	return 0.85 // Placeholder: 85% de asistencia
+	return float64(present) / float64(total)
 }
 
 // GetInhabilitadoPlayers obtiene lista de jugadores inhabilitados de un equipo

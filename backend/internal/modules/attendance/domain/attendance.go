@@ -48,4 +48,6 @@ type AttendanceRepository interface {
 	UpdateRecord(record *AttendanceRecord) error
 	// UpsertRecord updates or creates a record if it doesn't exist within a list
 	UpsertRecord(record *AttendanceRecord) error
+	// GetAttendanceStats returns the count of present sessions and total sessions for a user in a date range
+	GetAttendanceStats(clubID, userID string, from, to time.Time) (present, total int, err error)
 }

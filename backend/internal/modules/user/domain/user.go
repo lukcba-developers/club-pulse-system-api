@@ -33,7 +33,7 @@ type User struct {
 	CreatedAt         time.Time              `json:"created_at"`
 	UpdatedAt         time.Time              `json:"updated_at"`
 	DateOfBirth       *time.Time             `json:"date_of_birth,omitempty"`
-	SportsPreferences map[string]interface{} `json:"sports_preferences,omitempty"`
+	SportsPreferences map[string]interface{} `json:"sports_preferences,omitempty" gorm:"serializer:json"`
 	ParentID          *string                `json:"parent_id,omitempty"`
 	ClubID            string                 `json:"club_id" gorm:"index;not null"`
 	FamilyGroupID     *uuid.UUID             `json:"family_group_id,omitempty" gorm:"type:uuid"`
@@ -48,16 +48,22 @@ type User struct {
 	InsuranceProvider     string `json:"insurance_provider,omitempty"`
 	InsuranceNumber       string `json:"insurance_number,omitempty"`
 
+	// GDPR Compliance Fields
+	TermsAcceptedAt      *time.Time `json:"terms_accepted_at,omitempty"`
+	PrivacyPolicyVersion string     `json:"privacy_policy_version,omitempty"`
+	DataRetentionUntil   *time.Time `json:"data_retention_until,omitempty"`
+
 	// Relations (Fetched on demand or preloaded)
 	Stats  *UserStats `json:"stats,omitempty" gorm:"foreignKey:UserID;references:ID"`
 	Wallet *Wallet    `json:"wallet,omitempty" gorm:"foreignKey:UserID;references:ID"`
 }
 
 const (
-	RoleSuperAdmin = "SUPER_ADMIN"
-	RoleAdmin      = "ADMIN"
-	RoleMember     = "MEMBER"
-	RoleCoach      = "COACH"
+	RoleSuperAdmin   = "SUPER_ADMIN"
+	RoleAdmin        = "ADMIN"
+	RoleMember       = "MEMBER"
+	RoleCoach        = "COACH"
+	RoleMedicalStaff = "MEDICAL_STAFF" // GDPR Article 9 - Special category data access
 )
 
 type MedicalCertStatus string
@@ -87,6 +93,8 @@ type UserRepository interface {
 	Create(user *User) error
 	CreateIncident(incident *IncidentLog) error
 	GetByEmail(email string) (*User, error)
+	// GDPR Article 17 - Right to erasure
+	AnonymizeForGDPR(clubID, id string) error
 }
 
 type IncidentLog struct {

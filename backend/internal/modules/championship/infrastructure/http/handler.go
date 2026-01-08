@@ -40,6 +40,7 @@ func (h *ChampionshipHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware 
 		group.GET("/groups/:id/standings", h.GetStandings)
 		group.POST("/matches/result", h.UpdateMatchResult)
 		group.POST("/matches/schedule", h.ScheduleMatch)
+		group.POST("/stages/:id/knockout", h.GenerateKnockoutBracket)
 
 		group.POST("/matches/:id/volunteers", h.AssignVolunteer)
 		group.GET("/matches/:id/volunteers", h.GetMatchVolunteers)
@@ -408,4 +409,45 @@ func (h *ChampionshipHandler) GenerateFixture(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, matches)
+}
+
+// GenerateKnockoutBracket godoc
+// @Summary      Generate knockout bracket
+// @Description  Generates elimination bracket matches for a KNOCKOUT stage. Teams must be a power of 2 (2, 4, 8, 16, 32). Pairs teams by seeding: #1 vs #N, #2 vs #(N-1), etc.
+// @Tags         championships
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "Stage ID (must be KNOCKOUT type)"
+// @Param        input body object{seed_order=[]string} true "Seed Order (Team IDs ordered by ranking/seed)"
+// @Success      201   {object}  object{matches=[]domain.TournamentMatch,count=int}
+// @Failure      400   {object}  map[string]string "Invalid input or stage type"
+// @Failure      403   {object}  map[string]string "Requires ADMIN role"
+// @Failure      500   {object}  map[string]string "Internal error"
+// @Router       /championships/stages/{id}/knockout [post]
+func (h *ChampionshipHandler) GenerateKnockoutBracket(c *gin.Context) {
+	// RBAC: Only ADMIN can generate knockout brackets
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
+	var input application.GenerateKnockoutBracketInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	input.StageID = c.Param("id")
+	if input.ClubID == "" {
+		input.ClubID = c.GetString("clubID")
+	}
+
+	matches, err := h.useCases.GenerateKnockoutBracket(input)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"matches": matches, "count": len(matches)})
 }

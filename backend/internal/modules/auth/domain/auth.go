@@ -21,13 +21,19 @@ type User struct {
 	MedicalCertStatus *string    `json:"medical_cert_status,omitempty"`
 	MedicalCertExpiry *time.Time `json:"medical_cert_expiry,omitempty"`
 	FamilyGroupID     *string    `json:"family_group_id,omitempty"`
+
+	// GDPR Compliance Fields
+	TermsAcceptedAt      *time.Time `json:"terms_accepted_at,omitempty"`
+	PrivacyPolicyVersion string     `json:"privacy_policy_version,omitempty"`
+	DataRetentionUntil   *time.Time `json:"data_retention_until,omitempty"`
 }
 
 const (
-	RoleSuperAdmin = "SUPER_ADMIN"
-	RoleAdmin      = "ADMIN"
-	RoleMember     = "MEMBER"
-	RoleCoach      = "COACH"
+	RoleSuperAdmin   = "SUPER_ADMIN"
+	RoleAdmin        = "ADMIN"
+	RoleMember       = "MEMBER"
+	RoleCoach        = "COACH"
+	RoleMedicalStaff = "MEDICAL_STAFF" // GDPR Article 9 - Special category data access
 )
 
 type UserClaims struct {

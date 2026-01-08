@@ -107,9 +107,13 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 
 // GetDocument obtiene un documento específico
 // GET /users/:userId/documents/:docId
+// GDPR Article 9: Special category data (health) requires stricter access control
 func (h *DocumentHandler) GetDocument(c *gin.Context) {
 	clubID := c.GetString("club_id")
 	docID := c.Param("docId")
+	userID := c.Param("userId")
+	currentUserID := c.GetString("user_id")
+	role := c.GetString("role")
 
 	docUUID, err := uuid.Parse(docID)
 	if err != nil {
@@ -121,6 +125,28 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Documento no encontrado"})
 		return
+	}
+
+	// GDPR Article 9: Strict access control for health data
+	if doc.Type == domain.DocumentTypeEMMACMedical {
+		// Only allow access if:
+		// 1. User is viewing their own document
+		// 2. User has MEDICAL_STAFF role
+		// 3. User has SUPER_ADMIN role
+		isOwner := userID == currentUserID || doc.UserID == currentUserID
+		isMedicalStaff := role == domain.RoleMedicalStaff
+		isSuperAdmin := role == domain.RoleSuperAdmin
+
+		if !isOwner && !isMedicalStaff && !isSuperAdmin {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "Acceso restringido a datos médicos",
+				"details": "Solo personal médico autorizado puede acceder a certificados médicos de otros usuarios",
+			})
+			return
+		}
+
+		// TODO: Log health data access for GDPR compliance audit
+		// h.auditQueue.LogHealthDataAccess(c.Request.Context(), currentUserID, doc.UserID, docUUID, "VIEW")
 	}
 
 	c.JSON(http.StatusOK, doc)

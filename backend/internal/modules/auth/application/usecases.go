@@ -27,9 +27,11 @@ func NewAuthUseCases(repo domain.AuthRepository, tokenService domain.TokenServic
 
 // RegisterDTO
 type RegisterDTO struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Name                 string `json:"name"`
+	Email                string `json:"email"`
+	Password             string `json:"password"`
+	AcceptTerms          bool   `json:"accept_terms"`           // GDPR: Required consent
+	PrivacyPolicyVersion string `json:"privacy_policy_version"` // GDPR: Version accepted
 }
 
 // LoginDTO
@@ -47,6 +49,11 @@ func (uc *AuthUseCases) Register(ctx context.Context, dto RegisterDTO, clubID st
 		return nil, errors.NewValidation("Club ID is required")
 	}
 
+	// GDPR: Validate consent was given
+	if !dto.AcceptTerms {
+		return nil, errors.NewValidation("You must accept the Terms and Conditions to register")
+	}
+
 	// 2. Check existence
 	existing, _ := uc.repo.FindUserByEmail(ctx, dto.Email, clubID)
 	if existing != nil {
@@ -59,16 +66,24 @@ func (uc *AuthUseCases) Register(ctx context.Context, dto RegisterDTO, clubID st
 		return nil, errors.New(errors.ErrorTypeInternal, "Failed to hash password")
 	}
 
-	// 4. Create User
+	// 4. Create User with consent timestamp
+	now := time.Now()
+	privacyVersion := dto.PrivacyPolicyVersion
+	if privacyVersion == "" {
+		privacyVersion = "2026-01" // Default version
+	}
+
 	user := &domain.User{
-		ID:        uuid.New().String(),
-		Name:      dto.Name,
-		Email:     dto.Email,
-		Password:  string(hashedBytes),
-		Role:      domain.RoleMember, // Default role
-		ClubID:    clubID,            // Enforce ClubID
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:                   uuid.New().String(),
+		Name:                 dto.Name,
+		Email:                dto.Email,
+		Password:             string(hashedBytes),
+		Role:                 domain.RoleMember, // Default role
+		ClubID:               clubID,            // Enforce ClubID
+		CreatedAt:            now,
+		UpdatedAt:            now,
+		TermsAcceptedAt:      &now,           // GDPR: Record consent timestamp
+		PrivacyPolicyVersion: privacyVersion, // GDPR: Record version accepted
 	}
 
 	if err := uc.repo.SaveUser(user); err != nil {
