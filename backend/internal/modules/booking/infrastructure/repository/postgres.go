@@ -60,7 +60,7 @@ func (r *PostgresBookingRepository) HasTimeConflict(clubID string, facilityID uu
 	err := r.db.Model(&domain.Booking{}).
 		Where("club_id = ?", clubID).
 		Where("facility_id = ?", facilityID).
-		Where("status = ?", domain.BookingStatusConfirmed).
+		Where("status IN (?)", []domain.BookingStatus{domain.BookingStatusConfirmed, domain.BookingStatusPendingPayment}).
 		Where("start_time < ?", end).
 		Where("end_time > ?", start).
 		Count(&count).Error
@@ -82,7 +82,7 @@ func (r *PostgresBookingRepository) ListByFacilityAndDate(clubID string, facilit
 	err := r.db.Model(&domain.Booking{}).
 		Where("club_id = ?", clubID).
 		Where("facility_id = ?", facilityID).
-		Where("status = ?", domain.BookingStatusConfirmed).
+		Where("status IN (?)", []domain.BookingStatus{domain.BookingStatusConfirmed, domain.BookingStatusPendingPayment}).
 		Where("start_time < ?", endOfDay).
 		Where("end_time > ?", startOfDay).
 		Order("start_time asc").

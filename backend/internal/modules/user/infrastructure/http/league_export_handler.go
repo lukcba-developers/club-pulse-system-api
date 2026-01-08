@@ -12,10 +12,6 @@ import (
 // LeagueExportHandler maneja las peticiones de exportación para la Liga
 type LeagueExportHandler struct {
 	exportService *application.LeagueExportService
-	userRepo      interface {
-		GetByID(clubID, id string) (interface{}, error)
-		List(clubID string, limit, offset int, filters map[string]interface{}) ([]interface{}, error)
-	}
 }
 
 // NewLeagueExportHandler crea una nueva instancia del handler

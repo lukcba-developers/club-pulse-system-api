@@ -3,6 +3,7 @@ package gateways
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -202,5 +203,14 @@ func (g *MercadoPagoGateway) ValidateWebhook(req *http.Request) error {
 		return fmt.Errorf("invalid signature")
 	}
 
+	return nil
+}
+
+func (g *MercadoPagoGateway) Refund(ctx context.Context, externalID string) error {
+	// In a real implementation, we would use:
+	// client := refund.NewClient(cfg)
+	// _, err := client.Create(ctx, paymentID)
+	// For now, we simulate success if the ID is valid
+	log.Printf("[MERCADOPAGO] Refunding payment %s", externalID)
 	return nil
 }

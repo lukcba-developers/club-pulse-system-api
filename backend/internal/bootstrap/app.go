@@ -204,13 +204,21 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	notifier := notificationService.NewNotificationService(emailProvider, smsProvider)
 
+	// --- Module: Payment ---
+	paymentRepository := paymentRepo.NewPostgresPaymentRepository(db)
+	paymentGw := paymentGateway.NewMercadoPagoGateway()
+	paymentUseCases := paymentApp.NewPaymentUseCases(paymentRepository, paymentGw)
+
 	// --- Module: Booking ---
 	bookingRepository := bookingRepo.NewPostgresBookingRepository(db)
 	recurringRepository := bookingRepo.NewPostgresRecurringRepository(db)
-	bookingUseCase := bookingApplication.NewBookingUseCases(bookingRepository, recurringRepository, facilityRepository, userRepository, notifier)
+	bookingUseCase := bookingApplication.NewBookingUseCases(bookingRepository, recurringRepository, facilityRepository, userRepository, notifier, paymentUseCases)
 	bookingHandler := bookingHTTP.NewBookingHandler(bookingUseCase)
 
 	bookingHTTP.RegisterRoutes(api, bookingHandler, authMiddleware, tenantMiddleware)
+
+	// Register responders for cross-module coordination
+	paymentUseCases.RegisterResponder("BOOKING", bookingUseCase)
 
 	// --- Module: Access (New) ---
 	accessRepository := accessRepo.NewPostgresAccessRepository(db)
@@ -234,10 +242,6 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	disciplineHttp.RegisterRoutes(api, dHandler, authMiddleware, tenantMiddleware)
 
-	// --- Module: Payment ---
-	paymentRepository := paymentRepo.NewPostgresPaymentRepository(db)
-	paymentGw := paymentGateway.NewMercadoPagoGateway()
-	paymentUseCases := paymentApp.NewPaymentUseCases(paymentRepository, paymentGw)
 	paymentHandler := paymentHttp.NewPaymentHandler(paymentUseCases)
 	paymentHttp.RegisterRoutes(api, paymentHandler, authMiddleware, tenantMiddleware)
 

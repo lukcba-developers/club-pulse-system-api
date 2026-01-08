@@ -84,3 +84,7 @@ type BookingRepository interface {
 	AddToWaitlist(ctx context.Context, entry *Waitlist) error
 	GetNextInLine(ctx context.Context, clubID string, resourceID uuid.UUID, date time.Time) (*Waitlist, error)
 }
+
+type RefundService interface {
+	Refund(ctx context.Context, clubID string, referenceID uuid.UUID, referenceType string) error
+}

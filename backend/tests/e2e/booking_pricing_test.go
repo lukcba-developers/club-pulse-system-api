@@ -1,7 +1,6 @@
 package e2e_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,19 +14,11 @@ import (
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	facilityRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
-	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/stretchr/testify/assert"
 )
-
-// Mock Notifier for pricing test
-type BookingPricingMockNotifier struct{}
-
-func (m *BookingPricingMockNotifier) Send(ctx context.Context, n service.Notification) error {
-	return nil
-}
 
 func TestBookingPricing(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -44,9 +35,9 @@ func TestBookingPricing(t *testing.T) {
 	rRepo := bookingRepo.NewPostgresRecurringRepository(db)
 	fRepo := facilityRepo.NewPostgresFacilityRepository(db)
 	uRepo := userRepo.NewPostgresUserRepository(db)
-	notifier := &BookingPricingMockNotifier{}
+	mockNotifier := &SharedMockNotifier{}
 
-	useCases := bookingApp.NewBookingUseCases(bRepo, rRepo, fRepo, uRepo, notifier)
+	useCases := bookingApp.NewBookingUseCases(bRepo, rRepo, fRepo, uRepo, mockNotifier, mockNotifier)
 	handler := bookingHttp.NewBookingHandler(useCases)
 
 	r := gin.New()

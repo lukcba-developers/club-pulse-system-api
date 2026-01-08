@@ -9,6 +9,7 @@ import (
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
+	paymentDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 )
 
@@ -41,6 +42,7 @@ type BookingUseCases struct {
 	facilityRepo  facilityDomain.FacilityRepository
 	userRepo      userDomain.UserRepository
 	notifier      service.NotificationSender
+	refundSvc     bookingDomain.RefundService
 }
 
 func NewBookingUseCases(
@@ -49,6 +51,7 @@ func NewBookingUseCases(
 	facilityRepo facilityDomain.FacilityRepository,
 	userRepo userDomain.UserRepository,
 	notifier service.NotificationSender,
+	refundSvc bookingDomain.RefundService,
 ) *BookingUseCases {
 	return &BookingUseCases{
 		repo:          repo,
@@ -56,6 +59,7 @@ func NewBookingUseCases(
 		facilityRepo:  facilityRepo,
 		userRepo:      userRepo,
 		notifier:      notifier,
+		refundSvc:     refundSvc,
 	}
 }
 
@@ -179,6 +183,11 @@ func (uc *BookingUseCases) CancelBooking(clubID, bookingID, requestingUserID str
 		return err
 	}
 
+	// Refund Logic (if reference is paid)
+	if uc.refundSvc != nil {
+		_ = uc.refundSvc.Refund(context.Background(), clubID, booking.ID, "BOOKING")
+	}
+
 	// Waitlist Logic
 	ctx := context.Background()
 	next, err := uc.repo.GetNextInLine(ctx, clubID, booking.FacilityID, booking.StartTime)
@@ -192,6 +201,26 @@ func (uc *BookingUseCases) CancelBooking(clubID, bookingID, requestingUserID str
 	}
 
 	return nil
+}
+
+// OnPaymentStatusChanged reacts to payment updates to confirm or handle failed bookings.
+func (uc *BookingUseCases) OnPaymentStatusChanged(ctx context.Context, clubID string, referenceID uuid.UUID, status paymentDomain.PaymentStatus) error {
+	booking, err := uc.repo.GetByID(clubID, referenceID)
+	if err != nil {
+		return err
+	}
+	if booking == nil {
+		return nil // Not a booking reference
+	}
+
+	if status == paymentDomain.PaymentStatusCompleted {
+		booking.Status = bookingDomain.BookingStatusConfirmed
+		booking.PaymentExpiry = nil // Clear expiry
+		uc.notifyAsync(booking.UserID.String(), booking.ID.String())
+	}
+
+	booking.UpdatedAt = time.Now()
+	return uc.repo.Update(booking)
 }
 
 // GetAvailability calculates available slots based on business hours and existing bookings.

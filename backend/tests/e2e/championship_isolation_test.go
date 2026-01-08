@@ -111,7 +111,8 @@ func TestChampionshipIsolation(t *testing.T) {
 
 		// Unmarshal into slice, not map["data"]
 		var data []map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &data)
+		err := json.Unmarshal(w.Body.Bytes(), &data)
+		require.NoError(t, err)
 
 		foundA := false
 		foundB := false
@@ -134,7 +135,8 @@ func TestChampionshipIsolation(t *testing.T) {
 		require.Equal(t, 200, w.Code)
 
 		var data []map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &data)
+		err := json.Unmarshal(w.Body.Bytes(), &data)
+		require.NoError(t, err)
 
 		foundA := false
 		foundB := false

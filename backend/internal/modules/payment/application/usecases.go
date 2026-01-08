@@ -15,16 +15,23 @@ import (
 // PaymentUseCases contains all payment-related business logic.
 // Following Clean Architecture: handlers only handle HTTP, use cases contain logic.
 type PaymentUseCases struct {
-	repo    domain.PaymentRepository
-	gateway domain.PaymentGateway
+	repo       domain.PaymentRepository
+	gateway    domain.PaymentGateway
+	responders map[string]domain.PaymentStatusResponder
 }
 
 // NewPaymentUseCases creates a new PaymentUseCases instance.
 func NewPaymentUseCases(repo domain.PaymentRepository, gateway domain.PaymentGateway) *PaymentUseCases {
 	return &PaymentUseCases{
-		repo:    repo,
-		gateway: gateway,
+		repo:       repo,
+		gateway:    gateway,
+		responders: make(map[string]domain.PaymentStatusResponder),
 	}
+}
+
+// RegisterResponder registers a module to handle payment status changes for a specific reference type.
+func (uc *PaymentUseCases) RegisterResponder(refType string, responder domain.PaymentStatusResponder) {
+	uc.responders[refType] = responder
 }
 
 // CheckoutRequest represents the input for creating a checkout session.
@@ -130,11 +137,62 @@ func (uc *PaymentUseCases) ProcessWebhook(ctx context.Context, webhookReq Proces
 
 	log.Printf("Payment %s updated to %s", existing.ID, existing.Status)
 
+	// 4. Notify Responder if any
+	if responder, ok := uc.responders[existing.ReferenceType]; ok {
+		if err := responder.OnPaymentStatusChanged(ctx, existing.ClubID, existing.ReferenceID, existing.Status); err != nil {
+			log.Printf("Responder failed for %s: %v", existing.ReferenceType, err)
+			// We don't fail the webhook processing itself if responder fails,
+			// though in a mission-critical app we might want to retry or use a queue.
+		}
+	}
+
 	result.Processed = true
 	result.PaymentID = existing.ID
 	result.NewStatus = existing.Status
 
 	return result, nil
+}
+
+// Refund finds the payment for a given reference and initiates a refund.
+func (uc *PaymentUseCases) Refund(ctx context.Context, clubID string, referenceID uuid.UUID, referenceType string) error {
+	// 1. Find the payment (Ideally we use a filter or a specific method)
+	// For simplicity, let's assume we can list by reference.
+	// But our Repo doesn't have ListByReference yet.
+	// Let's use List with filter if possible.
+	filter := domain.PaymentFilter{
+		Status: domain.PaymentStatusCompleted,
+	}
+	payments, _, err := uc.repo.List(ctx, clubID, filter)
+	if err != nil {
+		return err
+	}
+
+	var target *domain.Payment
+	for _, p := range payments {
+		if p.ReferenceID == referenceID && p.ReferenceType == referenceType {
+			target = p
+			break
+		}
+	}
+
+	if target == nil {
+		return nil // No payment to refund or already refunded
+	}
+
+	if target.ExternalID == "" {
+		// Not a gateway payment (maybe cash), mark as refunded in DB
+		target.Status = domain.PaymentStatusRefunded
+		return uc.repo.Update(ctx, target)
+	}
+
+	// 2. Call Gateway
+	if err := uc.gateway.Refund(ctx, target.ExternalID); err != nil {
+		return err
+	}
+
+	// 3. Update Status
+	target.Status = domain.PaymentStatusRefunded
+	return uc.repo.Update(ctx, target)
 }
 
 // CreateOfflinePaymentRequest represents input for offline payment registration.
@@ -168,6 +226,13 @@ func (uc *PaymentUseCases) CreateOfflinePayment(ctx context.Context, req CreateO
 	if err := uc.repo.Create(ctx, payment); err != nil {
 		log.Printf("Failed to create offline payment: %v", err)
 		return nil, errors.New("failed to record payment")
+	}
+
+	// Notify Responder if any
+	if responder, ok := uc.responders[payment.ReferenceType]; ok {
+		if err := responder.OnPaymentStatusChanged(ctx, payment.ClubID, payment.ReferenceID, payment.Status); err != nil {
+			log.Printf("Responder failed for %s (offline): %v", payment.ReferenceType, err)
+		}
 	}
 
 	return payment, nil

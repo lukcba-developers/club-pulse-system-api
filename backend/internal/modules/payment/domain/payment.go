@@ -63,3 +63,8 @@ type PaymentRepository interface {
 	GetByExternalID(ctx context.Context, externalID string) (*Payment, error)
 	List(ctx context.Context, clubID string, filter PaymentFilter) ([]*Payment, int64, error)
 }
+
+// PaymentStatusResponder allows other modules to react to payment status changes.
+type PaymentStatusResponder interface {
+	OnPaymentStatusChanged(ctx context.Context, clubID string, referenceID uuid.UUID, status PaymentStatus) error
+}

@@ -45,7 +45,8 @@ func TestBookingAdvancedFlow(t *testing.T) {
 
 	usRepo := userRepo.NewPostgresUserRepository(db)
 
-	uc := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, &MockNotifier{})
+	sharedMock := &SharedMockNotifier{}
+	uc := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, sharedMock, sharedMock)
 	h := bookingHttp.NewBookingHandler(uc)
 
 	r := gin.Default()

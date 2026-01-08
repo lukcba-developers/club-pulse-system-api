@@ -65,3 +65,15 @@ jobs:
           npm ci
           npm run type-check
           npm run build
+
+      - name: Install Playwright Browsers
+        run: |
+          cd frontend
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E Tests
+        run: |
+          cd frontend
+          npx playwright test
+        env:
+          CI: true

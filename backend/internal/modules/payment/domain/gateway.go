@@ -14,4 +14,7 @@ type PaymentGateway interface {
 
 	// ValidateWebhook verifies the authenticity of the webhook request
 	ValidateWebhook(req *http.Request) error
+
+	// Refund reverses a payment
+	Refund(ctx context.Context, externalID string) error
 }

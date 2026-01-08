@@ -91,7 +91,9 @@ Ahora, el entorno está listo. Puedes acceder a `http://localhost:3000` y usar l
 
 La documentación es una pieza clave de este proyecto. Está diseñada para ser clara, completa y útil tanto para desarrolladores como para usuarios finales.
 
--   **[Wiki de Usuario](docs/wiki/user/README.md):** **(Lectura recomendada)** Es la fuente central de conocimiento sobre la funcionalidad del sistema. Detalla cada módulo de negocio, explicando su propósito, características y flujos de trabajo desde la perspectiva del usuario. La wiki ha sido actualizada para reflejar el estado actual del código.
+-   **[Wiki de Usuario](docs/wiki/user/README.md):** **(Lectura recomendada)** Es la fuente central de conocimiento sobre la funcionalidad del sistema. Detalla cada módulo de negocio, explicando su propósito, características y flujos de trabajo desde la perspectiva del usuario.
+-   **Documentación Técnica por Módulo:** Cada módulo en `backend/internal/modules/` cuenta con su propio `README.md` detallando arquitectura, reglas de negocio y snippets de uso para desarrolladores.
+-   **[Diagramas de Arquitectura](docs/architecture/diagrams.md):** Visualización de flujos críticos (Auth, Reservas, Semáforo del Jugador).
 
 -   **[Guía para Contribuidores (`CONTRIBUTING.md`)](CONTRIBUTING.md):** **(Lectura obligatoria para desarrolladores)** Contiene la guía de arquitectura, configuración del entorno y el flujo de trabajo para añadir nuevas funcionalidades.
 

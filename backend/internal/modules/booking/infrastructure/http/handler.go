@@ -22,6 +22,18 @@ func NewBookingHandler(useCases *application.BookingUseCases) *BookingHandler {
 	}
 }
 
+// Create godoc
+// @Summary      Create a new booking
+// @Description  Creates a new booking for a facility. Validates health certificate and availability.
+// @Tags         bookings
+// @Accept       json
+// @Produce      json
+// @Param        input body application.CreateBookingDTO true "Booking Details"
+// @Success      201   {object}  domain.Booking
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      409   {object}  map[string]string "Slot conflict"
+// @Router       /bookings [post]
 func (h *BookingHandler) Create(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -61,6 +73,14 @@ func (h *BookingHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, booking)
 }
 
+// List godoc
+// @Summary      List user bookings
+// @Description  Returns a list of bookings for the authenticated user.
+// @Tags         bookings
+// @Produce      json
+// @Success      200   {object}  map[string][]domain.Booking
+// @Failure      401   {object}  map[string]string
+// @Router       /bookings [get]
 func (h *BookingHandler) List(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -124,6 +144,15 @@ func (h *BookingHandler) ListAll(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": bookings})
 }
 
+// Cancel godoc
+// @Summary      Cancel a booking
+// @Description  Cancels an existing booking by its ID.
+// @Tags         bookings
+// @Param        id   path      string  true  "Booking ID"
+// @Success      200   {object}  map[string]string "message: booking cancelled"
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Router       /bookings/{id} [delete]
 func (h *BookingHandler) Cancel(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -146,6 +175,16 @@ func (h *BookingHandler) Cancel(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "booking cancelled"})
 }
 
+// GetAvailability godoc
+// @Summary      Get facility availability
+// @Description  Check available slots for a specific facility and date.
+// @Tags         bookings
+// @Produce      json
+// @Param        facility_id  query     string  true  "Facility ID"
+// @Param        date         query     string  true  "Date (YYYY-MM-DD)"
+// @Success      200   {object}  map[string][]interface{}
+// @Failure      400   {object}  map[string]string
+// @Router       /bookings/availability [get]
 func (h *BookingHandler) GetAvailability(c *gin.Context) {
 	// 1. Parse params
 	facilityID := c.Query("facility_id")
@@ -191,6 +230,16 @@ func (h *BookingHandler) GetAvailability(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// CreateRecurringRule godoc
+// @Summary      Create a recurring booking rule
+// @Description  Admin only. Sets up a pattern for automatic bookings.
+// @Tags         bookings
+// @Accept       json
+// @Produce      json
+// @Param        input body application.CreateRecurringRuleDTO true "Rule Details"
+// @Success      201   {object}  domain.RecurringRule
+// @Failure      403   {object}  map[string]string "Requires ADMIN role"
+// @Router       /bookings/recurring [post]
 func (h *BookingHandler) CreateRecurringRule(c *gin.Context) {
 	// RBAC: Only ADMIN or SUPER_ADMIN can create recurring rules
 	role, exists := c.Get("userRole")
@@ -215,6 +264,13 @@ func (h *BookingHandler) CreateRecurringRule(c *gin.Context) {
 	c.JSON(http.StatusCreated, rule)
 }
 
+// GenerateBookings godoc
+// @Summary      Materialize recurring bookings
+// @Description  Admin only. Forces generation of bookings from active recurring rules.
+// @Tags         bookings
+// @Success      200   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /bookings/generate [post]
 func (h *BookingHandler) GenerateBookings(c *gin.Context) {
 	// RBAC: Only ADMIN or SUPER_ADMIN can generate bookings
 	role, exists := c.Get("userRole")
@@ -233,6 +289,16 @@ func (h *BookingHandler) GenerateBookings(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "bookings generated successfully"})
 }
 
+// JoinWaitlist godoc
+// @Summary      Join a waitlist
+// @Description  Adds the user to the waitlist for a specific resource and date.
+// @Tags         bookings
+// @Accept       json
+// @Produce      json
+// @Param        input body application.JoinWaitlistDTO true "Waitlist Details"
+// @Success      201   {object}  domain.Waitlist
+// @Failure      401   {object}  map[string]string
+// @Router       /bookings/waitlist [post]
 func (h *BookingHandler) JoinWaitlist(c *gin.Context) {
 	var dto application.JoinWaitlistDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {

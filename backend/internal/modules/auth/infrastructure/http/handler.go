@@ -30,6 +30,17 @@ func NewAuthHandler(useCase *application.AuthUseCases) *AuthHandler {
 	}
 }
 
+// Register godoc
+// @Summary      Register a new user
+// @Description  Creates a new user account for the specified club.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body application.RegisterDTO true "Registration Details"
+// @Success      201   {object}  domain.Token
+// @Failure      400   {object}  map[string]string
+// @Failure      409   {object}  map[string]string "User already exists"
+// @Router       /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var dto application.RegisterDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {
@@ -80,6 +91,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
+// RefreshToken godoc
+// @Summary      Refresh access token
+// @Description  Exchanges a refresh token for a new access token and refresh token (rotation).
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body object{refresh_token=string} true "Refresh Token"
+// @Success      200   {object}  domain.Token
+// @Failure      401   {object}  map[string]string "Invalid or expired token"
+// @Router       /auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	type RefreshDTO struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
@@ -100,6 +121,15 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	c.JSON(http.StatusOK, token)
 }
 
+// Logout godoc
+// @Summary      Logout user
+// @Description  Revokes the provided refresh token and clears auth cookies.
+// @Tags         auth
+// @Accept       json
+// @Param        input body object{refresh_token=string} true "Refresh Token"
+// @Success      204   "No Content"
+// @Failure      400   {object}  map[string]string
+// @Router       /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	type LogoutDTO struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
@@ -124,6 +154,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// ListSessions godoc
+// @Summary      List user sessions
+// @Description  Returns all active sessions (refresh tokens) for the authenticated user.
+// @Tags         auth
+// @Produce      json
+// @Success      200   {array}   domain.RefreshToken
+// @Failure      401   {object}  map[string]string
+// @Router       /auth/sessions [get]
 func (h *AuthHandler) ListSessions(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -140,6 +178,14 @@ func (h *AuthHandler) ListSessions(c *gin.Context) {
 	c.JSON(http.StatusOK, sessions)
 }
 
+// RevokeSession godoc
+// @Summary      Revoke a session
+// @Description  Terminates a specific session by its ID.
+// @Tags         auth
+// @Param        id   path      string  true  "Session ID"
+// @Success      200   {object}  map[string]string "message: Session revoked"
+// @Failure      401   {object}  map[string]string
+// @Router       /auth/sessions/{id} [delete]
 func (h *AuthHandler) RevokeSession(c *gin.Context) {
 	sessionID := c.Param("id")
 	if sessionID == "" {
@@ -161,6 +207,16 @@ func (h *AuthHandler) RevokeSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Session revoked"})
 }
 
+// GoogleLogin godoc
+// @Summary      Google OAuth Login
+// @Description  Authenticates user via Google OAuth2 code.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body object{code=string} true "Google Authorization Code"
+// @Success      200   {object}  map[string]string "message: Google login successful"
+// @Failure      401   {object}  map[string]string
+// @Router       /auth/google [post]
 func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	type GoogleLoginDTO struct {
 		Code string `json:"code" binding:"required"`

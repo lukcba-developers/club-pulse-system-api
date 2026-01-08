@@ -47,6 +47,9 @@ func (m *mockGatewayStrict) ValidateWebhook(req *http.Request) error {
 	}
 	return nil
 }
+func (m *mockGatewayStrict) Refund(ctx context.Context, externalID string) error {
+	return nil
+}
 
 func TestPaymentWebhookSecurity(t *testing.T) {
 	// 1. Setup

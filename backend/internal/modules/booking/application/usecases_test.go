@@ -166,6 +166,15 @@ func (m *MockNotificationSender) Send(ctx context.Context, n service.Notificatio
 	return args.Error(0)
 }
 
+type MockRefundService struct {
+	mock.Mock
+}
+
+func (m *MockRefundService) Refund(ctx context.Context, clubID string, referenceID uuid.UUID, referenceType string) error {
+	args := m.Called(ctx, clubID, referenceID, referenceType)
+	return args.Error(0)
+}
+
 type MockRecurringRepo struct {
 	mock.Mock
 }
@@ -402,7 +411,8 @@ func TestCreateBooking(t *testing.T) {
 			mockFacilityRepo := new(MockFacilityRepo)
 			mockUserRepo := new(MockUserRepo)
 			mockNotificationSender := new(MockNotificationSender)
-			useCase := application.NewBookingUseCases(mockBookingRepo, mockRecurringRepo, mockFacilityRepo, mockUserRepo, mockNotificationSender)
+			mockRefundService := new(MockRefundService)
+			useCase := application.NewBookingUseCases(mockBookingRepo, mockRecurringRepo, mockFacilityRepo, mockUserRepo, mockNotificationSender, mockRefundService)
 
 			if tc.setupMocks != nil {
 				tc.setupMocks(mockBookingRepo, mockFacilityRepo, mockNotificationSender, mockUserRepo)

@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Trophy, Users, ShoppingBag } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
 
 // Función auxiliar para obtener noticias (client o server side fetch)
 async function getNews(slug: string) {
@@ -29,18 +31,18 @@ export default async function PublicClubHome({ params }: { params: { clubSlug: s
                         Pasión, deporte y comunidad. Únete a nosotros y forma parte de la historia.
                     </p>
                     <div className="flex justify-center gap-4">
-                        <a href={`/${params.clubSlug}/store`}>
+                        <Link href={`/${params.clubSlug}/store`}>
                             <Button size="lg" className="gap-2">
                                 <ShoppingBag className="h-5 w-5" />
                                 Ir a la Tienda
                             </Button>
-                        </a>
-                        <a href="/register">
+                        </Link>
+                        <Link href="/register">
                             <Button size="lg" variant="outline" className="gap-2">
                                 <Users className="h-5 w-5" />
                                 Hacerme Socio
                             </Button>
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </section>
@@ -83,9 +85,9 @@ export default async function PublicClubHome({ params }: { params: { clubSlug: s
                         </CardHeader>
                         <CardContent>
                             <p className="mb-4">Adquiere la camiseta oficial, ropa de entrenamiento y accesorios del club.</p>
-                            <a href={`/${params.clubSlug}/store`}>
+                            <Link href={`/${params.clubSlug}/store`}>
                                 <Button variant="link" className="p-0">Visitar Tienda &rarr;</Button>
-                            </a>
+                            </Link>
                         </CardContent>
                     </Card>
                 </div>
@@ -100,7 +102,7 @@ export default async function PublicClubHome({ params }: { params: { clubSlug: s
                             <div key={item.id} className="bg-card rounded-lg overflow-hidden border shadow-sm flex flex-col">
                                 <div className="h-48 bg-muted flex items-center justify-center text-muted-foreground relative">
                                     {item.image_url ? (
-                                        <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                                        <Image src={item.image_url} alt={item.title} fill className="object-cover" />
                                     ) : (
                                         <span>Sin Imagen</span>
                                     )}

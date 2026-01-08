@@ -23,7 +23,6 @@ A continuación se detallan las funcionalidades por módulo y los roles que tien
 | Gestionar datos de un usuario | | ✅ | | El ADMIN puede modificar datos de un miembro de su club. |
 
 ### Módulo: Clubes (Club)
-*Análisis de código pendiente para detallar casos de uso y roles.*
 
 | Caso de Uso | SUPER_ADMIN | ADMIN | MEMBER | Descripción |
 | :--- | :---: | :---: | :---: | :--- |
@@ -107,7 +106,6 @@ A continuación se detallan las funcionalidades por módulo y los roles que tien
 | Realizar una compra | | ✅ | ✅ | Comprar uno o más artículos del catálogo. La compra puede ser para un socio o un invitado. |
 
 ### Módulo: Control de Acceso (Access)
-*Análisis de código pendiente para detallar casos de uso y roles.*
 
 | Caso de Uso | SUPER_ADMIN | ADMIN | MEMBER | Descripción |
 | :--- | :---: | :---: | :---: | :--- |
@@ -115,7 +113,6 @@ A continuación se detallan las funcionalidades por módulo y los roles que tien
 | Validar acceso según membresía/reserva | | ✅ | | El sistema comprueba si el socio tiene permiso para entrar. |
 
 ### Módulo: Asistencia (Attendance)
-*Análisis de código pendiente para detallar casos de uso y roles.*
 
 | Caso de Uso | SUPER_ADMIN | ADMIN | MEMBER | Descripción |
 | :--- | :---: | :---: | :---: | :--- |

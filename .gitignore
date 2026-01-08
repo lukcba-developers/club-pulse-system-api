@@ -1,5 +1,19 @@
-\n# Compiled Go binaries\nmain
+# Compiled Go binaries
+main
+
+# Playwright
+frontend/playwright/.auth/
+frontend/test-results/
+frontend/playwright-report/
 
 # Legacy code migration
 legacy/
 /api
+
+# Node modules
+node_modules/
+.next/
+dist/
+build/
+.env*
+! .env.example

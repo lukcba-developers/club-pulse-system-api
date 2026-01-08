@@ -34,3 +34,7 @@ func (m *MockPaymentGateway) ValidateWebhook(req *http.Request) error {
 	// Always valid for mock
 	return nil
 }
+
+func (m *MockPaymentGateway) Refund(ctx context.Context, externalID string) error {
+	return nil
+}
