@@ -2,27 +2,31 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Authentication Flow', () => {
     test('should login successfully with HttpOnly cookies', async ({ page, context }) => {
-        // 0. Setup: Ensure user exists using default ClubID from axios.ts
-        const CLUB_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-        const apiUrl = process.env.TEST_API_URL || 'http://127.0.0.1:8080/api/v1';
-        try {
-            await page.request.post(`${apiUrl}/auth/register`, {
-                data: {
-                    name: 'System Admin',
-                    email: 'admin@clubpulse.com',
-                    password: 'admin123',
-                },
-                headers: {
-                    'X-Club-ID': CLUB_ID
-                }
-            });
-            console.log('Test user registered or already exists');
-        } catch (e) {
-            console.log('Registration warning (might already exist):', e);
-        }
-
-        // 1. Navigate to Login
+        // 1. Navigate to Login (required for page context)
         await page.goto('/login');
+
+        // 0. Setup: Register via Browser Context (to bypass Node network issues)
+        await page.evaluate(async () => {
+            const CLUB_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+            try {
+                // Using 127.0.0.1 to be safe, though localhost usually works in browser
+                const response = await fetch('http://127.0.0.1:8080/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Club-ID': CLUB_ID
+                    },
+                    body: JSON.stringify({
+                        name: 'System Admin',
+                        email: 'admin@clubpulse.com',
+                        password: 'admin123',
+                    })
+                });
+                console.log('Registration status:', response.status);
+            } catch (e) {
+                console.log('Registration fetch warning:', e);
+            }
+        });
 
         // 2. Fill Credentials
         await page.fill('input[name="email"]', 'admin@clubpulse.com');
