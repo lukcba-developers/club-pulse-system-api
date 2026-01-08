@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	bookingApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
+	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
@@ -25,10 +26,14 @@ func TestBookingPricing(t *testing.T) {
 	database.InitDB()
 	db := database.GetDB()
 
+	// Ensure Schema
+	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &facilityRepo.FacilityModel{}, &bookingDomain.Booking{})
+
 	// Clear DB
 	db.Exec("TRUNCATE TABLE bookings CASCADE")
 	db.Exec("TRUNCATE TABLE facilities CASCADE")
 	db.Exec("TRUNCATE TABLE users CASCADE")
+	db.Exec("TRUNCATE TABLE user_stats CASCADE")
 
 	// Dependencies
 	bRepo := bookingRepo.NewPostgresBookingRepository(db)

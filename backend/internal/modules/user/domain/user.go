@@ -54,8 +54,8 @@ type User struct {
 	DataRetentionUntil   *time.Time `json:"data_retention_until,omitempty"`
 
 	// Relations (Fetched on demand or preloaded)
-	Stats  *UserStats `json:"stats,omitempty" gorm:"foreignKey:UserID;references:ID"`
-	Wallet *Wallet    `json:"wallet,omitempty" gorm:"foreignKey:UserID;references:ID"`
+	Stats  *UserStats `json:"stats,omitempty" gorm:"-"`
+	Wallet *Wallet    `json:"wallet,omitempty" gorm:"-"`
 }
 
 const (

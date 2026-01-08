@@ -25,8 +25,9 @@ func TestUserProfileCategory(t *testing.T) {
 	// Ensure clean state
 	_ = db.Migrator().DropTable(&domain.UserStats{}, &domain.Wallet{}, &repository.UserModel{})
 
-	// Migrate schema for test
-	_ = db.AutoMigrate(&repository.UserModel{}, &domain.UserStats{}, &domain.Wallet{})
+	// Migrate schema for test (Split to avoid GORM duplicate constraint issue on CREATE TABLE)
+	_ = db.AutoMigrate(&domain.UserStats{}, &domain.Wallet{})
+	_ = db.AutoMigrate(&repository.UserModel{})
 
 	// Clear PostgreSQL cached prepared statements after schema change
 	// This fixes "cached plan must not change result type" error

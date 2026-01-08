@@ -13,8 +13,6 @@ type PostgresUserRepository struct {
 }
 
 func NewPostgresUserRepository(db *gorm.DB) *PostgresUserRepository {
-	// Auto-Migrate the new entities
-	_ = db.AutoMigrate(&domain.UserStats{}, &domain.Wallet{})
 	return &PostgresUserRepository{db: db}
 }
 
@@ -34,8 +32,8 @@ type UserModel struct {
 	UpdatedAt         time.Time
 	DeletedAt         gorm.DeletedAt `gorm:"index"`
 	// Join fields for GORM Preloading (mapping back to domain entities)
-	Stats  *domain.UserStats `gorm:"foreignKey:UserID;references:ID"`
-	Wallet *domain.Wallet    `gorm:"foreignKey:UserID;references:ID"`
+	Stats  *domain.UserStats `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE,name:fk_users_stats_model"`
+	Wallet *domain.Wallet    `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE,name:fk_users_wallet_model"`
 	ClubID string            `gorm:"index;not null"`
 
 	// Operational Fields
