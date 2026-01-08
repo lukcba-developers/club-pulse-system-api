@@ -23,7 +23,7 @@ func TestUserProfileCategory(t *testing.T) {
 	db := database.GetDB()
 
 	// Ensure clean state
-	_ = db.Migrator().DropTable(&repository.UserModel{}, &domain.UserStats{}, &domain.Wallet{})
+	_ = db.Migrator().DropTable(&domain.UserStats{}, &domain.Wallet{}, &repository.UserModel{})
 
 	// Migrate schema for test
 	_ = db.AutoMigrate(&repository.UserModel{}, &domain.UserStats{}, &domain.Wallet{})

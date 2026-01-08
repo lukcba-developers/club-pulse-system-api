@@ -27,7 +27,7 @@ func TestAttendanceFlow(t *testing.T) {
 	db := database.GetDB()
 
 	// Ensure clean state (Legacy schema conflict prevention)
-	_ = db.Migrator().DropTable(&attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{}, &userRepo.UserModel{})
+	_ = db.Migrator().DropTable(&attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &userRepo.UserModel{})
 
 	// 2. Setup DB & Migrations
 	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")

@@ -44,8 +44,8 @@ func TestSuperAdminAccess(t *testing.T) {
 	db := database.GetDB()
 
 	// Ensure clean state
-	_ = db.Migrator().DropTable(&clubDomain.Club{}, &userRepo.UserModel{})
-	_ = db.AutoMigrate(&clubDomain.Club{}, &userRepo.UserModel{})
+	_ = db.Migrator().DropTable(&userDomain.UserStats{}, &userDomain.Wallet{}, &userRepo.UserModel{}, &clubDomain.Club{})
+	_ = db.AutoMigrate(&clubDomain.Club{}, &userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 
 	// Clear PostgreSQL cached prepared statements after schema change
 	db.Exec("DISCARD ALL")

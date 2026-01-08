@@ -26,6 +26,7 @@ import (
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 
 	accessDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/domain"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/shopspring/decimal"
@@ -40,7 +41,7 @@ func TestAccessFlow(t *testing.T) {
 	db := database.GetDB()
 
 	// Ensure clean state for ALL related tables
-	_ = db.Migrator().DropTable(&membershipDomain.MembershipTier{}, &membershipDomain.Membership{}, &userRepo.UserModel{}, &accessDomain.AccessLog{})
+	_ = db.Migrator().DropTable(&membershipDomain.MembershipTier{}, &membershipDomain.Membership{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &userRepo.UserModel{}, &accessDomain.AccessLog{})
 
 	// AutoMigrate test dependencies
 	// Note: Auth Repo typically migrates 'users' but might miss 'club_id' if using an older model definition.

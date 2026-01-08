@@ -18,6 +18,7 @@ import (
 	membershipDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/domain"
 	membershipHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/infrastructure/http"
 	membershipRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/infrastructure/repository"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/shopspring/decimal"
@@ -31,7 +32,7 @@ func TestMembershipFlow(t *testing.T) {
 	database.InitDB()
 	db := database.GetDB()
 
-	_ = db.Migrator().DropTable(&membershipDomain.Membership{}, &membershipDomain.MembershipTier{}, &userRepo.UserModel{})
+	_ = db.Migrator().DropTable(&membershipDomain.Membership{}, &membershipDomain.MembershipTier{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &userRepo.UserModel{})
 	_ = db.AutoMigrate(&membershipDomain.Membership{}, &membershipDomain.MembershipTier{}, &userRepo.UserModel{})
 
 	// Repos

@@ -31,7 +31,7 @@ func TestChampionshipsFlow(t *testing.T) {
 	db := database.GetDB()
 
 	// Ensure clean state
-	_ = db.Migrator().DropTable(&domain.Discipline{}, &domain.Tournament{}, &domain.Match{}, &domain.Team{}, &domain.Standing{}, &userRepo.UserModel{}) // Tables likely created
+	_ = db.Migrator().DropTable(&domain.Discipline{}, &domain.Tournament{}, &domain.Match{}, &domain.Team{}, &domain.Standing{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &userRepo.UserModel{}) // Tables likely created
 	_ = db.AutoMigrate(&domain.Discipline{}, &domain.Tournament{}, &domain.Match{}, &domain.Team{}, &domain.Standing{}, &userRepo.UserModel{})
 
 	// Clear PostgreSQL cached prepared statements after schema change

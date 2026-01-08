@@ -28,7 +28,7 @@ func TestGamificationFlow(t *testing.T) {
 	db := database.GetDB()
 
 	// Ensure clean state
-	_ = db.Migrator().DropTable(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
+	_ = db.Migrator().DropTable(&userDomain.UserStats{}, &userDomain.Wallet{}, &userRepo.UserModel{})
 	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 
 	// Clear PostgreSQL cached prepared statements after schema change
