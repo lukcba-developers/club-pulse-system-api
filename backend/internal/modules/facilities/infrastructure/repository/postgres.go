@@ -35,6 +35,7 @@ type FacilityModel struct {
 	HourlyRate     float64               `gorm:"not null"`
 	OpeningHour    int                   `gorm:"default:8"`
 	ClosingHour    int                   `gorm:"default:23"`
+	GuestFee       float64               `gorm:"default:0"`
 	Specifications domain.Specifications `gorm:"type:jsonb;serializer:json"` // Postgres JSONB
 	Location       domain.Location       `gorm:"type:jsonb;serializer:json"`
 	ClubID         string                `gorm:"index;not null"`
@@ -56,6 +57,7 @@ func (r *PostgresFacilityRepository) Create(facility *domain.Facility) error {
 		HourlyRate:     facility.HourlyRate,
 		OpeningHour:    facility.OpeningHour,
 		ClosingHour:    facility.ClosingHour,
+		GuestFee:       facility.GuestFee,
 		Specifications: facility.Specifications,
 		Location:       facility.Location,
 		ClubID:         facility.ClubID,
@@ -101,6 +103,7 @@ func (r *PostgresFacilityRepository) Update(facility *domain.Facility) error {
 		HourlyRate:     facility.HourlyRate,
 		OpeningHour:    facility.OpeningHour,
 		ClosingHour:    facility.ClosingHour,
+		GuestFee:       facility.GuestFee,
 		Specifications: facility.Specifications,
 		Location:       facility.Location,
 		ClubID:         facility.ClubID,
@@ -121,6 +124,7 @@ func (r *PostgresFacilityRepository) toDomain(m FacilityModel) *domain.Facility 
 		HourlyRate:     m.HourlyRate,
 		OpeningHour:    m.OpeningHour,
 		ClosingHour:    m.ClosingHour,
+		GuestFee:       m.GuestFee,
 		Specifications: m.Specifications,
 		Location:       m.Location,
 		ClubID:         m.ClubID,

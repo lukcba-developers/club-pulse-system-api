@@ -125,15 +125,15 @@ type ChampionshipRepository interface {
 	GetTournament(clubID, id string) (*Tournament, error)
 	ListTournaments(clubID string) ([]Tournament, error)
 	CreateStage(stage *TournamentStage) error
-	GetStage(id string) (*TournamentStage, error)
+	GetStage(clubID, id string) (*TournamentStage, error)
 	CreateGroup(group *Group) error
-	GetGroup(id string) (*Group, error)
+	GetGroup(clubID, id string) (*Group, error)
 	CreateMatch(match *TournamentMatch) error
-	GetMatch(id string) (*TournamentMatch, error)
-	GetMatchesByGroup(groupID string) ([]TournamentMatch, error)
-	UpdateMatchResult(matchID string, homeScore, awayScore int) error
-	UpdateMatchScheduling(matchID string, date time.Time, bookingID uuid.UUID) error
-	GetStandings(groupID string) ([]Standing, error)
+	GetMatch(clubID, id string) (*TournamentMatch, error)
+	GetMatchesByGroup(clubID, groupID string) ([]TournamentMatch, error)
+	UpdateMatchResult(clubID, matchID string, homeScore, awayScore int) error
+	UpdateMatchScheduling(clubID, matchID string, date time.Time, bookingID uuid.UUID) error
+	GetStandings(clubID, groupID string) ([]Standing, error)
 	RegisterTeam(standing *Standing) error
 	UpdateStanding(standing *Standing) error
 	GetTeamMembers(teamID string) ([]string, error)

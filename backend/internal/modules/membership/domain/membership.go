@@ -89,4 +89,5 @@ type MembershipRepository interface {
 	GetTierByID(ctx context.Context, clubID string, id uuid.UUID) (*MembershipTier, error)
 	ListBillable(ctx context.Context, clubID string, date time.Time) ([]Membership, error)
 	UpdateBalance(ctx context.Context, clubID string, membershipID uuid.UUID, newBalance decimal.Decimal, nextBilling time.Time) error
+	ListAll(ctx context.Context, clubID string) ([]Membership, error)
 }

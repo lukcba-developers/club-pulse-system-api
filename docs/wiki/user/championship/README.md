@@ -80,3 +80,73 @@ graph TD
     I --> J[Confirmación de Inscripción ✅];
     H -- No --> J;
 ```
+
+---
+
+## 6. Gestión de Voluntarios
+
+Para el buen desarrollo de los eventos y partidos, el sistema permite la gestión de voluntarios que pueden cubrir diferentes roles durante un encuentro.
+
+### 🔹 Propósito
+
+La gestión de voluntarios permite a los administradores asignar socios a roles específicos para un partido, asegurando que haya suficiente personal para tareas como seguridad, primeros auxilios, etc. Los socios también pueden ver dónde se necesita ayuda y posiblemente ofrecerse como voluntarios.
+
+### 🔹 Modelo de Datos
+
+La información se almacena en la tabla `volunteer_assignments`.
+
+| Campo         | Tipo           | Descripción                                                              |
+| ------------- | -------------- | ------------------------------------------------------------------------ |
+| `id`          | `UUID`         | Identificador único de la asignación.                                    |
+| `club_id`     | `VARCHAR`      | ID del club.                                                             |
+| `match_id`    | `UUID`         | ID del partido al que se asigna el voluntario.                           |
+| `user_id`     | `VARCHAR`      | ID del socio que actuará como voluntario.                                |
+| `role`        | `ENUM`         | Rol que desempeñará el voluntario. Ver `VolunteerRole`.                  |
+| `notes`       | `TEXT`         | Notas adicionales sobre la asignación.                                   |
+| `assigned_by` | `VARCHAR`      | ID del administrador que realizó la asignación.                          |
+| `assigned_at` | `TIMESTAMPTZ`  | Fecha y hora de la asignación.                                           |
+
+#### `VolunteerRole` (Roles de Voluntario)
+
+-   `BUFFET`: Atención en el buffet o cantina.
+-   `SECURITY`: Tareas de seguridad y control de acceso.
+-   `TRANSPORT`: Ayuda con el transporte de equipos o materiales.
+-   `FIRST_AID`: Asistencia de primeros auxilios.
+-   `COACH`: Asistente técnico o de campo.
+
+### 🔹 Endpoints de la API
+
+---
+
+#### `POST /championships/matches/:id/volunteers`
+
+-   **Acción:** Asigna un socio como voluntario a un partido específico.
+-   **Permisos:** `ADMIN` o `SUPER_ADMIN`.
+-   **`:id`:** Corresponde al `match_id`.
+-   **Request Body (JSON):**
+    ```json
+    {
+      "user_id": "ID_DEL_SOCIO",
+      "role": "BUFFET", // Uno de los VolunteerRole
+      "notes": "Encargado de la caja." // Opcional
+    }
+    ```
+-   **Respuesta Exitosa (201 Created):** Un mensaje de confirmación.
+
+---
+
+#### `GET /championships/matches/:id/volunteers`
+
+-   **Acción:** Obtiene la lista y un resumen de los voluntarios asignados a un partido.
+-   **Permisos:** Abierto a usuarios autenticados.
+-   **`:id`:** Corresponde al `match_id`.
+-   **Respuesta Exitosa (200 OK):** Un objeto `VolunteerSummary` que contiene la lista de voluntarios, el total de cupos y cuántos están cubiertos.
+
+---
+
+#### `DELETE /championships/volunteers/:id`
+
+-   **Acción:** Elimina una asignación de voluntario.
+-   **Permisos:** `ADMIN` o `SUPER_ADMIN`.
+-   **`:id`:** Corresponde al `id` de la asignación (`volunteer_assignments.id`).
+-   **Respuesta Exitosa (200 OK):** Un mensaje de confirmación.

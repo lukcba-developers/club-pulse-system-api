@@ -81,6 +81,16 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 		return nil, err
 	}
 
+	// 2.2 Calculate Price
+	facility, err := uc.facilityRepo.GetByID(clubID, facilityID.String())
+	if err != nil {
+		return nil, err
+	}
+	dtoDuration := dto.EndTime.Sub(dto.StartTime).Hours()
+	basePrice := dtoDuration * facility.HourlyRate
+	guestPrice := float64(len(dto.GuestDetails)) * facility.GuestFee
+	totalPrice := basePrice + guestPrice
+
 	// 3. Entity Construction
 	booking := &bookingDomain.Booking{
 		ID:           uuid.New(),
@@ -89,6 +99,7 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 		ClubID:       clubID,
 		StartTime:    dto.StartTime,
 		EndTime:      dto.EndTime,
+		TotalPrice:   totalPrice,
 		Status:       bookingDomain.BookingStatusConfirmed,
 		GuestDetails: dto.GuestDetails,
 		CreatedAt:    time.Now(),

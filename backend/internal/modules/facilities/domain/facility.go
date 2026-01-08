@@ -76,8 +76,9 @@ type Facility struct {
 	Status         FacilityStatus `json:"status"`
 	Capacity       int            `json:"capacity"`
 	HourlyRate     float64        `json:"hourly_rate"`
-	OpeningHour    int            `json:"opening_hour"`   // 0-23
-	ClosingHour    int            `json:"closing_hour"`   // 0-23
+	OpeningHour    int            `json:"opening_hour"` // 0-23
+	ClosingHour    int            `json:"closing_hour"` // 0-23
+	GuestFee       float64        `json:"guest_fee"`
 	Specifications Specifications `json:"specifications"` // Stored as JSONB
 	Location       Location       `json:"location"`       // Stored as JSONB
 

@@ -65,22 +65,28 @@ func (uc *ChampionshipUseCases) GetTournament(clubID, id string) (*domain.Tourna
 	return uc.repo.GetTournament(clubID, id)
 }
 
-func (uc *ChampionshipUseCases) GetStandings(groupID string) ([]domain.Standing, error) {
-	return uc.repo.GetStandings(groupID)
+func (uc *ChampionshipUseCases) GetStandings(clubID, groupID string) ([]domain.Standing, error) {
+	return uc.repo.GetStandings(clubID, groupID)
 }
 
-func (uc *ChampionshipUseCases) GetMatchesByGroup(groupID string) ([]domain.TournamentMatch, error) {
-	return uc.repo.GetMatchesByGroup(groupID)
+func (uc *ChampionshipUseCases) GetMatchesByGroup(clubID, groupID string) ([]domain.TournamentMatch, error) {
+	return uc.repo.GetMatchesByGroup(clubID, groupID)
 }
 
 type AddStageInput struct {
 	TournamentID string `json:"tournament_id"` // Path param usually, but can be in DTO
+	ClubID       string `json:"club_id"`
 	Name         string `json:"name"`
 	Type         string `json:"type"` // "GROUP" or "KNOCKOUT"
 	Order        int    `json:"order"`
 }
 
 func (uc *ChampionshipUseCases) AddStage(tournamentID string, input AddStageInput) (*domain.TournamentStage, error) {
+	// Verify tournament belongs to club
+	if _, err := uc.repo.GetTournament(input.ClubID, tournamentID); err != nil {
+		return nil, errors.New("tournament not found or access denied")
+	}
+
 	stage := &domain.TournamentStage{
 		ID:           uuid.New(),
 		TournamentID: uuid.MustParse(tournamentID),
@@ -98,10 +104,16 @@ func (uc *ChampionshipUseCases) AddStage(tournamentID string, input AddStageInpu
 
 type AddGroupInput struct {
 	StageID string `json:"stage_id"`
+	ClubID  string `json:"club_id"`
 	Name    string `json:"name"`
 }
 
 func (uc *ChampionshipUseCases) AddGroup(stageID string, input AddGroupInput) (*domain.Group, error) {
+	// Verify stage belongs to club
+	if _, err := uc.repo.GetStage(input.ClubID, stageID); err != nil {
+		return nil, errors.New("stage not found or access denied")
+	}
+
 	group := &domain.Group{
 		ID:      uuid.New(),
 		StageID: uuid.MustParse(stageID),
@@ -117,7 +129,12 @@ type RegisterTeamInput struct {
 	TeamID string `json:"team_id"`
 }
 
-func (uc *ChampionshipUseCases) RegisterTeam(groupID string, input RegisterTeamInput) (*domain.Standing, error) {
+func (uc *ChampionshipUseCases) RegisterTeam(clubID, groupID string, input RegisterTeamInput) (*domain.Standing, error) {
+	// Verify group belongs to club
+	if _, err := uc.repo.GetGroup(clubID, groupID); err != nil {
+		return nil, errors.New("group not found or access denied")
+	}
+
 	// 1. Create Standing entry (which implicitly registers the team in the group)
 	standing := &domain.Standing{
 		ID:      uuid.New(),
@@ -132,9 +149,9 @@ func (uc *ChampionshipUseCases) RegisterTeam(groupID string, input RegisterTeamI
 	return standing, nil
 }
 
-func (uc *ChampionshipUseCases) GenerateGroupFixture(groupID string) ([]domain.TournamentMatch, error) {
+func (uc *ChampionshipUseCases) GenerateGroupFixture(clubID, groupID string) ([]domain.TournamentMatch, error) {
 	// 1. Get Teams in Group (via Standings)
-	standings, err := uc.repo.GetStandings(groupID)
+	standings, err := uc.repo.GetStandings(clubID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -149,19 +166,13 @@ func (uc *ChampionshipUseCases) GenerateGroupFixture(groupID string) ([]domain.T
 	}
 
 	matches := []domain.TournamentMatch{}
-	// Simple All-vs-All (One leg)
-	// We need StageID and TournamentID. Using a workaround:
-	// Assuming GroupID -> GetGroup -> StageID -> GetStage -> TournamentID.
-	// Since we don't have GetGroup public yet, we'll fetch ONE standing and check? No.
-	// We will try to fetch the Group using GetGroup (assuming we add it/it exists in repo impl naturally).
-	// Checking repository interface: `GetGroup(id string) (*Group, error)`. YES IT EXISTS.
 
-	group, err := uc.repo.GetGroup(groupID)
+	group, err := uc.repo.GetGroup(clubID, groupID)
 	if err != nil {
 		return nil, err
 	}
 
-	stage, err := uc.repo.GetStage(group.StageID.String())
+	stage, err := uc.repo.GetStage(clubID, group.StageID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +196,6 @@ func (uc *ChampionshipUseCases) GenerateGroupFixture(groupID string) ([]domain.T
 	}
 
 	for _, m := range matches {
-		// Use CreateMatch one by one or add bulk
 		if err := uc.repo.CreateMatch(&m); err != nil {
 			return nil, err
 		}
@@ -202,20 +212,17 @@ type UpdateMatchResultInput struct {
 }
 
 func (uc *ChampionshipUseCases) UpdateMatchResult(input UpdateMatchResultInput) error {
-	if err := uc.repo.UpdateMatchResult(input.MatchID, input.HomeScore, input.AwayScore); err != nil {
+	if err := uc.repo.UpdateMatchResult(input.ClubID, input.MatchID, input.HomeScore, input.AwayScore); err != nil {
 		return err
 	}
 
 	// Trigger Recalculate Standings
 	// 1. Get Match to find GroupID
-	match, err := uc.repo.GetMatch(input.MatchID)
+	match, err := uc.repo.GetMatch(input.ClubID, input.MatchID)
 	if err != nil {
 		return err // Log warning?
 	}
 
-	// Update User Stats
-	// Assuming match just completed. To avoid double counting, we should check previous status.
-	// But simply, let's assume this call finalizes the match.
 	// Update User Stats
 	if uc.userService != nil {
 		tournament, err := uc.repo.GetTournament(input.ClubID, match.TournamentID.String())
@@ -245,16 +252,16 @@ func (uc *ChampionshipUseCases) UpdateMatchResult(input UpdateMatchResultInput) 
 		return nil // Not a group match
 	}
 
-	return uc.recalculateStandings(match.GroupID.String())
+	return uc.recalculateStandings(input.ClubID, match.GroupID.String())
 }
 
-func (uc *ChampionshipUseCases) recalculateStandings(groupID string) error {
-	standings, err := uc.repo.GetStandings(groupID)
+func (uc *ChampionshipUseCases) recalculateStandings(clubID, groupID string) error {
+	standings, err := uc.repo.GetStandings(clubID, groupID)
 	if err != nil {
 		return err
 	}
 
-	matches, err := uc.repo.GetMatchesByGroup(groupID)
+	matches, err := uc.repo.GetMatchesByGroup(clubID, groupID)
 	if err != nil {
 		return err
 	}
@@ -339,5 +346,5 @@ func (uc *ChampionshipUseCases) ScheduleMatch(input ScheduleMatchInput) error {
 	}
 
 	// 2. Update Match with BookingID and Date
-	return uc.repo.UpdateMatchScheduling(input.MatchID, input.StartTime, *bookingID)
+	return uc.repo.UpdateMatchScheduling(input.ClubID, input.MatchID, input.StartTime, *bookingID)
 }

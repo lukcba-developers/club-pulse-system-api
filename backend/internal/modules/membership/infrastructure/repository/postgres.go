@@ -86,3 +86,13 @@ func (r *PostgresMembershipRepository) UpdateBalance(ctx context.Context, clubID
 	}
 	return r.db.WithContext(ctx).Model(&domain.Membership{}).Where("id = ? AND club_id = ?", membershipID, clubID).Updates(updates).Error
 }
+
+func (r *PostgresMembershipRepository) ListAll(ctx context.Context, clubID string) ([]domain.Membership, error) {
+	var memberships []domain.Membership
+	err := r.db.WithContext(ctx).
+		Preload("MembershipTier").
+		Where("club_id = ?", clubID).
+		Order("created_at DESC").
+		Find(&memberships).Error
+	return memberships, err
+}

@@ -47,9 +47,19 @@ type Payment struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
 }
 
+type PaymentFilter struct {
+	PayerID   uuid.UUID
+	Status    PaymentStatus
+	StartDate *time.Time
+	EndDate   *time.Time
+	Limit     int
+	Offset    int
+}
+
 type PaymentRepository interface {
 	Create(ctx context.Context, payment *Payment) error
 	Update(ctx context.Context, payment *Payment) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Payment, error)
 	GetByExternalID(ctx context.Context, externalID string) (*Payment, error)
+	List(ctx context.Context, clubID string, filter PaymentFilter) ([]*Payment, int64, error)
 }

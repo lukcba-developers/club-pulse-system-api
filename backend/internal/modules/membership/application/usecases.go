@@ -83,6 +83,11 @@ func (uc *MembershipUseCases) ListUserMemberships(ctx context.Context, clubID st
 	return uc.repo.GetByUserID(ctx, clubID, userID)
 }
 
+// ListAllMemberships returns all memberships for admin view
+func (uc *MembershipUseCases) ListAllMemberships(ctx context.Context, clubID string) ([]domain.Membership, error) {
+	return uc.repo.ListAll(ctx, clubID)
+}
+
 // ProcessMonthlyBilling runs the billing cycle for all active memberships
 func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID string) (int, error) {
 	now := time.Now()

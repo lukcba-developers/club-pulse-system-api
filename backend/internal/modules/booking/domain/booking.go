@@ -64,6 +64,7 @@ type Booking struct {
 	FacilityID   uuid.UUID     `json:"facility_id" gorm:"type:uuid;not null"`
 	StartTime    time.Time     `json:"start_time" gorm:"not null"`
 	EndTime      time.Time     `json:"end_time" gorm:"not null"`
+	TotalPrice   float64       `json:"total_price" gorm:"type:decimal(10,2);default:0"`
 	Status       BookingStatus `json:"status" gorm:"type:varchar(20);default:'CONFIRMED'"`
 	GuestDetails GuestDetails  `json:"guest_details" gorm:"type:jsonb"`
 	CreatedAt    time.Time     `json:"created_at"`

@@ -30,6 +30,15 @@ type CheckoutRequest struct {
 	ReferenceType string  `json:"reference_type" binding:"required"` // MEMBERSHIP, BOOKING
 }
 
+type OfflinePaymentRequest struct {
+	Amount        float64 `json:"amount" binding:"required"`
+	Method        string  `json:"method" binding:"required,oneof=CASH LABOR_EXCHANGE TRANSFER"`
+	PayerID       string  `json:"payer_id" binding:"required"`
+	ReferenceID   string  `json:"reference_id"`   // Optional if generic payment
+	ReferenceType string  `json:"reference_type"` // Optional
+	Notes         string  `json:"notes"`
+}
+
 // Checkout creates a payment Intent and returns the MP Preference URL
 func (h *PaymentHandler) Checkout(c *gin.Context) {
 	var req CheckoutRequest
@@ -165,8 +174,88 @@ func RegisterRoutes(r *gin.RouterGroup, handler *PaymentHandler, authMiddleware,
 	{
 		// Protected
 		payments.POST("/checkout", authMiddleware, tenantMiddleware, handler.Checkout)
+		payments.POST("/offline", authMiddleware, tenantMiddleware, handler.CreateOfflinePayment)
+		payments.GET("", authMiddleware, tenantMiddleware, handler.ListPayments)
 
 		// Public (Webhook)
 		payments.POST("/webhook", handler.HandleWebhook)
 	}
+}
+
+// ListPayments returns filtered payments for the dashboard
+func (h *PaymentHandler) ListPayments(c *gin.Context) {
+	clubID := c.GetString("clubID")
+
+	// Parse Filters
+	var filter domain.PaymentFilter
+
+	if payerID := c.Query("payer_id"); payerID != "" {
+		if id, err := uuid.Parse(payerID); err == nil {
+			filter.PayerID = id
+		}
+	}
+
+	if status := c.Query("status"); status != "" {
+		filter.Status = domain.PaymentStatus(status)
+	}
+
+	// Pagination
+	filter.Limit = 20 // Default
+	// Parse other pagination params if needed (offset, limit from query)
+
+	payments, total, err := h.repo.List(c.Request.Context(), clubID, filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list payments"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  payments,
+		"total": total,
+	})
+}
+
+// CreateOfflinePayment registers a payment made outside the system
+func (h *PaymentHandler) CreateOfflinePayment(c *gin.Context) {
+	var req OfflinePaymentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+
+	// Validate Payer
+	payerUUID, err := uuid.Parse(req.PayerID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payer_id"})
+		return
+	}
+
+	// Optional Reference
+	var refID uuid.UUID
+	if req.ReferenceID != "" {
+		refID, _ = uuid.Parse(req.ReferenceID)
+	}
+
+	payment := &domain.Payment{
+		ID:            uuid.New(),
+		Amount:        decimal.NewFromFloat(req.Amount),
+		Currency:      "ARS",
+		Status:        domain.PaymentStatusCompleted, // Offline payments are usually recorded when completed
+		Method:        domain.PaymentMethod(req.Method),
+		PayerID:       payerUUID,
+		ClubID:        clubID,
+		ReferenceID:   refID,
+		ReferenceType: req.ReferenceType,
+		Notes:         req.Notes,
+	}
+
+	if err := h.repo.Create(c.Request.Context(), payment); err != nil {
+		log.Printf("Failed to create offline payment: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record payment"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": payment})
 }

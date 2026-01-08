@@ -46,3 +46,45 @@ func (r *PostgresPaymentRepository) GetByExternalID(ctx context.Context, externa
 	}
 	return &payment, nil
 }
+
+func (r *PostgresPaymentRepository) List(ctx context.Context, clubID string, filter domain.PaymentFilter) ([]*domain.Payment, int64, error) {
+	var payments []*domain.Payment
+	var total int64
+
+	// Create base query with mandatory club_id
+	query := r.db.WithContext(ctx).Model(&domain.Payment{}).Where("club_id = ?", clubID)
+
+	// Apply filters if present
+	if filter.PayerID != uuid.Nil {
+		query = query.Where("payer_id = ?", filter.PayerID)
+	}
+	if filter.Status != "" {
+		query = query.Where("status = ?", filter.Status)
+	}
+	if filter.StartDate != nil {
+		query = query.Where("created_at >= ?", filter.StartDate)
+	}
+	if filter.EndDate != nil {
+		query = query.Where("created_at <= ?", filter.EndDate)
+	}
+
+	// Count total matching records before pagination
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Apply pagination
+	if filter.Limit > 0 {
+		query = query.Limit(filter.Limit)
+	}
+	if filter.Offset > 0 {
+		query = query.Offset(filter.Offset)
+	}
+
+	// Execute query ordered by newest first
+	if err := query.Order("created_at DESC").Find(&payments).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return payments, total, nil
+}

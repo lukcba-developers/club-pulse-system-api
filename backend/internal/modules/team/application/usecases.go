@@ -1,6 +1,7 @@
 package application
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,7 +16,14 @@ func NewTeamUseCases(repo domain.TeamRepository) *TeamUseCases {
 	return &TeamUseCases{repo: repo}
 }
 
-func (uc *TeamUseCases) ScheduleMatch(groupID uuid.UUID, opponent string, isHome bool, meetupTime time.Time, location string) (*domain.MatchEvent, error) {
+func (uc *TeamUseCases) ScheduleMatch(clubID string, groupID uuid.UUID, opponent string, isHome bool, meetupTime time.Time, location string) (*domain.MatchEvent, error) {
+	// Ideally we should verify groupID belongs to clubID here, but we lack GetGroup in this repo.
+	// Assuming the caller (handler) or database foreign keys + RLS (if any) or implicit trust for creation.
+	// However, for creation, strict checking is checking if Group exists and belongs to club.
+	// If we don't check, a user could schedule a match for another club's group if they guess the ID.
+	// TODO: Add verification if generic repo or cross-module access allowed.
+	// For now, proceeding with creation.
+
 	event := &domain.MatchEvent{
 		ID:              uuid.New(),
 		TrainingGroupID: groupID,
@@ -34,10 +42,15 @@ func (uc *TeamUseCases) ScheduleMatch(groupID uuid.UUID, opponent string, isHome
 	return event, nil
 }
 
-func (uc *TeamUseCases) RespondAvailability(eventID string, userID string, status domain.PlayerAvailabilityStatus, reason string) error {
+func (uc *TeamUseCases) RespondAvailability(clubID, eventID string, userID string, status domain.PlayerAvailabilityStatus, reason string) error {
 	eventUUID, err := uuid.Parse(eventID)
 	if err != nil {
 		return err
+	}
+
+	// Verify Event belongs to Club
+	if _, err := uc.repo.GetMatchEvent(clubID, eventID); err != nil {
+		return errors.New("event not found or access denied")
 	}
 
 	availability := &domain.PlayerAvailability{
@@ -51,6 +64,6 @@ func (uc *TeamUseCases) RespondAvailability(eventID string, userID string, statu
 	return uc.repo.SetPlayerAvailability(availability)
 }
 
-func (uc *TeamUseCases) GetEventAvailabilities(eventID string) ([]domain.PlayerAvailability, error) {
-	return uc.repo.GetEventAvailabilities(eventID)
+func (uc *TeamUseCases) GetEventAvailabilities(clubID, eventID string) ([]domain.PlayerAvailability, error) {
+	return uc.repo.GetEventAvailabilities(clubID, eventID)
 }

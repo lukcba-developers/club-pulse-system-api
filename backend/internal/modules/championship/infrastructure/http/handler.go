@@ -203,8 +203,9 @@ func (h *ChampionshipHandler) ListTournaments(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) GetStandings(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	groupID := c.Param("id")
-	standings, err := h.useCases.GetStandings(groupID)
+	standings, err := h.useCases.GetStandings(clubID, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -213,8 +214,9 @@ func (h *ChampionshipHandler) GetStandings(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) GetMatchesByGroup(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	groupID := c.Param("id")
-	matches, err := h.useCases.GetMatchesByGroup(groupID)
+	matches, err := h.useCases.GetMatchesByGroup(clubID, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -275,6 +277,10 @@ func (h *ChampionshipHandler) AddStage(c *gin.Context) {
 		return
 	}
 	input.TournamentID = c.Param("id")
+	// Ensure ClubID is set (either from input or context)
+	if input.ClubID == "" {
+		input.ClubID = c.GetString("clubID")
+	}
 
 	stage, err := h.useCases.AddStage(input.TournamentID, input)
 	if err != nil {
@@ -292,6 +298,10 @@ func (h *ChampionshipHandler) AddGroup(c *gin.Context) {
 		return
 	}
 	input.StageID = c.Param("id")
+	// Ensure ClubID is set
+	if input.ClubID == "" {
+		input.ClubID = c.GetString("clubID")
+	}
 
 	group, err := h.useCases.AddGroup(input.StageID, input)
 	if err != nil {
@@ -303,13 +313,14 @@ func (h *ChampionshipHandler) AddGroup(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) RegisterTeam(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	var input application.RegisterTeamInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	groupID := c.Param("id")
-	standing, err := h.useCases.RegisterTeam(groupID, input)
+	standing, err := h.useCases.RegisterTeam(clubID, groupID, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -319,8 +330,9 @@ func (h *ChampionshipHandler) RegisterTeam(c *gin.Context) {
 }
 
 func (h *ChampionshipHandler) GenerateFixture(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	groupID := c.Param("id")
-	matches, err := h.useCases.GenerateGroupFixture(groupID)
+	matches, err := h.useCases.GenerateGroupFixture(clubID, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

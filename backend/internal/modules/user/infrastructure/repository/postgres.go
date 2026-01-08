@@ -216,6 +216,11 @@ func (r *PostgresUserRepository) Create(user *domain.User) error {
 		ClubID:            user.ClubID,
 	}
 
+	if user.MedicalCertStatus != nil {
+		model.MedicalCertStatus = string(*user.MedicalCertStatus)
+	}
+	model.MedicalCertExpiry = user.MedicalCertExpiry
+
 	// Note: We are relying on the DB/GORM to ignore or default fields not present here (like password)
 	// But since this is creating a "User", the Auth module model requires Password.
 	// For "Children" managed by parents, they might not have login credentials initially,

@@ -34,6 +34,7 @@ type ScheduleMatchRequest struct {
 }
 
 func (h *TeamHandler) ScheduleMatch(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	var req ScheduleMatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -46,7 +47,7 @@ func (h *TeamHandler) ScheduleMatch(c *gin.Context) {
 		return
 	}
 
-	event, err := h.useCases.ScheduleMatch(groupID, req.Opponent, req.IsHome, req.MeetupTime, req.Location)
+	event, err := h.useCases.ScheduleMatch(clubID, groupID, req.Opponent, req.IsHome, req.MeetupTime, req.Location)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -62,6 +63,7 @@ type AvailabilityRequest struct {
 }
 
 func (h *TeamHandler) RespondAvailability(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	var req AvailabilityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -74,7 +76,7 @@ func (h *TeamHandler) RespondAvailability(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCases.RespondAvailability(req.EventID, userID.(string), req.Status, req.Reason); err != nil {
+	if err := h.useCases.RespondAvailability(clubID, req.EventID, userID.(string), req.Status, req.Reason); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

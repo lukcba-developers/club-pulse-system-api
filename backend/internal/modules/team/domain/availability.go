@@ -36,7 +36,7 @@ type PlayerAvailability struct {
 
 type TeamRepository interface {
 	CreateMatchEvent(event *MatchEvent) error
-	GetMatchEvent(id string) (*MatchEvent, error)
+	GetMatchEvent(clubID, id string) (*MatchEvent, error)
 	SetPlayerAvailability(availability *PlayerAvailability) error
-	GetEventAvailabilities(eventID string) ([]PlayerAvailability, error)
+	GetEventAvailabilities(clubID, eventID string) ([]PlayerAvailability, error)
 }

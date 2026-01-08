@@ -24,6 +24,7 @@ func RegisterRoutes(r *gin.RouterGroup, h *MembershipHandler, authMiddleware, te
 		memberships.POST("", h.CreateMembership)
 		memberships.GET("", h.ListMemberships)
 		memberships.GET("/tiers", h.ListTiers)
+		memberships.GET("/admin", h.ListAllMemberships) // Admin view
 		memberships.GET("/:id", h.GetMembership)
 		memberships.POST("/process-billing", h.ProcessBilling)
 		memberships.POST("/scholarship", h.AssignScholarship)
@@ -100,6 +101,17 @@ func (h *MembershipHandler) ListMemberships(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusOK, gin.H{"data": memberships})
+}
+
+// ListAllMemberships returns all memberships for admin dashboard
+func (h *MembershipHandler) ListAllMemberships(c *gin.Context) {
+	clubID := c.GetString("clubID")
+	memberships, err := h.useCases.ListAllMemberships(c.Request.Context(), clubID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"data": memberships})
 }
 

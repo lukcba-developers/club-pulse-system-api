@@ -24,16 +24,25 @@ Este módulo funciona como la tienda del club, donde puedes comprar productos co
 6.  Serás dirigido al **Módulo de Pagos** para completar la transacción. También podrías tener la opción de pagar con el saldo de tu billetera virtual.
 7.  Una vez confirmado el pago, recibirás una confirmación y podrás retirar tu producto en el club.
 
-### 🔹 Cómo Ver tu Historial de Compras
+---
+
+## 4. Compra para Invitados (Público General)
+
+El sistema también permite que personas que no son socias del club realicen compras a través de un catálogo público.
+
+### 🔹 Cómo Comprar como Invitado
 
 **Paso a paso:**
-1.  Ve a la sección **"Mi Perfil"**.
-2.  Busca la pestaña o el enlace a **"Mis Compras"**.
-3.  Verás una lista de todos los productos que has comprado, con la fecha y el monto de cada transacción.
+1.  **Accede al catálogo público** del club a través de su página web o un enlace directo.
+2.  **Explora los productos** disponibles para la venta al público.
+3.  **Añade los productos** a tu carrito.
+4.  Al finalizar la compra, se te pedirá que **proporciones tus datos de contacto** (nombre y correo electrónico) para poder procesar el pedido.
+5.  Serás dirigido a la pasarela de pagos (ej. Mercado Pago) para completar la transacción.
+6.  Recibirás un correo electrónico de confirmación con los detalles de tu pedido y las instrucciones para retirarlo.
 
 ---
 
-## 4. Guía para Administradores (Rol: `ADMIN`)
+## 5. Guía para Administradores (Rol: `ADMIN`)
 
 ### 🔸 Cómo Añadir un Nuevo Producto
 
@@ -59,17 +68,42 @@ Este módulo funciona como la tienda del club, donde puedes comprar productos co
 
 ---
 
-## 5. Diagrama de Flujo: Compra de un Producto (Socio)
+## 6. Endpoints de la API y Cambios
+
+### Endpoints para Usuarios Autenticados
+
+-   `POST /store/purchase`: Realiza una compra para el usuario autenticado.
+-   `GET /store/products`: Obtiene el catálogo de productos para el club del usuario.
+
+### Endpoints Públicos
+
+-   `POST /public/clubs/:slug/store/purchase`: **(Nuevo)** Permite a un invitado realizar una compra. El `user_id` en la orden es nulo y se guardan `guest_name` y `guest_email`.
+-   `GET /public/clubs/:slug/store/products`: Obtiene el catálogo público de productos de un club.
+
+---
+
+## 7. Diagrama de Flujo: Compra de un Producto
 
 ```mermaid
 graph TD
-    A[Inicio] --> B[Ir a la Tienda];
-    B --> C[Explorar Productos];
-    C --> D{Elige un Producto};
-    D --> E[Añadir al Carrito];
-    E --> F{¿Seguir Comprando?};
-    F -- Sí --> C;
-    F -- No --> G[Ir al Carrito y Finalizar Compra];
-    G --> H[Pagar a través del Módulo de Pagos];
-    H --> I[Compra Exitosa ✅];
+    subgraph Flujo General
+        A[Inicio] --> B[Accede a la Tienda];
+        B --> C[Explorar Productos];
+        C --> D[Añadir al Carrito];
+        D --> E{¿Seguir Comprando?};
+        E -- Sí --> C;
+        E -- No --> F[Finalizar Compra];
+    end
+
+    subgraph Proceso de Pago
+        F --> G{¿Usuario es Socio?};
+        G -- Sí --> H[Pagar como Socio (Billetera/MP)];
+        G -- No --> I[Ingresar Nombre y Email];
+        I --> J[Pagar como Invitado (MP)];
+    end
+
+    subgraph Finalización
+      H --> K[Compra de Socio Exitosa ✅];
+      J --> L[Compra de Invitado Exitosa ✅];
+    end
 ```

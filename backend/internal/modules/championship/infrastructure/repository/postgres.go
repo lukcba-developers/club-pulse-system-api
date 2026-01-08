@@ -41,9 +41,12 @@ func (r *PostgresChampionshipRepository) CreateStage(stage *domain.TournamentSta
 	return r.db.Create(stage).Error
 }
 
-func (r *PostgresChampionshipRepository) GetStage(id string) (*domain.TournamentStage, error) {
+func (r *PostgresChampionshipRepository) GetStage(clubID, id string) (*domain.TournamentStage, error) {
 	var stage domain.TournamentStage
-	err := r.db.First(&stage, "id = ?", id).Error
+	// Join with Tournament to check club_id
+	err := r.db.Joins("JOIN championships ON championships.id = tournament_stages.tournament_id").
+		Where("tournament_stages.id = ? AND championships.club_id = ?", id, clubID).
+		First(&stage).Error
 	return &stage, err
 }
 
@@ -51,10 +54,17 @@ func (r *PostgresChampionshipRepository) CreateGroup(group *domain.Group) error 
 	return r.db.Create(group).Error
 }
 
-func (r *PostgresChampionshipRepository) GetGroup(id string) (*domain.Group, error) {
+func (r *PostgresChampionshipRepository) GetGroup(clubID, id string) (*domain.Group, error) {
 	var group domain.Group
-	// Preload Stage to get TournamentID eventually
-	err := r.db.Preload("Standings").First(&group, "id = ?", id).Error
+	// Join Group -> Stage -> Tournament to check club_id
+	// Assuming table names: groups, tournament_stages, championships
+	// Since GORM might infer singular/plural, need to be careful. The model says "TournamentStage" so it might be "tournament_stages".
+	// The models use implicit naming. Let's assume standard snake_case plural.
+	err := r.db.Preload("Standings").
+		Joins("JOIN tournament_stages ON tournament_stages.id = groups.stage_id").
+		Joins("JOIN championships ON championships.id = tournament_stages.tournament_id").
+		Where("groups.id = ? AND championships.club_id = ?", id, clubID).
+		First(&group).Error
 	return &group, err
 }
 
@@ -62,26 +72,40 @@ func (r *PostgresChampionshipRepository) CreateMatch(match *domain.TournamentMat
 	return r.db.Create(match).Error
 }
 
-func (r *PostgresChampionshipRepository) GetMatch(id string) (*domain.TournamentMatch, error) {
+func (r *PostgresChampionshipRepository) GetMatch(clubID, id string) (*domain.TournamentMatch, error) {
 	var match domain.TournamentMatch
-	err := r.db.First(&match, "id = ?", id).Error
+	// Join Tournament to check club_id
+	err := r.db.Joins("JOIN championships ON championships.id = tournament_matches.tournament_id").
+		Where("tournament_matches.id = ? AND championships.club_id = ?", id, clubID).
+		First(&match).Error
 	return &match, err
 }
 
-func (r *PostgresChampionshipRepository) GetMatchesByGroup(groupID string) ([]domain.TournamentMatch, error) {
+func (r *PostgresChampionshipRepository) GetMatchesByGroup(clubID, groupID string) ([]domain.TournamentMatch, error) {
 	var matches []domain.TournamentMatch
-	// Join with teams (twice, for home and away)
-	// Assuming table name is "teams"
+	// Validate membership to club via join
 	err := r.db.Table("tournament_matches").
 		Select("tournament_matches.*, h.name as home_team_name, a.name as away_team_name").
+		Joins("JOIN championships ON championships.id = tournament_matches.tournament_id").
 		Joins("LEFT JOIN teams h ON h.id = tournament_matches.home_team_id").
 		Joins("LEFT JOIN teams a ON a.id = tournament_matches.away_team_id").
-		Where("tournament_matches.group_id = ?", groupID).
+		Where("tournament_matches.group_id = ? AND championships.club_id = ?", groupID, clubID).
 		Scan(&matches).Error
 	return matches, err
 }
 
-func (r *PostgresChampionshipRepository) UpdateMatchResult(matchID string, homeScore, awayScore int) error {
+func (r *PostgresChampionshipRepository) UpdateMatchResult(clubID, matchID string, homeScore, awayScore int) error {
+	// Verify club ownership before update
+	var count int64
+	r.db.Table("tournament_matches").
+		Joins("JOIN championships ON championships.id = tournament_matches.tournament_id").
+		Where("tournament_matches.id = ? AND championships.club_id = ?", matchID, clubID).
+		Count(&count)
+
+	if count == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
 	return r.db.Model(&domain.TournamentMatch{}).Where("id = ?", matchID).Updates(map[string]interface{}{
 		"home_score": homeScore,
 		"away_score": awayScore,
@@ -89,7 +113,18 @@ func (r *PostgresChampionshipRepository) UpdateMatchResult(matchID string, homeS
 	}).Error
 }
 
-func (r *PostgresChampionshipRepository) UpdateMatchScheduling(matchID string, date time.Time, bookingID uuid.UUID) error {
+func (r *PostgresChampionshipRepository) UpdateMatchScheduling(clubID, matchID string, date time.Time, bookingID uuid.UUID) error {
+	// Verify club ownership before update
+	var count int64
+	r.db.Table("tournament_matches").
+		Joins("JOIN championships ON championships.id = tournament_matches.tournament_id").
+		Where("tournament_matches.id = ? AND championships.club_id = ?", matchID, clubID).
+		Count(&count)
+
+	if count == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
 	return r.db.Model(&domain.TournamentMatch{}).Where("id = ?", matchID).Updates(map[string]interface{}{
 		"date":       date,
 		"booking_id": bookingID,
@@ -97,14 +132,16 @@ func (r *PostgresChampionshipRepository) UpdateMatchScheduling(matchID string, d
 	}).Error
 }
 
-func (r *PostgresChampionshipRepository) GetStandings(groupID string) ([]domain.Standing, error) {
+func (r *PostgresChampionshipRepository) GetStandings(clubID, groupID string) ([]domain.Standing, error) {
 	var standings []domain.Standing
-	// Order by Points DESC, Goal Difference DESC, Goals For DESC
-	// And Join with teams
+	// Join with Group -> Stage -> Tournament to check club_id
 	err := r.db.Table("standings").
 		Select("standings.*, teams.name as team_name").
+		Joins("JOIN groups ON groups.id = standings.group_id").
+		Joins("JOIN tournament_stages ON tournament_stages.id = groups.stage_id").
+		Joins("JOIN championships ON championships.id = tournament_stages.tournament_id").
 		Joins("LEFT JOIN teams ON teams.id = standings.team_id").
-		Where("standings.group_id = ?", groupID).
+		Where("standings.group_id = ? AND championships.club_id = ?", groupID, clubID).
 		Order("standings.points DESC, standings.goal_difference DESC, standings.goals_for DESC").
 		Scan(&standings).Error
 	return standings, err
