@@ -31,6 +31,10 @@ type Tournament struct {
 	Stages []TournamentStage `json:"stages,omitempty" gorm:"foreignKey:TournamentID"`
 }
 
+func (Tournament) TableName() string {
+	return "championships"
+}
+
 type StageType string
 
 const (
@@ -118,6 +122,10 @@ type TournamentMatch struct {
 	// Enriched Fields (Filled via Joins)
 	HomeTeamName string `json:"home_team_name,omitempty" gorm:"-"`
 	AwayTeamName string `json:"away_team_name,omitempty" gorm:"-"`
+}
+
+func (TournamentMatch) TableName() string {
+	return "tournament_matches"
 }
 
 type ChampionshipRepository interface {

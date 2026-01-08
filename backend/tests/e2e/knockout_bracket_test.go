@@ -34,7 +34,25 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 	database.InitDB()
 	db := database.GetDB()
 
-	clubID := "test-club-knockout"
+	// Drop tables to ensure clean schema matching structs
+	_ = db.Migrator().DropTable(
+		&domain.TournamentMatch{},
+		&domain.Standing{},
+		&domain.Group{},
+		&domain.TournamentStage{},
+		&domain.Tournament{},
+	)
+
+	// AutoMigrate to ensure schema matches structs
+	_ = db.AutoMigrate(
+		&domain.Tournament{},
+		&domain.TournamentStage{},
+		&domain.Group{},
+		&domain.TournamentMatch{},
+		&domain.Standing{},
+	)
+
+	clubID := "33333333-3333-3333-3333-333333333333"
 
 	// Clean up
 	db.Exec("DELETE FROM tournament_matches WHERE tournament_id IN (SELECT id FROM tournaments WHERE club_id = ?)", clubID)
