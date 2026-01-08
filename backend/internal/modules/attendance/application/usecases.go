@@ -138,22 +138,61 @@ func (uc *AttendanceUseCases) GetOrCreateListByTrainingGroup(clubID string, grou
 }
 
 func (uc *AttendanceUseCases) populateRecords(clubID string, list *domain.AttendanceList) {
-	for i := range list.Records {
-		rec := &list.Records[i]
-		u, err := uc.userRepo.GetByID(clubID, rec.UserID)
-		if err == nil {
-			rec.User = u
+	if len(list.Records) == 0 {
+		return
+	}
+
+	// 1. Collect all UserIDs
+	userIDs := make([]string, 0, len(list.Records))
+	uuidMap := make(map[string]uuid.UUID) // map string ID to UUID for Membership check
+
+	for _, rec := range list.Records {
+		userIDs = append(userIDs, rec.UserID)
+		if uid, err := uuid.Parse(rec.UserID); err == nil {
+			uuidMap[rec.UserID] = uid
+		}
+	}
+
+	// 2. Batch Fetch Users
+	// Note: We need a map for O(1) assignment
+	users, err := uc.userRepo.ListByIDs(clubID, userIDs)
+	if err == nil {
+		userMap := make(map[string]*userDomain.User)
+		for i := range users {
+			userMap[users[i].ID] = &users[i]
 		}
 
-		// Check Debt
-		uid, err := uuid.Parse(rec.UserID)
-		if err == nil {
-			memberships, err := uc.membershipRepo.GetByUserID(context.Background(), clubID, uid)
-			if err == nil {
-				for _, m := range memberships {
-					if m.OutstandingBalance.GreaterThan(decimal.Zero) {
-						rec.HasDebt = true
-						break
+		for i := range list.Records {
+			if u, ok := userMap[list.Records[i].UserID]; ok {
+				list.Records[i].User = u
+			}
+		}
+	}
+
+	// 3. Batch Fetch Memberships (for Debt Check)
+	// We need to pass a slice of UUIDs
+	uuids := make([]uuid.UUID, 0, len(uuidMap))
+	for _, uid := range uuidMap {
+		uuids = append(uuids, uid)
+	}
+
+	memberships, err := uc.membershipRepo.GetByUserIDs(context.Background(), clubID, uuids)
+	if err == nil {
+		// Map UserID -> []Membership
+		memMap := make(map[uuid.UUID][]membershipDomain.Membership)
+		for _, m := range memberships {
+			memMap[m.UserID] = append(memMap[m.UserID], m)
+		}
+
+		for i := range list.Records {
+			userIDStr := list.Records[i].UserID
+			if uid, ok := uuidMap[userIDStr]; ok {
+				if mems, found := memMap[uid]; found {
+					for _, m := range mems {
+						if m.OutstandingBalance.GreaterThan(decimal.Zero) {
+							list.Records[i].HasDebt = true
+							break
+						}
 					}
 				}
 			}

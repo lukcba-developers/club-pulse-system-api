@@ -22,6 +22,7 @@ type ScholarshipRepository interface {
 	Create(scholarship *Scholarship) error
 	GetByUserID(userID string) ([]*Scholarship, error)
 	GetActiveByUserID(userID string) (*Scholarship, error) // Assuming one active per user
+	ListActiveByUserIDs(userIDs []string) (map[string]*Scholarship, error)
 }
 
 // ApplyDiscount calculates the discounted amount.

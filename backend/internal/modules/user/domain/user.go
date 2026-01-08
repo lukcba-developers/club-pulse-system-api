@@ -82,6 +82,7 @@ type UserRepository interface {
 	Update(user *User) error
 	Delete(clubID, id string) error
 	List(clubID string, limit, offset int, filters map[string]interface{}) ([]User, error)
+	ListByIDs(clubID string, ids []string) ([]User, error)
 	FindChildren(clubID, parentID string) ([]User, error)
 	Create(user *User) error
 	CreateIncident(incident *IncidentLog) error

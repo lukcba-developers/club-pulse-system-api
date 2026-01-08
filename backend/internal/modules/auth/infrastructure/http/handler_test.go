@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -23,15 +24,15 @@ func (m *MockAuthRepo) SaveUser(user *domain.User) error {
 	args := m.Called(user)
 	return args.Error(0)
 }
-func (m *MockAuthRepo) FindUserByEmail(email string) (*domain.User, error) {
-	args := m.Called(email)
+func (m *MockAuthRepo) FindUserByEmail(ctx context.Context, clubID, email string) (*domain.User, error) {
+	args := m.Called(ctx, clubID, email)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.User), args.Error(1)
 }
-func (m *MockAuthRepo) FindUserByID(id string) (*domain.User, error) {
-	args := m.Called(id)
+func (m *MockAuthRepo) FindUserByID(ctx context.Context, clubID, id string) (*domain.User, error) {
+	args := m.Called(ctx, clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -41,15 +42,15 @@ func (m *MockAuthRepo) SaveRefreshToken(token *domain.RefreshToken) error {
 	args := m.Called(token)
 	return args.Error(0)
 }
-func (m *MockAuthRepo) GetRefreshToken(token string) (*domain.RefreshToken, error) {
-	args := m.Called(token)
+func (m *MockAuthRepo) GetRefreshToken(ctx context.Context, token, clubID string) (*domain.RefreshToken, error) {
+	args := m.Called(ctx, token, clubID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.RefreshToken), args.Error(1)
 }
-func (m *MockAuthRepo) RevokeRefreshToken(tokenID string) error {
-	args := m.Called(tokenID)
+func (m *MockAuthRepo) RevokeRefreshToken(ctx context.Context, tokenID, userID string) error {
+	args := m.Called(ctx, tokenID, userID)
 	return args.Error(0)
 }
 func (m *MockAuthRepo) RevokeAllUserTokens(userID string) error {
@@ -151,7 +152,7 @@ func TestRevokeSession(t *testing.T) {
 		sessionID := "session1"
 
 		// Note: The usecase calls RevokeRefreshToken directly.
-		mockRepo.On("RevokeRefreshToken", sessionID).Return(nil)
+		mockRepo.On("RevokeRefreshToken", mock.Anything, sessionID, userID).Return(nil)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

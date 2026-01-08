@@ -44,16 +44,29 @@ func (r *PostgresStoreRepository) ListProducts(clubID string, category string) (
 }
 
 func (r *PostgresStoreRepository) CreateOrder(order *domain.Order) error {
-	// Transaction to ensure stock is updated atomically
+	return r.db.Create(order).Error
+}
+
+func (r *PostgresStoreRepository) CreateOrderWithStockUpdate(order *domain.Order, items []domain.OrderItem) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// 1. Create Order
+		// 1. Decrement Stock
+		for _, item := range items {
+			result := tx.Model(&domain.Product{}).
+				Where("id = ? AND stock_quantity >= ?", item.ProductID, item.Quantity).
+				UpdateColumn("stock_quantity", gorm.Expr("stock_quantity - ?", item.Quantity))
+
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return errors.New("insufficient stock for product: " + item.ProductID.String())
+			}
+		}
+
+		// 2. Create Order
 		if err := tx.Create(order).Error; err != nil {
 			return err
 		}
-
-		// 2. Decrement Stock for each item (Simplified logic, assuming JSON parsing or logic happens in UseCase)
-		// For proper stock management, UseCase should handle the logic and call UpdateProductStock here or specialized method.
-		// Detailed stock decrement implementation is left for Use Case or specific method call.
 
 		return nil
 	})

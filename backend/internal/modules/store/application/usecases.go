@@ -80,21 +80,9 @@ func (uc *StoreUseCases) PurchaseItems(req PurchaseRequest) (*domain.Order, erro
 		UpdatedAt:   time.Now(),
 	}
 
-	// This should ideally strictly use the repo's transactional method that decrements stock
-	if err := uc.repo.CreateOrder(order); err != nil {
+	// Atomic Purchase
+	if err := uc.repo.CreateOrderWithStockUpdate(order, orderItems); err != nil {
 		return nil, err
-	}
-
-	// Decrement stock manually if CreateOrder doesn't handle it fully automagically for each item
-	// The repo implementation proposed earlier had a comment saying "Decrement Stock... left for Use Case"
-	// So we call proper decrements here inside a logical transaction or loop.
-	// Ideally, `CreateOrder` in repo should have handled strict consistency.
-	// For now, we will iterate and decrement. If one fails, we have partial inconsistency risks unless we wrap in TX.
-	// Since `CreateOrder` in repo started a TX, we should have passed logic there.
-	// Let's assume for this MVP that checking stock beforehand is "Good Enough"
-	// and we call DecreaseStock here.
-	for _, item := range orderItems {
-		_ = uc.repo.DecreaseStock(item.ProductID.String(), item.Quantity)
 	}
 
 	return order, nil

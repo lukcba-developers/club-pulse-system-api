@@ -7,6 +7,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/domain"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type PostgresChampionshipRepository struct {
@@ -166,6 +167,15 @@ func (r *PostgresChampionshipRepository) RegisterTeam(standing *domain.Standing)
 
 func (r *PostgresChampionshipRepository) UpdateStanding(standing *domain.Standing) error {
 	return r.db.Save(standing).Error
+}
+
+func (r *PostgresChampionshipRepository) UpdateStandingsBatch(standings []domain.Standing) error {
+	// Use GORM's Clauses to perform a bulk upsert (INSERT ... ON CONFLICT DO UPDATE)
+	// This generates a single SQL statement instead of N updates.
+	return r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}}, // Conflict on Primary Key
+		UpdateAll: true,                          // Update all columns if conflict
+	}).Save(&standings).Error
 }
 
 func (r *PostgresChampionshipRepository) GetTeamMembers(teamID string) ([]string, error) {

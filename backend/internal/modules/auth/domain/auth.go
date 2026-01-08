@@ -73,7 +73,7 @@ type AuthRepository interface {
 	// Refresh Token Methods
 	SaveRefreshToken(token *RefreshToken) error
 	GetRefreshToken(ctx context.Context, token, clubID string) (*RefreshToken, error)
-	RevokeRefreshToken(tokenID string) error
+	RevokeRefreshToken(ctx context.Context, tokenID, userID string) error
 	RevokeAllUserTokens(userID string) error
 	ListUserSessions(userID string) ([]RefreshToken, error)
 

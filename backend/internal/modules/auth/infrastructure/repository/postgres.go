@@ -199,7 +199,7 @@ func (r *PostgresAuthRepository) GetRefreshToken(ctx context.Context, token, clu
 	}, nil
 }
 
-func (r *PostgresAuthRepository) RevokeRefreshToken(tokenID string) error {
+func (r *PostgresAuthRepository) RevokeRefreshToken(ctx context.Context, tokenID, userID string) error {
 	now := time.Now()
 	// Using map to update multiple fields and avoid zero-value issues with boolean
 	updates := map[string]interface{}{
@@ -207,7 +207,18 @@ func (r *PostgresAuthRepository) RevokeRefreshToken(tokenID string) error {
 		"revoked_at": now,
 		"updated_at": now,
 	}
-	return r.db.Model(&RefreshTokenModel{}).Where("id = ?", tokenID).Updates(updates).Error
+	// Security: Ensure the token belongs to the user
+	result := r.db.WithContext(ctx).Model(&RefreshTokenModel{}).
+		Where("id = ? AND user_id = ?", tokenID, userID).
+		Updates(updates)
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("token not found or access denied")
+	}
+	return nil
 }
 
 func (r *PostgresAuthRepository) RevokeAllUserTokens(userID string) error {

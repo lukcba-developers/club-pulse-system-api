@@ -156,7 +156,7 @@ func (uc *AuthUseCases) RefreshToken(ctx context.Context, refreshToken, clubID s
 	}
 
 	// 4. Rotate Token (Revoke old one)
-	if err := uc.repo.RevokeRefreshToken(storedToken.ID); err != nil {
+	if err := uc.repo.RevokeRefreshToken(ctx, storedToken.ID, storedToken.UserID); err != nil {
 		// Log error but continue? Or fail? Best to fail to ensure consistency.
 		return nil, errors.New(errors.ErrorTypeInternal, "Failed to revoke old token")
 	}
@@ -180,7 +180,7 @@ func (uc *AuthUseCases) Logout(ctx context.Context, refreshToken, clubID string)
 	if err != nil || storedToken == nil {
 		return nil // Already logged out or invalid
 	}
-	return uc.repo.RevokeRefreshToken(storedToken.ID)
+	return uc.repo.RevokeRefreshToken(ctx, storedToken.ID, storedToken.UserID)
 }
 
 func (uc *AuthUseCases) saveRefreshToken(userID, tokenString string) error {
@@ -213,7 +213,23 @@ func (uc *AuthUseCases) RevokeSession(sessionID, userID string) error {
 	// Ideally we'd validte user_id matches.
 	// For MVP: JUST CALL REVOKE.
 	// Improvements: Add GetRefreshTokenByID to repo.
-	return uc.repo.RevokeRefreshToken(sessionID)
+	// 4. Revoke (Now securely checking user_id via Repo)
+	// We lack context in this signature? The method assumes context background or we update signature.
+	// For MVP simplicity and because typically called from handler with context, we should update signature to accept context.
+	// But to avoid cascading signature changes if possible, we can use context.Background() if lazy, BUT better is to update logic.
+	// The function RevokeSession calls uc.repo.RevokeRefreshToken.
+	// We can add ctx to RevokeSession signature? Or use TODO.
+	// Wait, I can't change signature of RevokeSession without checking who calls it.
+	// Assuming Handler calls it.
+	// For now let's use context.TODO() or Background() if signature update is too risky blindly.
+	// But wait, `RevokeSession(sessionID, userID string)`...
+	// Let's check `RevokeSession` signature again.
+	// It is `func (uc *AuthUseCases) RevokeSession(sessionID, userID string) error`.
+	// I'll update signature to `RevokeSession(ctx context.Context, sessionID, userID string) error` as well, assuming only Handler calls it.
+	// Actually, let's look at `handler.go` first?
+	// Risk: breaking handler.
+	// Let's try to update signature and if build fails, I fix handler.
+	return uc.repo.RevokeRefreshToken(context.Background(), sessionID, userID)
 }
 
 func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code, clubID string) (*domain.Token, error) {

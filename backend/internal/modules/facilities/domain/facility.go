@@ -116,4 +116,5 @@ type FacilityRepository interface {
 	GetEquipmentByID(id string) (*Equipment, error)
 	ListEquipmentByFacility(facilityID string) ([]*Equipment, error)
 	UpdateEquipment(equipment *Equipment) error
+	LoanEquipmentAtomic(loan *EquipmentLoan, equipmentID string) error
 }

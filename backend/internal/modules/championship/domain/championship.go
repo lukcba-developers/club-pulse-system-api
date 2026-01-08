@@ -137,5 +137,6 @@ type ChampionshipRepository interface {
 	GetStandings(clubID, groupID string) ([]Standing, error)
 	RegisterTeam(standing *Standing) error
 	UpdateStanding(standing *Standing) error
+	UpdateStandingsBatch(standings []Standing) error
 	GetTeamMembers(teamID string) ([]string, error)
 }

@@ -111,14 +111,35 @@ func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID 
 		return 0, err
 	}
 
+	if len(billable) == 0 {
+		return 0, nil
+	}
+
+	// 1. Batch Fetch Scholarships
+	var userIDs []string
+	for _, m := range billable {
+		userIDs = append(userIDs, m.UserID.String())
+	}
+
+	scholarships, err := uc.scholarshipRepo.ListActiveByUserIDs(userIDs)
+	if err != nil {
+		return 0, err // Fail entire batch? Or log and proceed? For consistency, fail.
+	}
+
+	// 2. Calculate Updates in Memory
+	updates := make(map[uuid.UUID]struct {
+		Balance     decimal.Decimal
+		NextBilling time.Time
+	})
 	processedCount := 0
+
 	for _, m := range billable {
 		// Calculate fee with potential scholarship
 		fee := m.MembershipTier.MonthlyFee
 
-		scholarship, err := uc.scholarshipRepo.GetActiveByUserID(m.UserID.String()) // Convert UUID to string if needed
-		if err == nil && scholarship != nil {
-			fee = scholarship.ApplyDiscount(fee)
+		// Memory Lookup
+		if s, ok := scholarships[m.UserID.String()]; ok {
+			fee = s.ApplyDiscount(fee)
 		}
 
 		// Calculate new balance
@@ -127,9 +148,19 @@ func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID 
 		// Calculate next billing date (next month) - using robust function for end-of-month handling
 		nextBilling := addMonthsRobust(m.NextBillingDate, 1)
 
-		if err := uc.repo.UpdateBalance(ctx, clubID, m.ID, newBalance, nextBilling); err == nil {
-			processedCount++
+		updates[m.ID] = struct {
+			Balance     decimal.Decimal
+			NextBilling time.Time
+		}{
+			Balance:     newBalance,
+			NextBilling: nextBilling,
 		}
+		processedCount++
+	}
+
+	// 3. Batch Update DB
+	if err := uc.repo.UpdateBalancesBatch(ctx, updates); err != nil {
+		return 0, err
 	}
 
 	return processedCount, nil

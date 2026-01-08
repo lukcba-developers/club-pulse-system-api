@@ -9,11 +9,11 @@ services:
       - "8081:8080"
     environment:
       - DB_HOST=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=pulse_secret
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-pulse_secret}
       - DB_NAME=club_pulse
       - DB_PORT=5432
-      - JWT_SECRET=super_secret_dev_key
+      - JWT_SECRET=${JWT_SECRET:-super_secret_dev_key}
       - PORT=8080
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -46,8 +46,8 @@ services:
     image: pgvector/pgvector:pg15
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pulse_secret
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pulse_secret}
       POSTGRES_DB: club_pulse
     ports:
       - "5432:5432"

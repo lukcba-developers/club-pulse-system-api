@@ -77,6 +77,28 @@ func (r *PostgresScholarshipRepository) GetActiveByUserID(userID string) (*domai
 	return r.toDomain(model), nil
 }
 
+func (r *PostgresScholarshipRepository) ListActiveByUserIDs(userIDs []string) (map[string]*domain.Scholarship, error) {
+	if len(userIDs) == 0 {
+		return make(map[string]*domain.Scholarship), nil
+	}
+
+	var models []ScholarshipModel
+	err := r.db.Where("user_id IN ? AND is_active = ?", userIDs, true).
+		Where("valid_until IS NULL OR valid_until > ?", time.Now()).
+		Find(&models).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*domain.Scholarship)
+	for _, m := range models {
+		// If duplicates exist (shouldn't if 1 active per user), simplified to take last one or first one.
+		result[m.UserID] = r.toDomain(m)
+	}
+	return result, nil
+}
+
 func (r *PostgresScholarshipRepository) toDomain(m ScholarshipModel) *domain.Scholarship {
 	return &domain.Scholarship{
 		ID:         m.ID,

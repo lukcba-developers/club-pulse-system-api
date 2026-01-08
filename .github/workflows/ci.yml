@@ -3,7 +3,7 @@ name: Quality Gate
 on: [push, pull_request]
 
 jobs:
-  quality:
+  backend-quality:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -31,7 +31,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # Backend Gate
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -42,14 +41,17 @@ jobs:
           cd backend
           go test -race -coverprofile=coverage.out ./...
 
-          
       - name: GolangCI-Lint
         uses: golangci/golangci-lint-action@v4
         with:
           working-directory: backend
           args: --timeout=5m
 
-      # Frontend Gate
+  frontend-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:

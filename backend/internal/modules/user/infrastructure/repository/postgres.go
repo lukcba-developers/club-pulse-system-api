@@ -173,6 +173,36 @@ func (r *PostgresUserRepository) List(clubID string, limit, offset int, filters 
 	}
 	return users, nil
 }
+func (r *PostgresUserRepository) ListByIDs(clubID string, ids []string) ([]domain.User, error) {
+	if len(ids) == 0 {
+		return []domain.User{}, nil
+	}
+	var models []UserModel
+	if err := r.db.Where("id IN ? AND club_id = ?", ids, clubID).Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	users := make([]domain.User, len(models))
+	for i, m := range models {
+		status := domain.MedicalCertStatus(m.MedicalCertStatus)
+		users[i] = domain.User{
+			ID:                m.ID,
+			Name:              m.Name,
+			Email:             m.Email,
+			Role:              m.Role,
+			DateOfBirth:       m.DateOfBirth,
+			SportsPreferences: m.SportsPreferences,
+			ParentID:          m.ParentID,
+			CreatedAt:         m.CreatedAt,
+			UpdatedAt:         m.UpdatedAt,
+			ClubID:            m.ClubID,
+			MedicalCertStatus: &status,
+			MedicalCertExpiry: m.MedicalCertExpiry,
+			// Simplified mapping, add other fields if needed for Attendance (Name is key)
+		}
+	}
+	return users, nil
+}
 
 func (r *PostgresUserRepository) FindChildren(clubID, parentID string) ([]domain.User, error) {
 	var models []UserModel

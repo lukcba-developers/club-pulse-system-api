@@ -173,6 +173,34 @@ El sistema presenta una base de seguridad sólida, especialmente en el backend. 
     *   **Estado:** No analizado.
     *   **Descripción:** La herramienta `govulncheck` no se encontró en el sistema, por lo que no se pudo realizar el escaneo de vulnerabilidades en las dependencias de Go.
     *   **Recomendación Crítica:** Instalar `govulncheck` con `go install golang.org/x/vuln/cmd/govulncheck@latest` y ejecutar `govulncheck ./...` dentro del directorio `backend`. Este es un paso indispensable para una auditoría completa.
-*   **Frontend (Node.js):**
-    *   **Estado:** Analizado y Limpio.
-    *   **Descripción:** `npm audit` se ejecutó y no encontró ninguna vulnerabilidad en las dependencias del frontend.
+### 1. Almacenamiento Inseguro de Tokens (Frontend)
+- [x] Migrar a Cookies HttpOnly (Parcialmente mitigado por uso de cookies en handler backend)
+
+### 2. Tiempo de Expiración Excesivo
+- [x] Reducir TTL de Access Token a 15m (Realizado)
+s
+### 3. CSP Débil
+- [ ] Eliminar 'unsafe-inline' (Pendiente de refactor frontend)
+
+### 4. Vulnerabilidad Crítica RBAC (Delete User)
+- [x] Proteger DELETE /users/:id con Middleware (Realizado)
+
+### 5. Vulnerabilidad Alta RBAC (List Users)
+- [x] Proteger GET /users con Middleware (Realizado)
+
+### 6. Vulnerabilidad Media RBAC (Offline Payment)
+- [x] Middleware en payment handler (Realizado implícitamente en handler, refactor pendiente)
+
+### 7. Seguridad de Dependencias
+- [x] Ejecutar govulncheck (Realizado: Se recomienda actualizar a Go 1.24.6)
+
+## Funcionalidades de Negocio (Backend)
+- [x] Implementar Funcionalidad de Becas (`POST /scholarship`, Repository, UseCase)
+- [x] Automatizar Proceso de Facturación (`POST /process-billing`)
+- [x] Validar Flujo con Test E2E (`membership_flow_test.go`)
+- [x] Robustecer Cálculo de Fechas (Billing Cycle)
+
+## Auditoría de Base de Datos y Performance (En Progreso)
+- [x] Análisis de Esquema y Migraciones (Bookings, Championships)
+- [x] Identificación de N+1 Queries (UpdateStandingsBatch solucionado con Bulk Upsert)
+- [x] Propuesta de Índices Compuestos (Generado migration 002_performance_indexes.sql)

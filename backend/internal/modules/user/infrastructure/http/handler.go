@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/application"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/middleware"
 )
 
 type UserHandler struct {
@@ -95,12 +96,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	// SECURITY FIX (VUL-008): Only ADMIN/STAFF can list users
-	role := c.GetString("userRole")
-	if role != domain.RoleAdmin && role != domain.RoleSuperAdmin && role != "STAFF" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions to list users"})
-		return
-	}
+	// Role check handled by middleware
 
 	limit := 10
 	offset := 0
@@ -118,12 +114,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	// SECURITY FIX (VUL-009): Only ADMIN can delete users
-	role := c.GetString("userRole")
-	if role != domain.RoleAdmin && role != domain.RoleSuperAdmin {
-		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role to delete users"})
-		return
-	}
+	// Role check handled by middleware
 
 	deleteID := c.Param("id")
 	if deleteID == "" {
@@ -356,8 +347,6 @@ func RegisterRoutes(r *gin.RouterGroup, handler *UserHandler, authMiddleware, te
 		users.PUT("/me", handler.UpdateProfile)
 		users.GET("/me/children", handler.GetChildren)
 		users.POST("/me/children", handler.RegisterChild)
-		users.GET("", handler.ListUsers)
-		users.DELETE("/:id", handler.DeleteUser)
 		users.GET("/:id/stats", handler.GetStats)
 		users.GET("/:id/wallet", handler.GetWallet)
 
@@ -369,6 +358,20 @@ func RegisterRoutes(r *gin.RouterGroup, handler *UserHandler, authMiddleware, te
 		users.POST("/family-groups", handler.CreateFamilyGroup)
 		users.GET("/family-groups/me", handler.GetMyFamilyGroup)
 		users.POST("/family-groups/:id/members", handler.AddFamilyMember)
+
+		// Admin Routes (Protected by RBAC Middleware)
+		adminOnly := users.Group("")
+		adminOnly.Use(middleware.RequireRole(domain.RoleAdmin, domain.RoleSuperAdmin))
+		{
+			adminOnly.DELETE("/:id", handler.DeleteUser)
+		}
+
+		// Staff/Admin Routes
+		staffOnly := users.Group("")
+		staffOnly.Use(middleware.RequireRole(domain.RoleAdmin, domain.RoleSuperAdmin, "STAFF"))
+		{
+			staffOnly.GET("", handler.ListUsers)
+		}
 	}
 }
 

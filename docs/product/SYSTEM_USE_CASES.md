@@ -70,38 +70,41 @@ A continuación se detallan las funcionalidades por módulo y los roles que tien
 | Ver historial de pagos | | ✅ | ✅ | El `MEMBER` ve sus pagos, el `ADMIN` ve todos los del club. |
 | Recibir y procesar webhooks de pago | ✅ | | | El sistema procesa notificaciones automáticas del proveedor de pago. |
 
-### Módulo: Disciplinas (Disciplines)
-*Análisis de código pendiente para detallar casos de uso y roles.*
+### Módulo: Disciplinas y Grupos (Disciplines)
 
 | Caso de Uso | SUPER_ADMIN | ADMIN | MEMBER | Descripción |
 | :--- | :---: | :---: | :---: | :--- |
-| Gestionar disciplinas deportivas | | ✅ | | Crear o editar los deportes que se practican en el club (ej. Tenis, Pádel). |
+| Crear/Eliminar una disciplina | | ✅ | | Define los deportes o actividades disponibles en el club (ej. Pádel, Yoga). |
+| Listar disciplinas | | ✅ | ✅ | Muestra todas las disciplinas activas del club. |
+| Crear un grupo de entrenamiento | | ✅ | | Crea un grupo para una disciplina, con categoría y horario (ej. "Pádel Infantil Lunes 18hs"). |
+| Listar grupos de entrenamiento | | ✅ | ✅ | Muestra los grupos disponibles para unirse. |
+| Listar alumnos de un grupo | | ✅ | | Muestra los socios inscritos en un grupo de entrenamiento. |
 
 ### Módulo: Equipos (Team)
-*Análisis de código pendiente para detallar casos de uso y roles.*
 
 | Caso de Uso | SUPER_ADMIN | ADMIN | MEMBER | Descripción |
 | :--- | :---: | :---: | :---: | :--- |
-| Crear y gestionar equipos | | ✅ | ✅ | `ADMIN` o `MEMBER` (capitán) pueden crear equipos para campeonatos. |
-| Invitar miembros a un equipo | | ✅ | ✅ | Añadir socios a un equipo. |
+| Registrar un equipo en un torneo | | ✅ | ✅ | Inscribe un equipo con un nombre y sus miembros. Puede hacerlo un `ADMIN` o un `MEMBER` (capitán). |
+| Ver los equipos de un torneo | | ✅ | ✅ | Lista los equipos que participan en un campeonato. |
 
 ### Módulo: Campeonatos (Championship)
-*Análisis de código pendiente para detallar casos de uso y roles.*
 
 | Caso de Uso | SUPER_ADMIN | ADMIN | MEMBER | Descripción |
 | :--- | :---: | :---: | :---: | :--- |
-| Crear y configurar un campeonato | | ✅ | | Definir las reglas, fechas y formato de un nuevo campeonato. |
-| Inscribir un equipo a un campeonato | | ✅ | ✅ | Registrar un equipo para que participe. |
-| Cargar resultados de partidos | | ✅ | | Registrar los marcadores de los encuentros. |
-| Ver fixture y tabla de posiciones | | ✅ | ✅ | Consultar el cronograma de partidos y la clasificación. |
+| Crear un campeonato | | ✅ | | Define un nuevo torneo para una disciplina, con fechas y formato. |
+| Listar campeonatos | | ✅ | ✅ | Muestra todos los campeonatos (abiertos, en curso, finalizados). |
+| Programar un partido | | ✅ | | Agenda un encuentro entre dos equipos con fecha, hora y lugar. |
+| Listar partidos de un campeonato | | ✅ | ✅ | Muestra el fixture completo del torneo. |
+| Cargar/Actualizar resultado de un partido | | ✅ | | Registra el marcador final de un encuentro. |
+| Consultar la tabla de posiciones | | ✅ | ✅ | Muestra la clasificación de los equipos en el torneo. |
 
 ### Módulo: Tienda (Store)
-*Análisis de código pendiente para detallar casos de uso y roles.*
 
 | Caso de Uso | SUPER_ADMIN | ADMIN | MEMBER | Descripción |
 | :--- | :---: | :---: | :---: | :--- |
-| Gestionar productos de la tienda | | ✅ | | Dar de alta y poner precio a artículos (bebidas, material deportivo). |
-| Realizar una compra | | ✅ | ✅ | `MEMBER` compra para sí mismo, `ADMIN` puede vender a un miembro. |
+| Gestionar productos de la tienda | | ✅ | | **(Inferido)** Crear, editar, activar y controlar el stock de productos. |
+| Consultar el catálogo de productos | | ✅ | ✅ | Ver los productos disponibles para la venta, con opción de filtrar por categoría. |
+| Realizar una compra | | ✅ | ✅ | Comprar uno o más artículos del catálogo. La compra puede ser para un socio o un invitado. |
 
 ### Módulo: Control de Acceso (Access)
 *Análisis de código pendiente para detallar casos de uso y roles.*

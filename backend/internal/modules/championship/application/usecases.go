@@ -324,8 +324,14 @@ func (uc *ChampionshipUseCases) recalculateStandings(clubID, groupID string) err
 		}
 	}
 
+	// Convert map to slice
+	var standingsToUpdate []domain.Standing
 	for _, s := range stats {
-		if err := uc.repo.UpdateStanding(s); err != nil {
+		standingsToUpdate = append(standingsToUpdate, *s)
+	}
+
+	if len(standingsToUpdate) > 0 {
+		if err := uc.repo.UpdateStandingsBatch(standingsToUpdate); err != nil {
 			return err
 		}
 	}

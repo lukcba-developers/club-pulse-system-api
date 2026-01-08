@@ -17,7 +17,7 @@ COPY . .
 RUN go build -ldflags="-w -s" -o main ./cmd/api/main.go
 
 # Run Stage
-FROM alpine:latest
+FROM alpine:3.19
 
 WORKDIR /app
 

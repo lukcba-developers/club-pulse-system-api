@@ -49,5 +49,6 @@ type StoreRepository interface {
 	UpdateProduct(product *Product) error
 	ListProducts(clubID string, category string) ([]Product, error)
 	CreateOrder(order *Order) error
+	CreateOrderWithStockUpdate(order *Order, items []OrderItem) error
 	DecreaseStock(productID string, quantity int) error
 }

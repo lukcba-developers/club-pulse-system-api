@@ -131,7 +131,23 @@ func TestMembershipFlow(t *testing.T) {
 	})
 	membershipHttp.RegisterRoutes(rAdmin.Group("/api/v1"), memH, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
 
-	t.Run("Process Billing", func(t *testing.T) {
+	// 6. Test: Assign Scholarship (Admin)
+	t.Run("Assign Scholarship", func(t *testing.T) {
+		// Grant 50% scholarship
+		body, _ := json.Marshal(map[string]interface{}{
+			"user_id":    userID,
+			"percentage": 0.5,
+			"reason":     "Talented athlete",
+		})
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/memberships/scholarship", bytes.NewBuffer(body))
+		rAdmin.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusCreated, w.Code)
+	})
+
+	// 7. Test: Process Billing (Admin) - Should apply scholarship
+	t.Run("Process Billing with Scholarship", func(t *testing.T) {
 		// Force billing due by moving NextBillingDate to past (Yesterday)
 		// This ensures that when +1 month is added, the new date is ~1 month from now (definitely in future)
 		uid, _ := uuid.Parse(userID)
@@ -155,7 +171,11 @@ func TestMembershipFlow(t *testing.T) {
 		db.Where("user_id = ?", userID).First(&mem)
 		// Assuming billing moved NextBillingDate
 		assert.True(t, mem.NextBillingDate.After(time.Now()))
-		// Assuming balance increased by fee
-		assert.True(t, mem.OutstandingBalance.Equal(decimal.NewFromFloat(100.0)), "Balance should be 100")
+
+		// Balance check: Original Fee 100. Scholarship 50%. Expected Charge 50.
+		// NOTE: Assuming this runs after Purchase (bal=0) + Scholarship + Billing.
+		// If balance logic is cumulative, we expect 50.
+		expectedBalance := decimal.NewFromFloat(50.0)
+		assert.True(t, mem.OutstandingBalance.Equal(expectedBalance), "Balance should be 50 (100 - 50%)")
 	})
 }

@@ -152,6 +152,11 @@ func (m *MockFacilityRepo) ListMaintenanceByFacility(facilityID string) ([]*faci
 	return args.Get(0).([]*facilityDomain.MaintenanceTask), args.Error(1)
 }
 
+func (m *MockFacilityRepo) LoanEquipmentAtomic(loan *facilityDomain.EquipmentLoan, equipmentID string) error {
+	args := m.Called(loan, equipmentID)
+	return args.Error(0)
+}
+
 type MockNotificationSender struct {
 	mock.Mock
 }
@@ -239,6 +244,11 @@ func (m *MockUserRepo) GetByEmail(email string) (*userDomain.User, error) {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*userDomain.User), args.Error(1)
+}
+
+func (m *MockUserRepo) ListByIDs(clubID string, ids []string) ([]userDomain.User, error) {
+	args := m.Called(clubID, ids)
+	return args.Get(0).([]userDomain.User), args.Error(1)
 }
 
 // --- Tests ---

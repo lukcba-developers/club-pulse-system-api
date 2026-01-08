@@ -206,17 +206,11 @@ func (uc *FacilityUseCases) LoanEquipment(clubID, userID, equipmentID string, ex
 		UpdatedAt:        time.Now(),
 	}
 
-	// Transactional?
-	// 1. Create Loan
-	if err := uc.loanRepo.Create(loan); err != nil {
+	// Atomic Loan Creation
+	if err := uc.repo.LoanEquipmentAtomic(loan, equipmentID); err != nil {
 		return nil, err
 	}
-	// 2. Update Equipment Status
-	eq.Status = "loaned"
-	if err := uc.repo.UpdateEquipment(eq); err != nil {
-		// Rollback loan? MVP: return error, inconsistencies possible.
-		return nil, err
-	}
+	// Note: We don't need to manually update loanRepo or repo.UpdateEquipment as Atomic method does it.
 
 	return loan, nil
 }

@@ -317,6 +317,40 @@ func (r *PostgresFacilityRepository) UpdateEquipment(equipment *domain.Equipment
 	return r.db.Save(&model).Error
 }
 
+func (r *PostgresFacilityRepository) LoanEquipmentAtomic(loan *domain.EquipmentLoan, equipmentID string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Check and Update Equipment Status
+		result := tx.Model(&EquipmentModel{}).
+			Where("id = ? AND status = ?", equipmentID, "available").
+			Update("status", "loaned")
+
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("equipment is not available for loan")
+		}
+
+		// 2. Create Loan Record
+		loanMap := map[string]interface{}{
+			"id":                 loan.ID,
+			"equipment_id":       loan.EquipmentID,
+			"user_id":            loan.UserID,
+			"loaned_at":          loan.LoanedAt,
+			"expected_return_at": loan.ExpectedReturnAt,
+			"status":             string(loan.Status),
+			"created_at":         loan.CreatedAt,
+			"updated_at":         loan.UpdatedAt,
+		}
+
+		if err := tx.Table("equipment_loans").Create(&loanMap).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (r *PostgresFacilityRepository) toDomainEquipment(m EquipmentModel) *domain.Equipment {
 	return &domain.Equipment{
 		ID:           m.ID,

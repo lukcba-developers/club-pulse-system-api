@@ -47,6 +47,17 @@ func (r *PostgresMembershipRepository) GetByUserID(ctx context.Context, clubID s
 	return memberships, nil
 }
 
+func (r *PostgresMembershipRepository) GetByUserIDs(ctx context.Context, clubID string, userIDs []uuid.UUID) ([]domain.Membership, error) {
+	if len(userIDs) == 0 {
+		return []domain.Membership{}, nil
+	}
+	var memberships []domain.Membership
+	if err := r.db.WithContext(ctx).Preload("MembershipTier").Where("user_id IN ? AND club_id = ?", userIDs, clubID).Find(&memberships).Error; err != nil {
+		return nil, err
+	}
+	return memberships, nil
+}
+
 func (r *PostgresMembershipRepository) ListTiers(ctx context.Context, clubID string) ([]domain.MembershipTier, error) {
 	var tiers []domain.MembershipTier
 	if err := r.db.WithContext(ctx).Where("is_active = ? AND club_id = ?", true, clubID).Order("monthly_fee asc").Find(&tiers).Error; err != nil {
@@ -95,4 +106,54 @@ func (r *PostgresMembershipRepository) ListAll(ctx context.Context, clubID strin
 		Order("created_at DESC").
 		Find(&memberships).Error
 	return memberships, err
+}
+
+func (r *PostgresMembershipRepository) UpdateBalancesBatch(ctx context.Context, updates map[uuid.UUID]struct {
+	Balance     decimal.Decimal
+	NextBilling time.Time
+}) error {
+	if len(updates) == 0 {
+		return nil
+	}
+
+	// Efficient Bulk Update using PostgreSQL FROM VALUES
+	// UPDATE memberships AS m SET
+	//   outstanding_balance = v.balance,
+	//   next_billing_date = v.next_billing,
+	//   updated_at = NOW()
+	// FROM (VALUES
+	//   ('uuid1', 100.00, '2023-01-01'),
+	//   ('uuid2', 200.00, '2023-02-01')
+	// ) AS v(id, balance, next_billing)
+	// WHERE m.id = v.id::uuid;
+
+	// Build the query and args
+	query := `
+		UPDATE memberships AS m 
+		SET 
+			outstanding_balance = v.balance,
+			next_billing_date = v.next_billing,
+			updated_at = NOW()
+		FROM (VALUES 
+	`
+	var args []interface{}
+	var valueParamPlaceholders string
+
+	// Iterate and build values
+	i := 0
+	for id, update := range updates {
+		if i > 0 {
+			valueParamPlaceholders += ","
+		}
+		// $1 is id, $2 is balance, $3 is next_billing
+		// GORM (or raw sql) placeholders are ? or $N. GORM uses ? usually but r.db.Exec with raw sql in postgres driver uses $N?
+		// Actually GORM `Exec` handles ? to $ transformation.
+		valueParamPlaceholders += "(?::uuid, ?::numeric, ?::timestamp)"
+		args = append(args, id.String(), update.Balance, update.NextBilling)
+		i++
+	}
+
+	query += valueParamPlaceholders + `) AS v(id, balance, next_billing) WHERE m.id = v.id::uuid`
+
+	return r.db.WithContext(ctx).Exec(query, args...).Error
 }

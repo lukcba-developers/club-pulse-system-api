@@ -85,9 +85,14 @@ type MembershipRepository interface {
 	Create(ctx context.Context, membership *Membership) error
 	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*Membership, error)
 	GetByUserID(ctx context.Context, clubID string, userID uuid.UUID) ([]Membership, error)
+	GetByUserIDs(ctx context.Context, clubID string, userIDs []uuid.UUID) ([]Membership, error)
 	ListTiers(ctx context.Context, clubID string) ([]MembershipTier, error)
 	GetTierByID(ctx context.Context, clubID string, id uuid.UUID) (*MembershipTier, error)
 	ListBillable(ctx context.Context, clubID string, date time.Time) ([]Membership, error)
 	UpdateBalance(ctx context.Context, clubID string, membershipID uuid.UUID, newBalance decimal.Decimal, nextBilling time.Time) error
+	UpdateBalancesBatch(ctx context.Context, updates map[uuid.UUID]struct {
+		Balance     decimal.Decimal
+		NextBilling time.Time
+	}) error
 	ListAll(ctx context.Context, clubID string) ([]Membership, error)
 }
