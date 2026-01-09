@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Authentication Flow', () => {
+    // Ensure clean state by overriding global storageState (which might have dummy auth)
+    test.use({ storageState: { cookies: [], origins: [] } });
+
     test('should login successfully with HttpOnly cookies', async ({ page, context }) => {
         // Debug: Log browser console messages to debug CI failures
 
