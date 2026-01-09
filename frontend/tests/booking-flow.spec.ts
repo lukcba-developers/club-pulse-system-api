@@ -13,8 +13,8 @@ test.describe('Booking Flow', () => {
         await bookingPage.goto();
 
         // 3. Perform Booking
-        // This makes the test readable: "Go there, book Court 1 at 10:00, expect success"
-        await bookingPage.bookCourt('Cancha 1', '10:00');
+        // Use tomorrow and afternoon slot to avoid past date/time issues in CI
+        await bookingPage.bookCourtForTomorrow('Cancha 1', '15:00');
 
         // 4. Verify
         await bookingPage.expectSuccessMessage();
@@ -32,7 +32,7 @@ test.describe('Booking Flow', () => {
         await expect(page.getByText('Cancha 1')).toBeVisible();
         await page.getByRole('button', { name: 'Reservar' }).first().click();
 
-        // 11:00 should be disabled (booked)
-        await bookingPage.expectSlotBooked('11:00');
+        // 16:00 should be disabled (booked)
+        await bookingPage.expectSlotBooked('16:00');
     });
 });
