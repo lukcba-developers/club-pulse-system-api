@@ -58,8 +58,9 @@ test.describe('Authentication Flow', () => {
         // 4. Verify Redirect to Dashboard
         await expect(page).toHaveURL('/');
 
-        // 5. Verify Dashboard Content
-        await expect(page.getByText('Hola, System Admin')).toBeVisible();
+        // 5. Verify Dashboard Content - The user is registered as a PLAYER (default role)
+        // MemberDashboardView shows "Hola, {user.name} 👋"
+        await expect(page.getByText('Hola, System Admin', { exact: false })).toBeVisible({ timeout: 10000 });
 
         // 6. Verify LocalStorage is Clean (Security Requirement)
         const token = await page.evaluate(() => localStorage.getItem('token'));
