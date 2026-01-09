@@ -19,12 +19,12 @@ export class BookingPage {
      * Mocks the necessary APIs for the booking flow
      */
     async mockApis() {
-        // 1. Mock Availability API - Use future time slots
+        // 1. Mock Availability API - Morning slots that work with frozen 8AM clock
         await this.page.route('**/bookings/availability*', async route => {
             const json = {
                 data: [
-                    { start_time: '15:00', end_time: '16:00', status: 'available' },
-                    { start_time: '16:00', end_time: '17:00', status: 'booked' }
+                    { start_time: '10:00', end_time: '11:00', status: 'available' },
+                    { start_time: '11:00', end_time: '12:00', status: 'booked' }
                 ]
             };
             await route.fulfill({ status: 200, json });
@@ -48,7 +48,7 @@ export class BookingPage {
             await route.fulfill({ status: 200, json });
         });
 
-        // 3. Mock User Profile
+        // 3. Mock User Profile with valid medical certificate
         await this.page.route('**/users/me', async route => {
             const json = {
                 id: 'user-1',
@@ -81,9 +81,7 @@ export class BookingPage {
         // Wait for the specific court card to be visible
         await expect(this.page.getByText(courtName)).toBeVisible({ timeout: 10000 });
 
-        // Click "Reservar". 
-        // Improvement: Scope to the specific card if possible, for now keeping it simple but explicit
-        // In a real app we'd chain: page.locator('.court-card', { hasText: courtName }).getByRole(...)
+        // Click "Reservar"
         await this.page.getByRole('button', { name: 'Reservar' }).first().click();
 
         await expect(this.modal).toBeVisible();
@@ -99,32 +97,6 @@ export class BookingPage {
         await slot.evaluate((node) => (node as HTMLElement).click());
 
         // Check verification text (UI feedback)
-        await expect(this.modal).toContainText('Seleccionado:');
-
-        // Confirm
-        await this.modal.getByRole('button', { name: 'Confirmar Reserva' }).click();
-    }
-
-    async bookCourtForTomorrow(courtName: string, timeSlot: string) {
-        // Navigate to tomorrow's date first
-        await expect(this.page.getByText(courtName)).toBeVisible({ timeout: 10000 });
-        await this.page.getByRole('button', { name: 'Reservar' }).first().click();
-        await expect(this.modal).toBeVisible();
-
-        // Click next day button to go to tomorrow
-        const nextButton = this.modal.locator('button[aria-label="Next day"], button').filter({ hasText: 'chevron' }).last();
-        await nextButton.click();
-        await this.page.waitForTimeout(500); // Wait for date change
-
-        await expect(this.modal).toContainText(`Reservar ${courtName}`);
-
-        // Select slot
-        const slot = this.modal.getByRole('button', { name: timeSlot });
-        await expect(slot).toBeEnabled();
-        await expect(slot).toHaveClass(/bg-white/);
-        await slot.evaluate((node) => (node as HTMLElement).click());
-
-        // Check verification text
         await expect(this.modal).toContainText('Seleccionado:');
 
         // Confirm

@@ -2,6 +2,14 @@ import { test, expect } from '@playwright/test';
 import { BookingPage } from './pages/BookingPage';
 
 test.describe('Booking Flow', () => {
+    // Freeze clock at 8:00 AM to ensure all time slots are in the future
+    test.beforeEach(async ({ page }) => {
+        // Set the browser clock to 8:00 AM today
+        const today = new Date();
+        today.setHours(8, 0, 0, 0);
+        await page.clock.install({ time: today });
+    });
+
     test('should open booking modal and select a slot', async ({ page }) => {
         page.on('console', msg => console.log(`[Browser]: ${msg.text()}`));
         const bookingPage = new BookingPage(page);
@@ -12,9 +20,8 @@ test.describe('Booking Flow', () => {
         // 2. Navigate
         await bookingPage.goto();
 
-        // 3. Perform Booking
-        // Use tomorrow and afternoon slot to avoid past date/time issues in CI
-        await bookingPage.bookCourtForTomorrow('Cancha 1', '15:00');
+        // 3. Perform Booking - 10:00 is in the future since clock is frozen at 8:00 AM
+        await bookingPage.bookCourt('Cancha 1', '10:00');
 
         // 4. Verify
         await bookingPage.expectSuccessMessage();
@@ -25,14 +32,10 @@ test.describe('Booking Flow', () => {
         await bookingPage.mockApis();
         await bookingPage.goto();
 
-        // Open modal manually or reuse a helper that just opens it without booking?
-        // Let's reuse the flow but stop before booking, or add a specific method.
-        // For now, let's just inspect the modal state after opening it.
-
         await expect(page.getByText('Cancha 1')).toBeVisible();
         await page.getByRole('button', { name: 'Reservar' }).first().click();
 
-        // 16:00 should be disabled (booked)
-        await bookingPage.expectSlotBooked('16:00');
+        // 11:00 should be disabled (booked)
+        await bookingPage.expectSlotBooked('11:00');
     });
 });
