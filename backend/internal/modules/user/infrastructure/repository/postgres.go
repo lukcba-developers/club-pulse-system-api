@@ -381,23 +381,21 @@ func (r *PostgresUserRepository) AnonymizeForGDPR(clubID, id string) error {
 		}
 
 		// 6. Revoke all refresh tokens for this user
-		if err := tx.Exec(`
+		// 6. Revoke all refresh tokens for this user
+		_ = tx.Exec(`
 			UPDATE refresh_tokens 
 			SET is_revoked = true, 
 			    revoked_at = NOW()
 			WHERE user_id = ?
-		`, id).Error; err != nil {
-			// Log but don't fail
-		}
+		`, id).Error
 
 		// 7. Log the GDPR erasure request
-		if err := tx.Exec(`
+		// 7. Log the GDPR erasure request
+		_ = tx.Exec(`
 			INSERT INTO gdpr_erasure_requests (club_id, user_id, status, executed_at, notes)
 			VALUES (?, ?, 'COMPLETED', NOW(), 'Automated GDPR erasure')
 			ON CONFLICT DO NOTHING
-		`, clubID, id).Error; err != nil {
-			// Log but don't fail if table doesn't exist
-		}
+		`, clubID, id).Error
 
 		// 8. Finally, soft-delete the user record
 		if err := tx.Delete(&UserModel{}, "id = ? AND club_id = ?", id, clubID).Error; err != nil {

@@ -17,7 +17,7 @@ func isSecureCookie() bool {
 
 // setAuthCookie configures a secure HttpOnly cookie with SameSite protection.
 func setAuthCookie(c *gin.Context, name, value string, maxAge int) {
-	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(name, value, maxAge, "/", "", isSecureCookie(), true)
 }
 
