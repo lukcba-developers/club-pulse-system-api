@@ -49,9 +49,52 @@ jobs:
 
   frontend-quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: pulse_secret
+          POSTGRES_DB: club_pulse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Start Backend API
+        run: |
+          cd backend
+          go run cmd/api/main.go &
+          sleep 10
+        env:
+          DB_HOST: localhost
+          DB_USER: postgres
+          DB_PASSWORD: pulse_secret
+          DB_NAME: club_pulse
+          DB_PORT: 5432
+          JWT_SECRET: super_secret_dev_key
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -77,3 +120,4 @@ jobs:
           npx playwright test
         env:
           CI: true
+          TEST_API_URL: http://localhost:8080/api/v1
