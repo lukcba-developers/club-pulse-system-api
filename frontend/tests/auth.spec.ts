@@ -5,8 +5,14 @@ test.describe('Authentication Flow', () => {
         // Debug: Log browser console messages to debug CI failures
 
 
-        // 1. Navigate to Login (required for page context)
+        // 1. Navigate to Login and ensure clean state
         await page.goto('/login');
+        await page.evaluate(() => {
+            localStorage.clear();
+            sessionStorage.clear();
+        });
+        await context.clearCookies();
+        await page.reload();
 
         // 0. Setup: Register via Browser Context (to bypass Node network issues)
         // Use apiUrl passed from Node context to ensure it matches environment config (and avoids CSP issues)
