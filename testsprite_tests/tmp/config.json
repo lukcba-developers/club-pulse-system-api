@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "admin@clubpulse.com",
+  "loginPassword": "admin123",
+  "executionArgs": {
+    "projectName": "club-pulse-system-api",
+    "projectPath": "/Users/lukcba-macbook-pro/go/src/club-pulse-system-api",
+    "testIds": [],
+    "additionalInstruction": "Refer to prd.md for specific user flows and selectors. Ensure tests run against the running dev server on port 3000.",
+    "envs": {
+      "API_KEY": "sk-user-aSYKlUz6YfX-dqYhyRf5FJ2mzv8cdOJ9IRfkl4v5BwOYN5YxA8Nle3NGte76gtqucqIBVWiVltWr1v7DDBVVbr7AnEMjwP9oOFeZAvxBLMmse6ceiYD1j0QLlw561ddKaMs"
+    }
+  },
+  "proxy": "http://4ec36be2-90f3-4db1-b710-cb98f0844792:7IVf3pVN5wz7y3WRkR48XOqZOgpNUaoe@tun.testsprite.com:8080"
+}

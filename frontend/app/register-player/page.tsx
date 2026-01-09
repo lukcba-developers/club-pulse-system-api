@@ -86,9 +86,26 @@ function RegisterForm() {
         } catch (err: unknown) {
             setStatus("error");
             if (err instanceof Error) {
-                setErrorMessage(err.message);
+                // Mapear errores comunes a español
+                const errorMap: Record<string, string> = {
+                    'Failed to register': 'No pudimos completar el registro. Verificá los datos.',
+                    'email already exists': 'Ese correo ya está registrado en el club.',
+                    'invalid club': 'El club especificado no existe. Verificá el enlace.',
+                };
+                // Check for known error patterns
+                const lowerMessage = err.message.toLowerCase();
+                let translatedMessage = err.message;
+
+                for (const [key, value] of Object.entries(errorMap)) {
+                    if (lowerMessage.includes(key.toLowerCase())) {
+                        translatedMessage = value;
+                        break;
+                    }
+                }
+
+                setErrorMessage(translatedMessage);
             } else {
-                setErrorMessage("An unknown error occurred");
+                setErrorMessage("Ocurrió un error inesperado. Por favor, intentá de nuevo.");
             }
         }
     };
@@ -243,10 +260,10 @@ function RegisterForm() {
 
                     <Button
                         type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700"
+                        className="w-full bg-brand-600 hover:bg-brand-700"
                         disabled={status === "loading" || !acceptTerms || !acceptPrivacy || !parentalConsent}
                     >
-                        {status === "loading" ? "Registrando..." : "Registrar"}
+                        {status === "loading" ? "Registrando..." : "Registrar Jugador"}
                     </Button>
                 </form>
             </CardContent>

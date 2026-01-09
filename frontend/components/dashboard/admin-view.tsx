@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { FacilityList } from '@/components/facility-list';
 import { SemanticSearch } from '@/components/semantic-search';
@@ -68,9 +68,9 @@ export function AdminDashboardView({ user }: { user: User }) {
         fetchData();
     }, []);
 
-    const handleFacilitySelect = (facilityId: string) => {
+    const handleFacilitySelect = useCallback((facilityId: string) => {
         console.log('Selected facility:', facilityId);
-    };
+    }, []);
 
     const stats = [
         { title: "Instalaciones Activas", value: data.facilities.length.toString(), icon: LayoutGrid },

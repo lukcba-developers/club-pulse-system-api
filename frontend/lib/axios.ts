@@ -61,9 +61,16 @@ api.interceptors.response.use(
     },
     (error: unknown) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const status = (error as any).response?.status;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const url = (error as any).config?.url;
+        const axiosError = error as any;
+        const status = axiosError.response?.status;
+        const url = axiosError.config?.url;
+        const responseData = axiosError.response?.data;
+
+        // Extract error type from backend response for humanization
+        // Backend sends: { type: "booking_conflict", error: "..." }
+        if (responseData?.type) {
+            axiosError.errorType = responseData.type;
+        }
 
         // Skip logging for 401/403 as they are handled by AuthContext (session expiry)
         if (status === 401 || status === 403) {
@@ -72,12 +79,10 @@ api.interceptors.response.use(
             console.groupEnd();
         } else {
             console.group(`[API Error] ${status || 'Net'} ${url}`);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            console.error('Message:', (error as any).message);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if ((error as any).response) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                console.error('Response Data:', (error as any).response.data);
+            console.error('Type:', responseData?.type || 'unknown');
+            console.error('Message:', axiosError.message);
+            if (axiosError.response) {
+                console.error('Response Data:', responseData);
                 console.error('Status:', status);
             }
             console.groupEnd();
@@ -86,5 +91,6 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
 
 export default api;

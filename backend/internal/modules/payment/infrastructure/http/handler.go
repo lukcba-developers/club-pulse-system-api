@@ -198,6 +198,66 @@ func (h *PaymentHandler) CreateOfflinePayment(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"data": payment})
 }
 
+// RefundPayment processes a manual refund for a completed payment.
+// SECURITY: Only ADMIN can process refunds.
+func (h *PaymentHandler) RefundPayment(c *gin.Context) {
+	// RBAC Check
+	role := c.GetString("userRole")
+	if role != "ADMIN" && role != "SUPER_ADMIN" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions to process refunds"})
+		return
+	}
+
+	paymentID := c.Param("id")
+	if paymentID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "payment ID required"})
+		return
+	}
+
+	pID, err := uuid.Parse(paymentID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payment ID format"})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+
+	// Get the payment first to extract reference info
+	payments, _, err := h.useCases.ListPayments(c.Request.Context(), clubID, domain.PaymentFilter{
+		Limit: 1000, // Get all to find by ID
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to find payment"})
+		return
+	}
+
+	var targetPayment *domain.Payment
+	for _, p := range payments {
+		if p.ID == pID {
+			targetPayment = p
+			break
+		}
+	}
+
+	if targetPayment == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "payment not found"})
+		return
+	}
+
+	if targetPayment.Status != domain.PaymentStatusCompleted {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "only completed payments can be refunded"})
+		return
+	}
+
+	// Process refund
+	if err := h.useCases.Refund(c.Request.Context(), clubID, targetPayment.ReferenceID, targetPayment.ReferenceType); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "refund processed successfully"})
+}
+
 // RegisterRoutes registers payment HTTP routes.
 func RegisterRoutes(r *gin.RouterGroup, handler *PaymentHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
 	payments := r.Group("/payments")
@@ -205,6 +265,7 @@ func RegisterRoutes(r *gin.RouterGroup, handler *PaymentHandler, authMiddleware,
 		// Protected endpoints
 		payments.POST("/checkout", authMiddleware, tenantMiddleware, handler.Checkout)
 		payments.POST("/offline", authMiddleware, tenantMiddleware, handler.CreateOfflinePayment)
+		payments.POST("/:id/refund", authMiddleware, tenantMiddleware, handler.RefundPayment)
 		payments.GET("", authMiddleware, tenantMiddleware, handler.ListPayments)
 
 		// Public endpoint (Webhook)

@@ -1,0 +1,520 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Login with Correct Credentials",
+    "description": "Verify that a user can log in successfully using valid username/email and password with JWT session creation.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter valid username/email and password"
+      },
+      {
+        "type": "action",
+        "description": "Submit login request"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that login is successful and JWT token is returned"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify token contains correct RBAC roles and permissions"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Login with Incorrect Credentials",
+    "description": "Verify login failure and appropriate error messaging when incorrect username/email or password is used.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter invalid username/email or wrong password"
+      },
+      {
+        "type": "action",
+        "description": "Submit login request"
+      },
+      {
+        "type": "assertion",
+        "description": "Check login is failed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error message indicates incorrect credentials"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Google OAuth Login Flow",
+    "description": "Verify user authentication using Google OAuth and proper retrieval of user consent and roles.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Click 'Login with Google' button"
+      },
+      {
+        "type": "action",
+        "description": "Complete OAuth consent flow successfully"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is logged in with valid JWT token and proper roles assigned"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that GDPR consent is recorded for the user"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Booking Facility Successfully with Valid Membership",
+    "description": "Ensure a member can book a facility slot when available, membership is valid, and payment is made successfully.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a valid member with active membership"
+      },
+      {
+        "type": "action",
+        "description": "Select a facility and desired date/time slot"
+      },
+      {
+        "type": "action",
+        "description": "System checks availability using real-time Redis locking"
+      },
+      {
+        "type": "action",
+        "description": "Proceed to payment via integrated payment gateway"
+      },
+      {
+        "type": "action",
+        "description": "Complete payment successfully"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that booking is confirmed and saved"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that user receives booking confirmation notification via email and SMS"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Prevent Double Booking of Facility Slot",
+    "description": "Ensure the system rejects booking attempts for a facility slot already booked by another user via Redis lock conflict detection.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "User A books a facility slot successfully"
+      },
+      {
+        "type": "action",
+        "description": "User B attempts to book the same facility slot concurrently"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify booking is rejected for User B due to slot unavailability"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that an appropriate error message or notification is shown to User B"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Booking Rejected for Invalid Membership",
+    "description": "Verify that facility booking is rejected if the user’s membership is inactive or not valid for booking.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a user with an expired or inactive membership"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to book a facility slot"
+      },
+      {
+        "type": "assertion",
+        "description": "Booking is rejected"
+      },
+      {
+        "type": "assertion",
+        "description": "User is notified to renew membership before booking"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Membership Tier and Scholarship Pricing Influence",
+    "description": "Verify that pricing during membership signup or renewal reflects the correct tier and scholarship discounts.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Select membership signup with different tiers and applicable scholarships"
+      },
+      {
+        "type": "action",
+        "description": "System calculates the price dynamically"
+      },
+      {
+        "type": "assertion",
+        "description": "Validate the price matches expected value based on tier and scholarship"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure user can proceed with payment for the determined price"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Championship Creation and Team Registration",
+    "description": "Validate that admin can create championships, register teams, and set up tournament details correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin logs in with proper RBAC permissions"
+      },
+      {
+        "type": "action",
+        "description": "Create a new championship with all required details"
+      },
+      {
+        "type": "action",
+        "description": "Register teams into the championship"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify championship and teams are created and associated correctly in system"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Generate Fixtures and Update Match Results",
+    "description": "Ensure championship fixtures are generated accurately and match results can be recorded and updated.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin generates fixtures for a championship"
+      },
+      {
+        "type": "assertion",
+        "description": "Fixtures are created with correct match pairings and schedule"
+      },
+      {
+        "type": "action",
+        "description": "Admin records match results after matches played"
+      },
+      {
+        "type": "assertion",
+        "description": "Match results are saved and standings update accordingly in real-time"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Team Attendance Tracking and Player Status Update",
+    "description": "Verify that team attendance records can be logged and that player status updates based on medical certification and membership validity.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Mark team attendance for a scheduled class or event"
+      },
+      {
+        "type": "assertion",
+        "description": "Attendance records are saved and retrievable"
+      },
+      {
+        "type": "action",
+        "description": "Upload and approve medical certificates for players"
+      },
+      {
+        "type": "assertion",
+        "description": "Player status updates automatically based on document status and membership validity"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Medical Document Upload, Approval, and Expiry Tracking",
+    "description": "Validate workflow for medical document submission by users, review and approval by staff, and expiry notifications.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "User uploads medical certificate document"
+      },
+      {
+        "type": "assertion",
+        "description": "Document is stored and status appears as 'Pending Approval'"
+      },
+      {
+        "type": "action",
+        "description": "Medical staff reviews and approves the document"
+      },
+      {
+        "type": "assertion",
+        "description": "Document status updates to 'Approved'"
+      },
+      {
+        "type": "action",
+        "description": "System tracks expiry dates and sends notifications prior to expiry"
+      },
+      {
+        "type": "assertion",
+        "description": "User and assigned staff receive email/SMS expiry alerts"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Store Purchase and MercadoPago Payment Integration",
+    "description": "Verify that a user can add products to the cart, validate cart contents, checkout via MercadoPago, and have order status updated accordingly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "User browses product catalog and adds selected products to cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Cart contents reflect selected products accurately"
+      },
+      {
+        "type": "action",
+        "description": "User proceeds to checkout"
+      },
+      {
+        "type": "action",
+        "description": "System validates cart before submitting order"
+      },
+      {
+        "type": "action",
+        "description": "User completes payment via MercadoPago gateway"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm payment is successful and order status is updated to 'Paid'"
+      },
+      {
+        "type": "assertion",
+        "description": "Order confirmation notification is sent to user"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Cart Validation Rejects Invalid or Empty Cart",
+    "description": "Ensure the system prevents checkout when the cart is empty or contains invalid products.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt checkout with empty cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Checkout is denied with appropriate error message"
+      },
+      {
+        "type": "action",
+        "description": "Add invalid or discontinued product to cart and try checkout"
+      },
+      {
+        "type": "assertion",
+        "description": "Checkout is denied with error about invalid cart contents"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "GDPR Consent Management and Logging",
+    "description": "Verify that user GDPR consent is requested, recorded with version, and can be reviewed or revoked.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "During registration or login, present GDPR consent form with version"
+      },
+      {
+        "type": "action",
+        "description": "User provides consent"
+      },
+      {
+        "type": "assertion",
+        "description": "Consent with version is logged to user profile"
+      },
+      {
+        "type": "action",
+        "description": "User reviews GDPR consent details"
+      },
+      {
+        "type": "action",
+        "description": "User revokes or withdraws consent"
+      },
+      {
+        "type": "assertion",
+        "description": "System updates consent status and applies necessary restrictions"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Physical Access Control Validation",
+    "description": "Verify that physical entry to club facilities is granted only when user has an active membership and valid access credentials (QR code / Pin).",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "User attempts physical access with QR code or Pin"
+      },
+      {
+        "type": "assertion",
+        "description": "System checks active membership and subscription status"
+      },
+      {
+        "type": "assertion",
+        "description": "Access is granted only if conditions are met"
+      },
+      {
+        "type": "action",
+        "description": "Attempt access with expired or inactive membership"
+      },
+      {
+        "type": "assertion",
+        "description": "Access is denied"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Notification Service Delivery for Email and SMS",
+    "description": "Confirm notifications are sent and received correctly via both email and SMS channels for booking confirmations and alerts.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger a booking confirmation notification"
+      },
+      {
+        "type": "assertion",
+        "description": "User receives email notification with correct content"
+      },
+      {
+        "type": "assertion",
+        "description": "User receives SMS notification with correct summary"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Role-Based Access Control Enforcement",
+    "description": "Validate that users with different roles can only perform allowed operations and access permitted data according to RBAC rules.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin role"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify admin can access all management modules (championships, bookings, users, etc.)"
+      },
+      {
+        "type": "action",
+        "description": "Login as member role"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify member can access only their own bookings, membership, and limited profile information"
+      },
+      {
+        "type": "action",
+        "description": "Attempt unauthorized API call as member to admin resource"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied with proper error message"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Document Approval Workflow with Expiry Notifications",
+    "description": "Ensure that documents uploaded for verification pass through approval workflows and users are notified before document expiry.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Upload a verification document (e.g. ID, medical certificate)"
+      },
+      {
+        "type": "assertion",
+        "description": "Status shown as 'Pending Approval'"
+      },
+      {
+        "type": "action",
+        "description": "Approver reviews and marks document as approved"
+      },
+      {
+        "type": "assertion",
+        "description": "Document status updates to 'Approved'"
+      },
+      {
+        "type": "action",
+        "description": "System tracks document expiry dates"
+      },
+      {
+        "type": "assertion",
+        "description": "Notification sent to user and approvers prior to expiry"
+      }
+    ]
+  }
+]

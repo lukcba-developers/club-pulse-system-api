@@ -14,7 +14,7 @@ export function BalanceAlert({ membership, onPaymentSuccess }: BalanceAlertProps
     const handlePay = async () => {
         const confirmed = window.confirm(`¿Pagar $${membership.outstanding_balance ?? 0} ahora con MercadoPago (Simulado)?`);
         if (confirmed) {
-            await paymentService.initiatePayment(membership.outstanding_balance ?? 0, membership.currency ?? 'ARS');
+            await paymentService.initiatePayment(membership.outstanding_balance ?? 0, 'ARS');
             alert('¡Pago procesado correctamente!');
             onPaymentSuccess();
         }
@@ -32,7 +32,7 @@ export function BalanceAlert({ membership, onPaymentSuccess }: BalanceAlertProps
                             Saldo Pendiente
                         </p>
                         <p className="text-sm text-red-700">
-                            Tienes una deuda de <span className="font-bold">${membership.outstanding_balance} {membership.currency}</span>. El acceso al club puede estar restringido.
+                            Tienes una deuda de <span className="font-bold">${membership.outstanding_balance} ARS</span>. El acceso al club puede estar restringido.
                         </p>
                     </div>
                 </div>

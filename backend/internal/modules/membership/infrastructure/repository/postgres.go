@@ -108,6 +108,11 @@ func (r *PostgresMembershipRepository) ListAll(ctx context.Context, clubID strin
 	return memberships, err
 }
 
+// Update saves changes to an existing membership
+func (r *PostgresMembershipRepository) Update(ctx context.Context, membership *domain.Membership) error {
+	return r.db.WithContext(ctx).Save(membership).Error
+}
+
 func (r *PostgresMembershipRepository) UpdateBalancesBatch(ctx context.Context, updates map[uuid.UUID]struct {
 	Balance     decimal.Decimal
 	NextBilling time.Time

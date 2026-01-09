@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2, Lock, Mail } from 'lucide-react';
+import { Loader2, Lock, Mail, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function LoginForm() {
@@ -44,46 +44,78 @@ export function LoginForm() {
             </div>
 
             <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                <div className="space-y-4 rounded-md shadow-sm">
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Mail className="h-5 w-5 text-gray-400" />
+                <div className="space-y-4">
+                    {/* Email Field */}
+                    <div className="space-y-1.5">
+                        <label
+                            htmlFor="email-address"
+                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                            Correo electrónico
+                        </label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Mail className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                            </div>
+                            <input
+                                id="email-address"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                aria-describedby={error ? 'login-error' : undefined}
+                                className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-brand-500 focus:border-brand-500 focus:z-10 sm:text-sm transition-all dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="tu@email.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
                         </div>
-                        <input
-                            id="email-address"
-                            name="email"
-                            type="email"
-                            autoComplete="email"
-                            required
-                            className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-brand-500 focus:border-brand-500 focus:z-10 sm:text-sm transition-all"
-                            placeholder="Dirección de correo"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
                     </div>
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-gray-400" />
+
+                    {/* Password Field */}
+                    <div className="space-y-1.5">
+                        <label
+                            htmlFor="password"
+                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                            Contraseña
+                        </label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Lock className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                            </div>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                aria-describedby={error ? 'login-error' : undefined}
+                                className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-brand-500 focus:border-brand-500 focus:z-10 sm:text-sm transition-all dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
                         </div>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            autoComplete="current-password"
-                            required
-                            className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-brand-500 focus:border-brand-500 focus:z-10 sm:text-sm transition-all"
-                            placeholder="Contraseña"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
                     </div>
                 </div>
 
                 {error && (
-                    <div className="rounded-md bg-red-50 p-4 animate-pulse">
-                        <div className="flex">
-                            <div className="ml-3">
-                                <h3 className="text-sm font-medium text-red-800">{error}</h3>
+                    <div
+                        id="login-error"
+                        className="rounded-lg bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800"
+                        role="alert"
+                        aria-live="polite"
+                    >
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                            <div>
+                                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                                    No pudimos iniciar sesión
+                                </h3>
+                                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                                    {error}
+                                </p>
                             </div>
                         </div>
                     </div>

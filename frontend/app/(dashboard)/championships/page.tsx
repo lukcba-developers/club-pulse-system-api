@@ -8,7 +8,7 @@ import { FixtureList } from '@/components/championship/fixture-list';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, LayoutList, PlusCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { championshipService } from '@/services/championship-service';
+import { championshipService, Tournament, Standing } from '@/services/championship-service';
 
 export default function ChampionshipPage() {
     const { user } = useAuth();
@@ -16,9 +16,9 @@ export default function ChampionshipPage() {
     const [view, setView] = useState<'LIST' | 'CREATE'>('LIST');
 
     // State for data
-    const [tournaments, setTournaments] = useState<any[]>([]);
-    const [selectedTournament, setSelectedTournament] = useState<any>(null);
-    const [standings, setStandings] = useState<any[]>([]);
+    const [tournaments, setTournaments] = useState<Tournament[]>([]);
+    const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+    const [standings, setStandings] = useState<Standing[]>([]);
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -59,7 +59,7 @@ export default function ChampionshipPage() {
     };
 
     // Run effect
-     
+
     useState(() => {
         fetchTournaments();
     }); // Simple mount effect equivalent logic via useState initializer or separate useEffect. 

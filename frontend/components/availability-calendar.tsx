@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { format, addDays, startOfDay, isBefore } from 'date-fns';
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, addDays, startOfDay, isBefore, isAfter } from 'date-fns';
+import { Loader2, ChevronLeft, ChevronRight, Bell, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/axios';
+import { bookingService } from '@/services/booking-service';
+
+// Limit booking to 14 days in advance (matches backend validation)
+const MAX_BOOKING_DAYS = 14;
 
 // --- Types ---
 
@@ -93,16 +97,34 @@ function useAvailability(facilityId: string, selectedDate: Date) {
 export function AvailabilityCalendar({ facilityId, onSlotSelect }: AvailabilityCalendarProps) {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+    const [joiningWaitlist, setJoiningWaitlist] = useState<string | null>(null);
+    const [waitlistSuccess, setWaitlistSuccess] = useState<string | null>(null);
 
     // Use Custom Hook
     const { availability, loading } = useAvailability(facilityId, selectedDate);
 
+    // Computed date constraints
+    const today = useMemo(() => startOfDay(new Date()), []);
+    const maxDate = useMemo(() => addDays(today, MAX_BOOKING_DAYS), [today]);
+    const canGoBack = !isBefore(startOfDay(addDays(selectedDate, -1)), today);
+    const canGoForward = !isAfter(startOfDay(addDays(selectedDate, 1)), maxDate);
+
     const handleDateChange = (days: number) => {
         const newDate = addDays(selectedDate, days);
-        if (!isBefore(startOfDay(newDate), startOfDay(new Date()))) {
-            setSelectedDate(newDate);
-            setSelectedSlot(null);
+        const newDateStart = startOfDay(newDate);
+
+        // Prevent past dates
+        if (isBefore(newDateStart, today)) {
+            return;
         }
+
+        // Prevent dates beyond 14 days
+        if (isAfter(newDateStart, maxDate)) {
+            return;
+        }
+
+        setSelectedDate(newDate);
+        setSelectedSlot(null);
     };
 
     const handleSlotClick = (time: string, status: string) => {
@@ -111,12 +133,31 @@ export function AvailabilityCalendar({ facilityId, onSlotSelect }: AvailabilityC
         onSlotSelect(format(selectedDate, 'yyyy-MM-dd'), time);
     };
 
+    const handleJoinWaitlist = async (slot: TimeSlot) => {
+        setJoiningWaitlist(slot.start_time);
+        try {
+            await bookingService.addToWaitlist({
+                resource_id: facilityId,
+                target_date: format(selectedDate, 'yyyy-MM-dd') + 'T' + slot.start_time + ':00'
+            });
+            setWaitlistSuccess(slot.start_time);
+            setTimeout(() => setWaitlistSuccess(null), 3000);
+        } catch (err) {
+            console.error('Failed to join waitlist', err);
+        } finally {
+            setJoiningWaitlist(null);
+        }
+    };
+
     return (
         <div className="space-y-4">
             <DateNavigator
                 date={selectedDate}
                 onPrev={() => handleDateChange(-1)}
                 onNext={() => handleDateChange(1)}
+                canGoBack={canGoBack}
+                canGoForward={canGoForward}
+                daysRemaining={Math.ceil((maxDate.getTime() - startOfDay(selectedDate).getTime()) / (1000 * 60 * 60 * 24))}
             />
 
             <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto p-1">
@@ -131,6 +172,9 @@ export function AvailabilityCalendar({ facilityId, onSlotSelect }: AvailabilityC
                             slot={slot}
                             isSelected={selectedSlot === slot.start_time}
                             onClick={() => handleSlotClick(slot.start_time, slot.status)}
+                            onWaitlist={() => handleJoinWaitlist(slot)}
+                            joiningWaitlist={joiningWaitlist === slot.start_time}
+                            waitlistSuccess={waitlistSuccess === slot.start_time}
                         />
                     ))
                 )}
@@ -146,23 +190,99 @@ export function AvailabilityCalendar({ facilityId, onSlotSelect }: AvailabilityC
 
 // --- Sub-components (Component Splitting) ---
 
-function DateNavigator({ date, onPrev, onNext }: { date: Date; onPrev: () => void; onNext: () => void }) {
+function DateNavigator({
+    date,
+    onPrev,
+    onNext,
+    canGoBack,
+    canGoForward,
+    daysRemaining
+}: {
+    date: Date;
+    onPrev: () => void;
+    onNext: () => void;
+    canGoBack: boolean;
+    canGoForward: boolean;
+    daysRemaining: number;
+}) {
     return (
-        <div className="flex items-center justify-between bg-gray-50 dark:bg-zinc-800 p-2 rounded-lg">
-            <Button variant="ghost" size="icon" onClick={onPrev}>
-                <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="font-semibold text-sm">
-                {format(date, 'EEEE, MMMM d')}
-            </span>
-            <Button variant="ghost" size="icon" onClick={onNext}>
-                <ChevronRight className="h-4 w-4" />
-            </Button>
+        <div className="space-y-2">
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-zinc-800 p-2 rounded-lg">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onPrev}
+                    disabled={!canGoBack}
+                    className={cn(!canGoBack && "opacity-50 cursor-not-allowed")}
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-semibold text-sm">
+                    {format(date, 'EEEE, MMMM d')}
+                </span>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onNext}
+                    disabled={!canGoForward}
+                    className={cn(!canGoForward && "opacity-50 cursor-not-allowed")}
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+            {daysRemaining <= 3 && canGoForward && (
+                <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 px-2">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Podés reservar hasta {daysRemaining} {daysRemaining === 1 ? 'día' : 'días'} más de anticipación.</span>
+                </div>
+            )}
+            {!canGoForward && (
+                <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 px-2">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Alcanzaste el límite máximo de reserva anticipada (14 días).</span>
+                </div>
+            )}
         </div>
     );
 }
 
-function TimeSlotButton({ slot, isSelected, onClick }: { slot: TimeSlot; isSelected: boolean; onClick: () => void }) {
+function TimeSlotButton({ slot, isSelected, onClick, onWaitlist, joiningWaitlist, waitlistSuccess }: {
+    slot: TimeSlot;
+    isSelected: boolean;
+    onClick: () => void;
+    onWaitlist?: () => void;
+    joiningWaitlist?: boolean;
+    waitlistSuccess?: boolean;
+}) {
+    if (slot.status === 'booked' && onWaitlist) {
+        return (
+            <div className="relative">
+                <button
+                    disabled
+                    className="w-full px-2 py-2 text-xs font-medium rounded-md border bg-gray-100 dark:bg-zinc-800 text-gray-400 border-transparent cursor-not-allowed"
+                >
+                    {slot.start_time}
+                </button>
+                {waitlistSuccess ? (
+                    <span className="absolute -top-1 -right-1 text-[8px] bg-green-500 text-white px-1 rounded">✓</span>
+                ) : (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onWaitlist(); }}
+                        disabled={joiningWaitlist}
+                        className="absolute -top-1 -right-1 p-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded-full transition-colors"
+                        title="Avisarme si se libera"
+                    >
+                        {joiningWaitlist ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                            <Bell className="h-3 w-3" />
+                        )}
+                    </button>
+                )}
+            </div>
+        );
+    }
+
     return (
         <button
             disabled={slot.status !== 'available'}
@@ -176,11 +296,6 @@ function TimeSlotButton({ slot, isSelected, onClick }: { slot: TimeSlot; isSelec
             )}
         >
             {slot.start_time}
-            {slot.status === 'booked' && (
-                <span className="absolute bottom-0.5 right-1 block text-[9px] text-red-400 opacity-80 leading-none">
-                    •
-                </span>
-            )}
         </button>
     );
 }

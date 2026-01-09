@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SessionList } from "@/components/session-list"
 import { FamilyList } from "@/components/profile/family-list"
@@ -22,15 +22,7 @@ export default function ProfilePage() {
     } | null>(null)
     const [userId, setUserId] = useState<string>("")
 
-    useEffect(() => {
-        // TODO: Obtener userId del contexto de autenticación
-        const mockUserId = "current-user-id"
-        setUserId(mockUserId)
-        fetchDocuments(mockUserId)
-        fetchEligibility(mockUserId)
-    }, [])
-
-    const fetchDocuments = async (uid: string) => {
+    const fetchDocuments = useCallback(async (uid: string) => {
         try {
             const response = await fetch(`/api/users/${uid}/documents`, {
                 headers: {
@@ -44,9 +36,9 @@ export default function ProfilePage() {
         } catch (error) {
             console.error("Error fetching documents:", error)
         }
-    }
+    }, [])
 
-    const fetchEligibility = async (uid: string) => {
+    const fetchEligibility = useCallback(async (uid: string) => {
         try {
             const response = await fetch(`/api/users/${uid}/eligibility`, {
                 headers: {
@@ -60,7 +52,16 @@ export default function ProfilePage() {
         } catch (error) {
             console.error("Error fetching eligibility:", error)
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        // TODO: Obtener userId del contexto de autenticación
+        const mockUserId = "current-user-id"
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setUserId(mockUserId)
+        fetchDocuments(mockUserId)
+        fetchEligibility(mockUserId)
+    }, [fetchDocuments, fetchEligibility])
 
     const handleUploadSuccess = () => {
         fetchDocuments(userId)

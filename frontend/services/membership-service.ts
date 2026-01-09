@@ -1,31 +1,17 @@
 import api from '../lib/axios';
+import type { Membership, MembershipTier } from '../types/membership';
 
-// Matches Backend 'Membership' Domain/DTO
-export interface Membership {
-    id: string;
-    tier_id: string;
-    user_id: string;
-    status: string;
-    start_date: string;
-    end_date: string;
-    price: number;
-    currency: string;
-    outstanding_balance?: number;
-}
+// Re-export for convenience
+export type { Membership, MembershipTier };
 
-export interface Tier {
-    id: string;
-    name: string;
-    price: number;
-    currency: string;
-    description: string;
-    features: string[];
-}
+// Alias para compatibilidad con código existente
+export type Tier = MembershipTier;
 
 export interface CreateMembershipRequest {
     tier_id: string;
     start_date: string; // YYYY-MM-DD
 }
+
 
 export const membershipService = {
     listMyMemberships: async () => {
@@ -52,9 +38,9 @@ export const membershipService = {
         return response.data.data;
     },
 
-    // Not yet implemented in Backend
-    // cancelMembership: async (id: string) => {
-    //     const response = await api.delete<{ message: string }>(`/memberships/${id}`);
-    //     return response.data;
-    // }
+    // Cancel a membership
+    cancelMembership: async (id: string) => {
+        const response = await api.delete<{ message: string; data: Membership }>(`/memberships/${id}`);
+        return response.data;
+    }
 }

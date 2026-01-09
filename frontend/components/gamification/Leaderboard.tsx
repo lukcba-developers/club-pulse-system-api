@@ -1,0 +1,230 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+interface LeaderboardEntry {
+    rank: number;
+    userId: string;
+    userName: string;
+    avatarUrl?: string;
+    score: number;
+    level: number;
+    change?: number;
+    isCurrentUser?: boolean;
+}
+
+interface LeaderboardProps {
+    clubId: string;
+    currentUserId?: string;
+    className?: string;
+}
+
+interface ApiLeaderboardEntry {
+    rank: number;
+    user_id: string;
+    user_name: string;
+    avatar_url?: string;
+    score: number;
+    level: number;
+    change?: number;
+}
+
+export function Leaderboard({ clubId, currentUserId, className }: LeaderboardProps) {
+    const [period, setPeriod] = useState<"WEEKLY" | "MONTHLY" | "ALL_TIME">("MONTHLY");
+    const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [userContext, setUserContext] = useState<{
+        rank: number;
+        above: LeaderboardEntry[];
+        below: LeaderboardEntry[];
+    } | null>(null);
+
+    const fetchLeaderboard = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/v1/gamification/leaderboard?period=${period}&limit=20`, {
+                credentials: "include",
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setEntries(
+                    data.entries?.map((e: ApiLeaderboardEntry) => ({
+                        rank: e.rank,
+                        userId: e.user_id,
+                        userName: e.user_name,
+                        avatarUrl: e.avatar_url,
+                        score: e.score,
+                        level: e.level,
+                        change: e.change,
+                        isCurrentUser: e.user_id === currentUserId,
+                    })) || []
+                );
+            }
+        } catch (error) {
+            console.error("Failed to fetch leaderboard:", error);
+        }
+        setLoading(false);
+    }, [period, currentUserId]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchLeaderboard();
+    }, [fetchLeaderboard]);
+
+    const getRankStyle = (rank: number) => {
+        switch (rank) {
+            case 1:
+                return "bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-lg";
+            case 2:
+                return "bg-gradient-to-r from-gray-300 to-gray-400 text-gray-800";
+            case 3:
+                return "bg-gradient-to-r from-amber-600 to-amber-700 text-white";
+            default:
+                return "bg-muted";
+        }
+    };
+
+    const getRankEmoji = (rank: number) => {
+        switch (rank) {
+            case 1:
+                return "🥇";
+            case 2:
+                return "🥈";
+            case 3:
+                return "🥉";
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <Card className={cn("w-full max-w-md", className)}>
+            <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2">
+                    <span>🏆</span> Tabla de Posiciones
+                </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+                {/* Period Tabs */}
+                <Tabs
+                    value={period}
+                    onValueChange={(v) => setPeriod(v as typeof period)}
+                    className="mb-4"
+                >
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="WEEKLY">Semanal</TabsTrigger>
+                        <TabsTrigger value="MONTHLY">Mensual</TabsTrigger>
+                        <TabsTrigger value="ALL_TIME">Total</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+
+                {/* Leaderboard Entries */}
+                <div className="space-y-2">
+                    {loading ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                            Cargando...
+                        </div>
+                    ) : entries.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                            No hay datos aún
+                        </div>
+                    ) : (
+                        entries.map((entry) => (
+                            <LeaderboardRow
+                                key={entry.userId}
+                                entry={entry}
+                                rankStyle={getRankStyle(entry.rank)}
+                                rankEmoji={getRankEmoji(entry.rank)}
+                            />
+                        ))
+                    )}
+                </div>
+
+                {/* User's Position (if not in top 20) */}
+                {currentUserId && userContext && !entries.some((e) => e.isCurrentUser) && (
+                    <div className="mt-4 pt-4 border-t">
+                        <p className="text-xs text-muted-foreground mb-2">Tu posición:</p>
+                        <LeaderboardRow
+                            entry={{
+                                rank: userContext.rank,
+                                userId: currentUserId,
+                                userName: "Tú",
+                                score: 0,
+                                level: 0,
+                                isCurrentUser: true,
+                            }}
+                            rankStyle="bg-primary/10 border-2 border-primary"
+                            rankEmoji={null}
+                        />
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function LeaderboardRow({
+    entry,
+    rankStyle,
+    rankEmoji,
+}: {
+    entry: LeaderboardEntry;
+    rankStyle: string;
+    rankEmoji: string | null;
+}) {
+    return (
+        <div
+            className={cn(
+                "flex items-center gap-3 p-2 rounded-lg transition-all",
+                entry.isCurrentUser && "ring-2 ring-primary ring-offset-2",
+                "hover:bg-muted/50"
+            )}
+        >
+            {/* Rank */}
+            <div
+                className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                    rankStyle
+                )}
+            >
+                {rankEmoji || entry.rank}
+            </div>
+
+            {/* Avatar & Name */}
+            <Avatar className="w-8 h-8">
+                <AvatarImage src={entry.avatarUrl} />
+                <AvatarFallback>{entry.userName.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 min-w-0">
+                <p className={cn("font-medium truncate", entry.isCurrentUser && "text-primary")}>
+                    {entry.userName}
+                </p>
+                <p className="text-xs text-muted-foreground">Nivel {entry.level}</p>
+            </div>
+
+            {/* Score */}
+            <div className="text-right">
+                <p className="font-bold">{entry.score.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">XP</p>
+            </div>
+
+            {/* Change Indicator */}
+            {entry.change !== undefined && entry.change !== 0 && (
+                <div
+                    className={cn(
+                        "text-xs font-medium",
+                        entry.change > 0 ? "text-green-500" : "text-red-500"
+                    )}
+                >
+                    {entry.change > 0 ? `↑${entry.change}` : `↓${Math.abs(entry.change)}`}
+                </div>
+            )}
+        </div>
+    );
+}

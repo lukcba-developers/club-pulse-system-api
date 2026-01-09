@@ -1,9 +1,18 @@
 import { MapPin, Users, DollarSign, CalendarPlus, Clock, Settings } from 'lucide-react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
-import { BookingModal } from '@/components/booking-modal';
-import { FacilityScheduleModal } from '@/components/facility-schedule-modal';
+import { useState, memo } from 'react';
+
+// Lazy loading de modales pesados (~18KB combinados)
+const BookingModal = dynamic(
+    () => import('@/components/booking-modal').then(mod => ({ default: mod.BookingModal })),
+    { ssr: false }
+);
+const FacilityScheduleModal = dynamic(
+    () => import('@/components/facility-schedule-modal').then(mod => ({ default: mod.FacilityScheduleModal })),
+    { ssr: false }
+);
 
 
 interface Facility {
@@ -32,7 +41,7 @@ const getFacilityImage = (type: string) => {
     }
 }
 
-export function FacilityCard({ facility }: { facility: Facility }) {
+export const FacilityCard = memo(function FacilityCard({ facility }: { facility: Facility }) {
     const isAvailable = facility.status === 'active';
     const imageUrl = getFacilityImage(facility.type);
     const [isBookingModalOpen, setBookingModalOpen] = useState(false);
@@ -162,4 +171,4 @@ export function FacilityCard({ facility }: { facility: Facility }) {
             </div>
         </div>
     )
-}
+});

@@ -6,7 +6,7 @@ export interface Booking {
     facility_id: string;
     start_time: string;
     end_time: string;
-    status: 'CONFIRMED' | 'CANCELLED';
+    status: 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED';
     guest_details?: GuestDetail[];
     created_at: string;
 }
@@ -76,5 +76,49 @@ export const bookingService = {
     addToWaitlist: async (data: { resource_id: string; target_date: string }) => {
         const response = await api.post<WaitlistEntry>('/bookings/waitlist', data);
         return response.data;
+    },
+
+    // Admin: Create recurring booking rule
+    createRecurringRule: async (data: CreateRecurringRuleDTO) => {
+        const response = await api.post<{ data: RecurringRule }>('/bookings/recurring', data);
+        return response.data.data;
+    },
+
+    // Admin: Generate bookings from rules
+    generateFromRules: async (weeks: number = 4) => {
+        const response = await api.post<{ message: string }>('/bookings/generate', { weeks });
+        return response.data;
+    },
+
+    // Admin: List recurring rules (future implementation)
+    listRecurringRules: async () => {
+        const response = await api.get<{ data: RecurringRule[] }>('/bookings/recurring');
+        return response.data.data;
     }
 };
+
+// --- Recurring Booking Types ---
+
+export type RecurrenceType = 'WEEKLY' | 'MONTHLY';
+
+export interface RecurringRule {
+    id: string;
+    facility_id: string;
+    type: RecurrenceType;
+    day_of_week: number; // 0=Sunday, 6=Saturday
+    start_time: string;
+    end_time: string;
+    start_date: string;
+    end_date: string;
+    created_at?: string;
+}
+
+export interface CreateRecurringRuleDTO {
+    facility_id: string;
+    type: RecurrenceType;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    start_date: string; // YYYY-MM-DD
+    end_date: string;   // YYYY-MM-DD
+}

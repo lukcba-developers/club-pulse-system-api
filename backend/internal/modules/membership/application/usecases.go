@@ -103,6 +103,42 @@ func (uc *MembershipUseCases) ListAllMemberships(ctx context.Context, clubID str
 	return uc.repo.ListAll(ctx, clubID)
 }
 
+// CancelMembership cancels an active membership
+// Returns the cancelled membership or an error if not found/not allowed
+func (uc *MembershipUseCases) CancelMembership(ctx context.Context, clubID string, membershipID uuid.UUID, requestingUserID string) (*domain.Membership, error) {
+	// 1. Get the membership
+	membership, err := uc.repo.GetByID(ctx, clubID, membershipID)
+	if err != nil {
+		return nil, errors.New("membership not found")
+	}
+	if membership == nil {
+		return nil, errors.New("membership not found")
+	}
+
+	// 2. Authorization check: only the owner or admin can cancel
+	// Note: Admin check should be done at the handler level
+	if membership.UserID.String() != requestingUserID {
+		return nil, errors.New("not authorized to cancel this membership")
+	}
+
+	// 3. Check if already cancelled
+	if membership.Status == domain.MembershipStatusCancelled {
+		return nil, errors.New("membership is already cancelled")
+	}
+
+	// 4. Update status
+	membership.Status = domain.MembershipStatusCancelled
+	now := time.Now()
+	membership.EndDate = &now
+
+	// 5. Persist the update
+	if err := uc.repo.Update(ctx, membership); err != nil {
+		return nil, err
+	}
+
+	return membership, nil
+}
+
 // ProcessMonthlyBilling runs the billing cycle for all active memberships
 func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID string) (int, error) {
 	now := time.Now()

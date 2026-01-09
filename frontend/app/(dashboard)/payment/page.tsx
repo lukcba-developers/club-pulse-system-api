@@ -16,10 +16,21 @@ import {
     DialogTitle,
     DialogTrigger
 } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, DollarSign, Clock, CheckCircle, XCircle, Loader2, Search } from 'lucide-react';
+import { Plus, DollarSign, Clock, CheckCircle, AlertTriangle, Loader2, Search, RotateCcw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const statusColors: Record<string, string> = {
     PENDING: 'bg-yellow-100 text-yellow-800',
@@ -43,6 +54,10 @@ export default function PaymentDashboardPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [userSearch, setUserSearch] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [refunding, setRefunding] = useState<string | null>(null);
+    const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+    const [selectedPaymentForRefund, setSelectedPaymentForRefund] = useState<Payment | null>(null);
+    const { toast } = useToast();
 
     // Form state
     const [formData, setFormData] = useState<OfflinePaymentRequest>({
@@ -92,6 +107,35 @@ export default function PaymentDashboardPage() {
             alert('Error al registrar el pago. Intenta de nuevo.');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const openRefundDialog = (payment: Payment) => {
+        setSelectedPaymentForRefund(payment);
+        setRefundDialogOpen(true);
+    };
+
+    const handleRefund = async () => {
+        if (!selectedPaymentForRefund) return;
+        setRefunding(selectedPaymentForRefund.id);
+        setRefundDialogOpen(false);
+        try {
+            await paymentService.refundPayment(selectedPaymentForRefund.id);
+            toast({
+                title: 'Reembolso procesado',
+                description: `Se reembolsaron $${parseFloat(selectedPaymentForRefund.amount).toFixed(2)} exitosamente.`,
+            });
+            loadPayments();
+        } catch (error) {
+            console.error('Failed to process refund', error);
+            toast({
+                title: 'Error al procesar reembolso',
+                description: 'No se pudo completar el reembolso. Intenta de nuevo.',
+                variant: 'destructive',
+            });
+        } finally {
+            setRefunding(null);
+            setSelectedPaymentForRefund(null);
         }
     };
 
@@ -264,6 +308,7 @@ export default function PaymentDashboardPage() {
                                         <th className="text-left p-2">Método</th>
                                         <th className="text-left p-2">Estado</th>
                                         <th className="text-left p-2">Notas</th>
+                                        <th className="text-left p-2">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -278,6 +323,24 @@ export default function PaymentDashboardPage() {
                                                 </Badge>
                                             </td>
                                             <td className="p-2 max-w-xs truncate text-muted-foreground">{payment.notes || '-'}</td>
+                                            <td className="p-2">
+                                                {payment.status === 'COMPLETED' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => openRefundDialog(payment)}
+                                                        disabled={refunding === payment.id}
+                                                        className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                                    >
+                                                        {refunding === payment.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <RotateCcw className="h-4 w-4" />
+                                                        )}
+                                                        <span className="ml-1 hidden sm:inline">Reembolsar</span>
+                                                    </Button>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -286,6 +349,39 @@ export default function PaymentDashboardPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Refund Confirmation Dialog */}
+            <AlertDialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-orange-500" />
+                            Confirmar Reembolso
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                            <p>¿Estás seguro de procesar este reembolso?</p>
+                            {selectedPaymentForRefund && (
+                                <div className="bg-muted p-3 rounded-lg mt-2">
+                                    <p className="font-medium">Monto: ${parseFloat(selectedPaymentForRefund.amount).toFixed(2)}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Método: {methodLabels[selectedPaymentForRefund.method] || selectedPaymentForRefund.method}
+                                    </p>
+                                </div>
+                            )}
+                            <p className="text-sm text-destructive font-medium">Esta acción no se puede deshacer.</p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleRefund}
+                            className="bg-orange-600 hover:bg-orange-700"
+                        >
+                            Confirmar Reembolso
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -8,6 +8,8 @@ export interface MembershipTier {
     monthly_fee: number; // Decimal in standard JSON often comes as number, handle string if needed
     colors: string;
     benefits: string[];
+    is_active?: boolean;
+    club_id?: string;
 }
 
 export interface Membership {

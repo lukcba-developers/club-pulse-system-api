@@ -1,5 +1,3 @@
-'use client';
-
 import { Standing } from '@/services/championship-service';
 import {
     Table,

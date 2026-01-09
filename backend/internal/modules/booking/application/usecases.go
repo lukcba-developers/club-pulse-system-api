@@ -217,10 +217,135 @@ func (uc *BookingUseCases) OnPaymentStatusChanged(ctx context.Context, clubID st
 		booking.Status = bookingDomain.BookingStatusConfirmed
 		booking.PaymentExpiry = nil // Clear expiry
 		uc.notifyAsync(booking.UserID.String(), booking.ID.String())
+
+		// Gamification: Award XP for completed booking
+		go uc.awardBookingXP(clubID, booking.UserID.String())
 	}
 
 	booking.UpdatedAt = time.Now()
 	return uc.repo.Update(booking)
+}
+
+// awardBookingXP grants XP to a user for completing a booking.
+// Runs asynchronously to not block the payment flow.
+func (uc *BookingUseCases) awardBookingXP(clubID, userID string) {
+	user, err := uc.userRepo.GetByID(clubID, userID)
+	if err != nil || user == nil {
+		return
+	}
+
+	if user.Stats == nil {
+		// Initialize stats if missing
+		now := time.Now()
+		user.Stats = &userDomain.UserStats{
+			UserID:        userID,
+			MatchesPlayed: 0,
+			MatchesWon:    0,
+			RankingPoints: 0,
+			Level:         1,
+			Experience:    0,
+			CurrentStreak: 0,
+			LongestStreak: 0,
+			TotalXP:       0,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}
+	}
+
+	// Calculate XP with streak multiplier
+	baseXP := userDomain.GetXPForAction(userDomain.XPBookingComplete)
+	finalXP := userDomain.CalculateXPWithStreak(baseXP, user.Stats.CurrentStreak)
+
+	// Check if first booking of the month for bonus
+	if uc.isFirstBookingOfMonth(clubID, userID) {
+		bonusXP := userDomain.GetXPForAction(userDomain.XPBookingFirstOfMonth)
+		finalXP += userDomain.CalculateXPWithStreak(bonusXP, user.Stats.CurrentStreak)
+	}
+
+	user.Stats.Experience += finalXP
+	user.Stats.TotalXP += finalXP
+
+	// Update streak (booking counts as activity)
+	uc.updateUserStreak(user.Stats)
+
+	// Check for level up (exponential formula: 500 * 1.15^Level)
+	for {
+		requiredXP := int(500 * pow(1.15, float64(user.Stats.Level)))
+		if user.Stats.Experience >= requiredXP {
+			user.Stats.Level++
+			user.Stats.Experience -= requiredXP
+		} else {
+			break
+		}
+	}
+
+	user.Stats.UpdatedAt = time.Now()
+	_ = uc.userRepo.Update(user)
+}
+
+// isFirstBookingOfMonth checks if this is the user's first booking this month.
+func (uc *BookingUseCases) isFirstBookingOfMonth(clubID, userID string) bool {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return false
+	}
+
+	now := time.Now()
+	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	filter := map[string]interface{}{
+		"user_id": uid,
+	}
+	bookings, err := uc.repo.ListAll(clubID, filter, &startOfMonth, &now)
+	if err != nil {
+		return false
+	}
+
+	// If this is the only booking (the current one), it's the first
+	return len(bookings) <= 1
+}
+
+// updateUserStreak updates streak based on activity today.
+func (uc *BookingUseCases) updateUserStreak(stats *userDomain.UserStats) {
+	today := time.Now().Truncate(24 * time.Hour)
+
+	if stats.LastActivityDate == nil {
+		stats.CurrentStreak = 1
+		stats.LongestStreak = 1
+		stats.LastActivityDate = &today
+		return
+	}
+
+	lastActivity := stats.LastActivityDate.Truncate(24 * time.Hour)
+	daysSince := int(today.Sub(lastActivity).Hours() / 24)
+
+	switch daysSince {
+	case 0:
+		return // Same day
+	case 1:
+		stats.CurrentStreak++
+		if stats.CurrentStreak > stats.LongestStreak {
+			stats.LongestStreak = stats.CurrentStreak
+		}
+	default:
+		stats.CurrentStreak = 1
+	}
+
+	stats.LastActivityDate = &today
+}
+
+// pow is a simple power function to avoid importing math in this file.
+func pow(base, exp float64) float64 {
+	result := 1.0
+	for i := 0; i < int(exp); i++ {
+		result *= base
+	}
+	// Handle fractional exponent approximation
+	if exp != float64(int(exp)) {
+		// Use simple approximation for 1.15^n
+		result *= (1 + (exp-float64(int(exp)))*(base-1))
+	}
+	return result
 }
 
 // GetAvailability calculates available slots based on business hours and existing bookings.

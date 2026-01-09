@@ -2,6 +2,7 @@ package application
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -320,6 +321,7 @@ func (uc *UserUseCases) UpdateMatchStats(clubID, userID string, won bool, xpGain
 
 	if user.Stats == nil {
 		// Initialize stats if missing
+		now := time.Now()
 		user.Stats = &domain.UserStats{
 			ID:            uuid.New(),
 			UserID:        userID,
@@ -328,38 +330,90 @@ func (uc *UserUseCases) UpdateMatchStats(clubID, userID string, won bool, xpGain
 			RankingPoints: 0,
 			Level:         1,
 			Experience:    0,
-			CreatedAt:     time.Now(),
-			UpdatedAt:     time.Now(),
+			CurrentStreak: 0,
+			LongestStreak: 0,
+			TotalXP:       0,
+			CreatedAt:     now,
+			UpdatedAt:     now,
 		}
 	}
 
 	user.Stats.MatchesPlayed++
-	user.Stats.Experience += xpGained
+
+	// Apply streak multiplier to XP
+	finalXP := domain.CalculateXPWithStreak(xpGained, user.Stats.CurrentStreak)
+	user.Stats.Experience += finalXP
+	user.Stats.TotalXP += finalXP
 
 	if won {
 		user.Stats.MatchesWon++
 		user.Stats.RankingPoints += 3 // Example logic
+		// Bonus XP for winning
+		winBonus := domain.GetXPForAction(domain.XPMatchWon)
+		winBonusWithStreak := domain.CalculateXPWithStreak(winBonus, user.Stats.CurrentStreak)
+		user.Stats.Experience += winBonusWithStreak
+		user.Stats.TotalXP += winBonusWithStreak
 	} else {
-		user.Stats.RankingPoints += 1 // Participation points?
+		user.Stats.RankingPoints += 1 // Participation points
 	}
 
-	// Level up logic
-	// Simple formula: Level * 1000 XP
-	requiredXP := user.Stats.Level * 1000
-	if user.Stats.Experience >= requiredXP {
-		user.Stats.Level++
-		user.Stats.Experience -= requiredXP
+	// Update streak (match counts as activity)
+	uc.updateStreak(user.Stats)
+
+	// Level up logic - Exponential formula: 500 * (1.15 ^ Level)
+	for {
+		requiredXP := CalculateRequiredXP(user.Stats.Level)
+		if user.Stats.Experience >= requiredXP {
+			user.Stats.Level++
+			user.Stats.Experience -= requiredXP
+			// Could emit LevelUp event here for notifications
+		} else {
+			break
+		}
 	}
 
 	user.Stats.UpdatedAt = time.Now()
 
-	// Update User (which updates Stats via GORM Association usually, or update Stats explicitly)
-	// Assuming Repository Update handles associations or we explicitly update stats?
-	// UserRepo.Update updates the user. GORM 'Session(&gorm.Session{FullSaveAssociations: true})' might be needed.
-	// Or we can add UpdateStats to UserRepo.
-	// Check UserRepo.Update implementation.
-	// For now assume Update works.
 	return uc.repo.Update(user)
+}
+
+// CalculateRequiredXP returns XP needed to advance from the given level.
+// Uses exponential formula: 500 * (1.15 ^ level)
+func CalculateRequiredXP(level int) int {
+	return int(500 * math.Pow(1.15, float64(level)))
+}
+
+// updateStreak updates the user's streak based on activity today.
+func (uc *UserUseCases) updateStreak(stats *domain.UserStats) {
+	today := time.Now().Truncate(24 * time.Hour)
+
+	if stats.LastActivityDate == nil {
+		// First activity ever
+		stats.CurrentStreak = 1
+		stats.LongestStreak = 1
+		stats.LastActivityDate = &today
+		return
+	}
+
+	lastActivity := stats.LastActivityDate.Truncate(24 * time.Hour)
+	daysSinceLastActivity := int(today.Sub(lastActivity).Hours() / 24)
+
+	switch daysSinceLastActivity {
+	case 0:
+		// Same day, no change to streak
+		return
+	case 1:
+		// Consecutive day, increment streak
+		stats.CurrentStreak++
+		if stats.CurrentStreak > stats.LongestStreak {
+			stats.LongestStreak = stats.CurrentStreak
+		}
+	default:
+		// Streak broken, reset to 1
+		stats.CurrentStreak = 1
+	}
+
+	stats.LastActivityDate = &today
 }
 
 // --- Family Group Use Cases ---

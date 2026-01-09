@@ -112,16 +112,25 @@ export function NotificationToast() {
             {/* Notification Bell Button */}
             <button
                 onClick={() => setShowPanel(!showPanel)}
+                aria-label={`Notificaciones${unreadCount > 0 ? `, ${unreadCount} sin leer` : ''}`}
+                aria-expanded={showPanel}
+                aria-haspopup="true"
                 className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
             >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-5 w-5" aria-hidden="true" />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
+                    <span
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium"
+                        aria-hidden="true"
+                    >
                         {unreadCount}
                     </span>
                 )}
                 {/* Connection indicator */}
-                <span className={`absolute bottom-0 right-0 h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <span
+                    className={`absolute bottom-0 right-0 h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}
+                    aria-hidden="true"
+                />
             </button>
 
             {/* Notification Panel */}

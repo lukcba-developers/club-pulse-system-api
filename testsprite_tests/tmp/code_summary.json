@@ -1,0 +1,69 @@
+{
+    "tech_stack": [
+        "Go",
+        "Gin",
+        "PostgreSQL",
+        "Redis",
+        "Next.js",
+        "TypeScript",
+        "Tailwind CSS",
+        "Docker"
+    ],
+    "features": [
+        {
+            "name": "Authentication",
+            "description": "User login, registration, Google OAuth, and RBAC middleware using JWT.",
+            "files": [
+                "backend/internal/modules/auth",
+                "frontend/app/(auth)",
+                "backend/internal/platform/middleware"
+            ]
+        },
+        {
+            "name": "Facility Booking",
+            "description": "Reservation system with availability checking, conflict detection using Redis locks, and pricing logic.",
+            "files": [
+                "backend/internal/modules/booking",
+                "backend/internal/modules/facilities",
+                "frontend/app/(dashboard)/bookings"
+            ]
+        },
+        {
+            "name": "Championship Management",
+            "description": "Tournament creation, fixture generation, match scoring, standings calculation, and volunteer management.",
+            "files": [
+                "backend/internal/modules/championship",
+                "backend/internal/modules/disciplines",
+                "frontend/app/(dashboard)/championships"
+            ]
+        },
+        {
+            "name": "Membership & Access",
+            "description": "Subscription tiers, payments, physical access control checks, and scholarship management.",
+            "files": [
+                "backend/internal/modules/membership",
+                "backend/internal/modules/access",
+                "frontend/app/(dashboard)/membership"
+            ]
+        },
+        {
+            "name": "Team & Coach Tools",
+            "description": "Attendance tracking, player status (Traffic Light system), and travel event management.",
+            "files": [
+                "backend/internal/modules/team",
+                "backend/internal/modules/attendance",
+                "backend/internal/modules/user/domain/user.go"
+            ]
+        },
+        {
+            "name": "Payments & Store",
+            "description": "Product catalog, cart, and payment gateway integration (MercadoPago) for orders and memberships.",
+            "files": [
+                "backend/internal/modules/payment",
+                "backend/internal/modules/store",
+                "frontend/app/(dashboard)/store",
+                "frontend/app/(dashboard)/payment"
+            ]
+        }
+    ]
+}

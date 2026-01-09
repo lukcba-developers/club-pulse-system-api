@@ -27,6 +27,7 @@ func RegisterRoutes(r *gin.RouterGroup, h *MembershipHandler, authMiddleware, te
 		memberships.GET("", h.ListMemberships)
 		memberships.GET("/tiers", h.ListTiers)
 		memberships.GET("/:id", h.GetMembership)
+		memberships.DELETE("/:id", h.CancelMembership)
 
 		// Admin Routes
 		adminOnly := memberships.Group("")
@@ -37,6 +38,50 @@ func RegisterRoutes(r *gin.RouterGroup, h *MembershipHandler, authMiddleware, te
 			adminOnly.POST("/scholarship", h.AssignScholarship)
 		}
 	}
+}
+
+// CancelMembership cancels a membership by ID
+func (h *MembershipHandler) CancelMembership(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"type": "invalid_format", "error": "invalid membership id"})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"type": "unauthorized", "error": "unauthorized"})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	role := c.GetString("userRole")
+
+	// Admin can cancel any membership, user can only cancel their own
+	requestingUserID := userID.(string)
+	if role == userDomain.RoleAdmin || role == userDomain.RoleSuperAdmin {
+		// Admin can cancel any - pass the membership's user ID instead
+		// We fetch first to get the actual owner
+		membership, err := h.useCases.GetMembership(c.Request.Context(), clubID, id)
+		if err != nil || membership == nil {
+			c.JSON(http.StatusNotFound, gin.H{"type": "not_found", "error": "membership not found"})
+			return
+		}
+		requestingUserID = membership.UserID.String()
+	}
+
+	cancelled, err := h.useCases.CancelMembership(c.Request.Context(), clubID, id, requestingUserID)
+	if err != nil {
+		if err.Error() == "membership not found" {
+			c.JSON(http.StatusNotFound, gin.H{"type": "not_found", "error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"type": "cancel_unauthorized", "error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "membership cancelled", "data": cancelled})
 }
 
 func (h *MembershipHandler) ListTiers(c *gin.Context) {

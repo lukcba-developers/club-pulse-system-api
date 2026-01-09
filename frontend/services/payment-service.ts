@@ -58,6 +58,12 @@ export const paymentService = {
     createOfflinePayment: async (data: OfflinePaymentRequest) => {
         const response = await api.post<{ data: Payment }>('/payments/offline', data);
         return response.data.data;
+    },
+
+    // Admin: Process refund for a completed payment
+    refundPayment: async (paymentId: string) => {
+        const response = await api.post<{ message: string }>(`/payments/${paymentId}/refund`);
+        return response.data;
     }
 };
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +23,28 @@ func NewBookingHandler(useCases *application.BookingUseCases) *BookingHandler {
 	}
 }
 
+// mapErrorToResponse converts business errors to consistent API responses with type
+// Uses snake_case to match frontend error dictionary (error-messages.ts)
+func mapErrorToResponse(err error) (int, gin.H) {
+	msg := err.Error()
+	lowerMsg := strings.ToLower(msg)
+
+	switch {
+	case strings.Contains(lowerMsg, "conflict"):
+		return http.StatusConflict, gin.H{"type": "booking_conflict", "error": msg}
+	case strings.Contains(lowerMsg, "medical certificate"):
+		return http.StatusBadRequest, gin.H{"type": "medical_certificate_invalid", "error": msg}
+	case strings.Contains(lowerMsg, "not found"):
+		return http.StatusNotFound, gin.H{"type": "not_found", "error": msg}
+	case strings.Contains(lowerMsg, "unauthorized"):
+		return http.StatusForbidden, gin.H{"type": "cancel_unauthorized", "error": msg}
+	case strings.Contains(lowerMsg, "not active"):
+		return http.StatusBadRequest, gin.H{"type": "facility_inactive", "error": msg}
+	default:
+		return http.StatusBadRequest, gin.H{"type": "invalid_format", "error": msg}
+	}
+}
+
 // Create godoc
 // @Summary      Create a new booking
 // @Description  Creates a new booking for a facility. Validates health certificate and availability.
@@ -37,13 +60,13 @@ func NewBookingHandler(useCases *application.BookingUseCases) *BookingHandler {
 func (h *BookingHandler) Create(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"type": "UNAUTHORIZED", "error": "Unauthorized"})
 		return
 	}
 
 	var dto application.CreateBookingDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"type": "VALIDATION_ERROR", "error": err.Error()})
 		return
 	}
 
@@ -53,13 +76,8 @@ func (h *BookingHandler) Create(c *gin.Context) {
 	clubID := c.GetString("clubID")
 	booking, err := h.useCases.CreateBooking(clubID, dto)
 	if err != nil {
-		// Differentiate connection vs conflict vs validation errors properly in a real app
-		// For MVP, if error message contains "conflict", return 409
-		if err.Error() == "booking time conflict: facility is already booked for this requested time" {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status, resp := mapErrorToResponse(err)
+		c.JSON(status, resp)
 		return
 	}
 

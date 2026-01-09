@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import api from '@/lib/axios';
+import { humanizeError } from '@/lib/error-messages';
 import { useAuth } from '@/hooks/use-auth';
 import { AvailabilityCalendar } from './availability-calendar';
 
@@ -37,6 +38,13 @@ export function BookingModal({ isOpen, onClose, facilityId, facilityName }: Book
             return;
         }
 
+        // Validar certificado médico
+        if (user.medical_cert_status !== 'VALID') {
+            setError(humanizeError('medical_certificate_invalid'));
+            setLoading(false);
+            return;
+        }
+
         try {
             // Simple validation
             if (!date || !startTime) {
@@ -45,9 +53,13 @@ export function BookingModal({ isOpen, onClose, facilityId, facilityName }: Book
                 return;
             }
 
-            // Construct ISO strings
-            // Assuming 1 hour slots for MVP
+            // Validar que la fecha no sea pasada
             const startDateTime = new Date(`${date}T${startTime}:00`);
+            if (startDateTime < new Date()) {
+                setError("No podés reservar para fechas u horarios pasados.");
+                setLoading(false);
+                return;
+            }
             const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1 hour
 
             await api.post('/bookings', {
@@ -82,10 +94,12 @@ export function BookingModal({ isOpen, onClose, facilityId, facilityName }: Book
         } catch (err: unknown) {
             console.error("Booking failed", err);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if ((err as any).response && (err as any).response.status === 409) {
-                setError("¡Conflicto de horarios! Por favor elige otra hora.");
+            const axiosError = err as any;
+            if (axiosError.response?.status === 409) {
+                setError(humanizeError('booking_conflict'));
             } else {
-                setError("No se pudo crear la reserva. Por favor intenta de nuevo.");
+                const serverMessage = axiosError.response?.data?.error || '';
+                setError(humanizeError(serverMessage));
             }
         } finally {
             setLoading(false);
@@ -128,39 +142,60 @@ export function BookingModal({ isOpen, onClose, facilityId, facilityName }: Book
                         />
 
                         {/* Guest Section */}
-                        <div className="space-y-2 border-t pt-4">
-                            <div className="flex items-center space-x-2">
-                                <input
-                                    type="checkbox"
-                                    id="addGuest"
-                                    checked={addGuest}
-                                    onChange={(e) => setAddGuest(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                                />
-                                <label htmlFor="addGuest" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Agregar Invitado (+$1500)
-                                </label>
+                        <fieldset className="space-y-3 border-t pt-4">
+                            <legend className="sr-only">Agregar invitado a la reserva</legend>
+
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="addGuest"
+                                        checked={addGuest}
+                                        onChange={(e) => setAddGuest(e.target.checked)}
+                                        className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                                    />
+                                    <label htmlFor="addGuest" className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        ¿Viene alguien más contigo?
+                                    </label>
+                                </div>
+                                <span className="text-xs text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-full">
+                                    +$1.500 por invitado
+                                </span>
                             </div>
 
                             {addGuest && (
-                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Nombre Completo"
-                                        value={guestName}
-                                        onChange={(e) => setGuestName(e.target.value)}
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="DNI"
-                                        value={guestDNI}
-                                        onChange={(e) => setGuestDNI(e.target.value)}
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    />
+                                <div className="grid grid-cols-2 gap-3 mt-3 p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+                                    <div>
+                                        <label htmlFor="guestName" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                            Nombre del invitado
+                                        </label>
+                                        <input
+                                            id="guestName"
+                                            type="text"
+                                            placeholder="Juan Pérez"
+                                            value={guestName}
+                                            onChange={(e) => setGuestName(e.target.value)}
+                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                            required={addGuest}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="guestDNI" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                            DNI
+                                        </label>
+                                        <input
+                                            id="guestDNI"
+                                            type="text"
+                                            placeholder="12.345.678"
+                                            value={guestDNI}
+                                            onChange={(e) => setGuestDNI(e.target.value)}
+                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                            required={addGuest}
+                                        />
+                                    </div>
                                 </div>
                             )}
-                        </div>
+                        </fieldset>
 
                         <div className="text-xs text-center text-gray-500">
                             {date && startTime ? `Seleccionado: ${date} a las ${startTime}` : "Por favor selecciona un horario"}
