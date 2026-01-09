@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,9 +83,13 @@ function RegisterForm() {
             }
 
             setStatus("success");
-        } catch (err: any) {
+        } catch (err: unknown) {
             setStatus("error");
-            setErrorMessage(err.message);
+            if (err instanceof Error) {
+                setErrorMessage(err.message);
+            } else {
+                setErrorMessage("An unknown error occurred");
+            }
         }
     };
 
@@ -189,9 +194,9 @@ function RegisterForm() {
                             />
                             <Label htmlFor="accept_terms" className="text-sm leading-relaxed cursor-pointer">
                                 He leído y acepto los{" "}
-                                <a href="/legal/terms" target="_blank" className="text-blue-600 underline hover:text-blue-800">
+                                <Link href="/legal/terms" target="_blank" className="text-blue-600 underline hover:text-blue-800">
                                     Términos y Condiciones
-                                </a>{" "}
+                                </Link>{" "}
                                 del club. <span className="text-red-500">*</span>
                             </Label>
                         </div>
@@ -205,9 +210,9 @@ function RegisterForm() {
                             />
                             <Label htmlFor="accept_privacy" className="text-sm leading-relaxed cursor-pointer">
                                 He leído y acepto la{" "}
-                                <a href="/legal/privacy" target="_blank" className="text-blue-600 underline hover:text-blue-800">
+                                <Link href="/legal/privacy" target="_blank" className="text-blue-600 underline hover:text-blue-800">
                                     Política de Privacidad
-                                </a>{" "}
+                                </Link>{" "}
                                 y autorizo el tratamiento de datos personales conforme a la misma. <span className="text-red-500">*</span>
                             </Label>
                         </div>

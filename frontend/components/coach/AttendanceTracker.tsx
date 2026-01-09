@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
-import { CalendarCheck, Save, AlertTriangle } from "lucide-react"
+import { Save, AlertTriangle } from "lucide-react"
 
 interface Player {
     id: string
@@ -28,7 +28,7 @@ export function AttendanceTracker({ teamId, teamName }: AttendanceTrackerProps) 
     const [players, setPlayers] = useState<Player[]>([])
     const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set())
     const [loading, setLoading] = useState(false)
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+    const [date] = useState(new Date().toISOString().split('T')[0])
     const { toast } = useToast()
 
     // Simulación de carga de jugadores (usaríamos el mismo endpoint que PlayerStatusTable)
@@ -40,7 +40,7 @@ export function AttendanceTracker({ teamId, teamName }: AttendanceTrackerProps) 
             })
             if (response.ok) {
                 const data = await response.json()
-                setPlayers(data.map((d: any) => ({ ...d.user, status_flags: d.status_flags })))
+                setPlayers(data.map((d: { user: Player; status_flags: Player['status_flags'] }) => ({ ...d.user, status_flags: d.status_flags })))
             }
         } catch (e) {
             console.error(e)

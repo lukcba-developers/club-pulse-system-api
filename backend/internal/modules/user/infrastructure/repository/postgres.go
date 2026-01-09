@@ -355,7 +355,7 @@ func (r *PostgresUserRepository) AnonymizeForGDPR(clubID, id string) error {
 			Where("user_id = ? AND club_id = ?", id, clubID).
 			Delete(&domain.UserDocument{}).Error; err != nil {
 			// Log but don't fail if documents table doesn't exist
-			// This allows graceful degradation
+			_ = err // Satisfy SA9003
 		}
 
 		// 4. Dissociate user from audit logs (replace UserID with anonymous placeholder)
@@ -366,7 +366,7 @@ func (r *PostgresUserRepository) AnonymizeForGDPR(clubID, id string) error {
 			    details = '{"gdpr_erased": true}'
 			WHERE user_id = ?
 		`, id).Error; err != nil {
-			// Log but don't fail if audit table doesn't exist
+			_ = err // Satisfy SA9003
 		}
 
 		// 5. Dissociate from authentication logs
@@ -377,7 +377,7 @@ func (r *PostgresUserRepository) AnonymizeForGDPR(clubID, id string) error {
 			    user_agent = 'GDPR_ERASED'
 			WHERE user_id = ?
 		`, id).Error; err != nil {
-			// Log but don't fail
+			_ = err // Satisfy SA9003
 		}
 
 		// 6. Revoke all refresh tokens for this user

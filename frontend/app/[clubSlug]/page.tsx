@@ -11,9 +11,17 @@ async function getNews(slug: string) {
         if (!res.ok) return []
         const data = await res.json()
         return data.data || []
-    } catch (e) {
+    } catch (error) {
+        console.error("Error fetching news:", error)
         return []
     }
+}
+interface NewsItem {
+    id: string
+    title: string
+    content: string
+    image_url?: string
+    created_at: string
 }
 
 export default async function PublicClubHome({ params }: { params: { clubSlug: string } }) {
@@ -98,7 +106,7 @@ export default async function PublicClubHome({ params }: { params: { clubSlug: s
                 <h2 className="text-3xl font-bold mb-8 text-center">Últimas Novedades</h2>
                 {news.length > 0 ? (
                     <div className="grid md:grid-cols-2 gap-8">
-                        {news.map((item: any) => (
+                        {news.map((item: NewsItem) => (
                             <div key={item.id} className="bg-card rounded-lg overflow-hidden border shadow-sm flex flex-col">
                                 <div className="h-48 bg-muted flex items-center justify-center text-muted-foreground relative">
                                     {item.image_url ? (

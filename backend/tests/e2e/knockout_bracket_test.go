@@ -185,7 +185,8 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 
 		var resp map[string]string
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
 		assert.Contains(t, resp["error"], "power of 2")
 	})
 
@@ -215,7 +216,8 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 
 		var resp map[string]string
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
 		assert.Contains(t, resp["error"], "KNOCKOUT")
 	})
 }

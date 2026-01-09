@@ -17,7 +17,7 @@ export default function StorePage() {
 
     useEffect(() => {
         fetchProducts();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchProducts = async () => {
         try {

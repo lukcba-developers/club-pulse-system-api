@@ -1,5 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 import { SponsorCarousel } from "@/components/club/SponsorCarousel"
 
 // Función para obtener datos del club
@@ -82,17 +84,17 @@ export default async function ClubLayout({
                 <div className="container mx-auto px-4 py-4 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         {club.logo_url && (
-                            <img src={club.logo_url} alt={club.name} className="h-10 w-10 object-contain" />
+                            <Image src={club.logo_url} alt={club.name} width={40} height={40} className="h-10 w-10 object-contain" />
                         )}
                         <h1 className="text-xl font-bold">{club.name}</h1>
                     </div>
                     <nav className="flex gap-4">
-                        <a href={`/${clubSlug}`} className="hover:text-primary transition-colors">Inicio</a>
-                        <a href={`/${clubSlug}/championships`} className="hover:text-primary transition-colors">Campeonatos</a>
-                        <a href={`/${clubSlug}/store`} className="hover:text-primary transition-colors">Tienda</a>
-                        <a href="/login" className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity">
+                        <Link href={`/${clubSlug}`} className="hover:text-primary transition-colors">Inicio</Link>
+                        <Link href={`/${clubSlug}/championships`} className="hover:text-primary transition-colors">Campeonatos</Link>
+                        <Link href={`/${clubSlug}/store`} className="hover:text-primary transition-colors">Tienda</Link>
+                        <Link href="/login" className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity">
                             Acceso Socios
-                        </a>
+                        </Link>
                     </nav>
                 </div>
             </header>

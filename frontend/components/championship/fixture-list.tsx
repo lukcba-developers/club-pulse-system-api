@@ -45,8 +45,20 @@ export function FixtureList({ groupId, clubId }: FixtureListProps) {
     };
 
     useEffect(() => {
+        const fetchFixtureData = async () => {
+            setLoading(true);
+            try {
+                const data = await championshipService.getMatches(groupId);
+                setMatches(data);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (groupId) {
-            fetchFixture();
+            fetchFixtureData();
         }
     }, [groupId]);
 

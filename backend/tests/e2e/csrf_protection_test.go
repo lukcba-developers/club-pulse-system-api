@@ -109,7 +109,8 @@ func TestCSRFProtection(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 
 		var resp map[string]string
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
 		assert.Contains(t, resp["error"], "CSRF")
 	})
 
@@ -176,7 +177,8 @@ func TestCSRFProtection(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 
 		var resp map[string]string
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
 		assert.Contains(t, resp["error"], "mismatch")
 	})
 }
