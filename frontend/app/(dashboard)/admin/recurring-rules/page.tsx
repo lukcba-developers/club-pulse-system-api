@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Calendar, RefreshCw, Plus } from 'lucide-react';
+import { Loader2, Calendar, RefreshCw, Plus, List } from 'lucide-react';
 import api from '@/lib/axios';
+import { bookingService, RecurringRule } from '@/services/booking-service';
 
 interface RecurringRuleDTO {
     facility_id: string;
@@ -35,6 +36,23 @@ export default function RecurringRulesPage() {
     const [generating, setGenerating] = useState(false);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const [rules, setRules] = useState<RecurringRule[]>([]);
+    const [loadingRules, setLoadingRules] = useState(true);
+
+    // Fetch existing rules on mount
+    useEffect(() => {
+        const fetchRules = async () => {
+            try {
+                const data = await bookingService.listRecurringRules();
+                setRules(data || []);
+            } catch (err) {
+                console.error('Failed to fetch rules', err);
+            } finally {
+                setLoadingRules(false);
+            }
+        };
+        fetchRules();
+    }, []);
 
     const handleCreateRule = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -58,6 +76,9 @@ export default function RecurringRulesPage() {
             });
 
             setMessage('Regla recurrente creada exitosamente.');
+            // Refresh rules list
+            const updatedRules = await bookingService.listRecurringRules();
+            setRules(updatedRules || []);
             setFormData({
                 facility_id: '',
                 type: 'WEEKLY',
@@ -233,6 +254,65 @@ export default function RecurringRulesPage() {
                             </Button>
                         </div>
                     </form>
+                </CardContent>
+            </Card>
+
+            {/* Existing Rules List */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <List className="h-5 w-5" />
+                        Reglas Activas
+                    </CardTitle>
+                    <CardDescription>
+                        Reglas recurrentes configuradas actualmente.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loadingRules ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : rules.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                            No hay reglas recurrentes configuradas.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b">
+                                        <th className="text-left py-2 px-2 font-medium">Instalación</th>
+                                        <th className="text-left py-2 px-2 font-medium">Día</th>
+                                        <th className="text-left py-2 px-2 font-medium">Horario</th>
+                                        <th className="text-left py-2 px-2 font-medium">Período</th>
+                                        <th className="text-left py-2 px-2 font-medium">Tipo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rules.map((rule) => (
+                                        <tr key={rule.id} className="border-b last:border-0 hover:bg-muted/50">
+                                            <td className="py-2 px-2 font-mono text-xs truncate max-w-[120px]" title={rule.facility_id}>
+                                                {rule.facility_id.slice(0, 8)}...
+                                            </td>
+                                            <td className="py-2 px-2">{dayLabels[rule.day_of_week]}</td>
+                                            <td className="py-2 px-2">
+                                                {rule.start_time.slice(0, 5)} - {rule.end_time.slice(0, 5)}
+                                            </td>
+                                            <td className="py-2 px-2 text-xs text-muted-foreground">
+                                                {rule.start_date} → {rule.end_date}
+                                            </td>
+                                            <td className="py-2 px-2">
+                                                <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                                    {rule.type}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

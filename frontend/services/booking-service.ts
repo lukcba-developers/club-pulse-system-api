@@ -2,13 +2,17 @@ import api from '../lib/axios';
 
 export interface Booking {
     id: string;
+    club_id: string;
     user_id: string;
     facility_id: string;
     start_time: string;
     end_time: string;
+    total_price: number;
     status: 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED';
     guest_details?: GuestDetail[];
+    payment_expiry?: string;
     created_at: string;
+    updated_at: string;
 }
 
 export interface GuestDetail {

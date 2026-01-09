@@ -12,6 +12,8 @@ import { IncidentReportModal } from '@/components/user/incident-report-modal';
 import { SponsorBanner } from '@/components/club/sponsor-banner';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, MapPin, Clock, CreditCard, ArrowRight, Trophy, Sparkles } from 'lucide-react';
+import { XPProgressBar, LevelUpModal } from '@/components/gamification';
+import { useGamification } from '@/hooks/useGamification';
 
 import { User } from '@/context/auth-context';
 
@@ -20,6 +22,16 @@ export function MemberDashboardView({ user }: { user: User }) {
     const [membership, setMembership] = useState<Membership | null>(null);
     const [nextBooking, setNextBooking] = useState<Booking | null>(null);
     const [facilities, setFacilities] = useState<Record<string, Facility>>({});
+
+    // Gamification Hook
+    const {
+        stats,
+        showLevelUpModal,
+        newLevel,
+        closeLevelUpModal,
+        calculateProgress,
+        getNextLevelXP
+    } = useGamification(user.id);
 
     const fetchData = useCallback(async () => {
         try {
@@ -205,9 +217,37 @@ export function MemberDashboardView({ user }: { user: User }) {
                 </div>
 
                 <div className="space-y-6">
+                    {/* Gamification Progress */}
+                    {stats && (
+                        <Card className="overflow-hidden">
+                            <CardHeader className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 pb-2">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5 text-purple-500" />
+                                    Tu Progreso
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-4">
+                                <XPProgressBar
+                                    level={stats.level}
+                                    currentXP={stats.experience}
+                                    requiredXP={getNextLevelXP()}
+                                    totalXP={stats.totalXp}
+                                    currentStreak={stats.currentStreak}
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <DigitalMemberCard user={user} />
                 </div>
             </div>
+
+            {/* Level Up Modal */}
+            <LevelUpModal
+                isOpen={showLevelUpModal}
+                onClose={closeLevelUpModal}
+                newLevel={newLevel}
+            />
 
             <SponsorBanner />
         </div >

@@ -73,6 +73,8 @@ export default function BookingsPage() {
         try {
             await api.delete(`/bookings/${id}`);
             setBookings(prev => prev.filter(b => b.id !== id));
+            // Show success message (would be better with a toast context)
+            // For now we just remove from list silently - the UI update indicates success
         } catch (err) {
             console.error("Failed to cancel booking", err);
             alert("No se pudo cancelar la reserva");
@@ -157,8 +159,11 @@ export default function BookingsPage() {
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    Esta acción no se puede deshacer. Esto cancelará permanentemente su reserva para {facility?.name}.
+                                                <AlertDialogDescription className="space-y-2">
+                                                    <span>Esta acción no se puede deshacer. Esto cancelará permanentemente su reserva para {facility?.name}.</span>
+                                                    <span className="block text-sm text-green-600 dark:text-green-400 font-medium">
+                                                        💰 Si realizaste un pago, el reembolso se procesará automáticamente.
+                                                    </span>
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>

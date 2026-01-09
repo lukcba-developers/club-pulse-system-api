@@ -49,6 +49,24 @@ func (uc *AuthUseCases) Register(ctx context.Context, dto RegisterDTO, clubID st
 		return nil, errors.NewValidation("Club ID is required")
 	}
 
+	// Password strength validation
+	if len(dto.Password) < 8 {
+		return nil, errors.NewValidation("Password must be at least 8 characters long")
+	}
+	hasUpper := false
+	hasDigit := false
+	for _, c := range dto.Password {
+		if c >= 'A' && c <= 'Z' {
+			hasUpper = true
+		}
+		if c >= '0' && c <= '9' {
+			hasDigit = true
+		}
+	}
+	if !hasUpper || !hasDigit {
+		return nil, errors.NewValidation("Password must contain at least one uppercase letter and one number")
+	}
+
 	// GDPR: Validate consent was given
 	if !dto.AcceptTerms {
 		return nil, errors.NewValidation("You must accept the Terms and Conditions to register")

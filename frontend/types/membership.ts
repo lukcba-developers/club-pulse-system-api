@@ -3,13 +3,15 @@ export type BillingCycle = 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL';
 
 export interface MembershipTier {
     id: string;
+    club_id: string; // Required - NOT NULL in backend
     name: string;
     description: string;
-    monthly_fee: number; // Decimal in standard JSON often comes as number, handle string if needed
+    monthly_fee: number; // Backend sends decimal.Decimal serialized as number
     colors: string;
     benefits: string[];
-    is_active?: boolean;
-    club_id?: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface Membership {

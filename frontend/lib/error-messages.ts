@@ -80,7 +80,7 @@ export function humanizeError(errorCodeOrMessage: string): string {
         return ERROR_MESSAGES[errorCodeOrMessage];
     }
 
-    // Luego buscamos por código en lowercase/snake_case normalizado
+    // Normalize backend ErrorType format (e.g., VALIDATION_ERROR -> validation_error)
     const normalizedCode = errorCodeOrMessage
         .toLowerCase()
         .replace(/\s+/g, '_')
@@ -88,6 +88,21 @@ export function humanizeError(errorCodeOrMessage: string): string {
 
     if (ERROR_MESSAGES[normalizedCode]) {
         return ERROR_MESSAGES[normalizedCode];
+    }
+
+    // Map backend ErrorTypes to frontend messages
+    const backendErrorTypeMap: Record<string, string> = {
+        'validation_error': 'invalid_format',
+        'not_found': 'default', // Will use pattern matching below
+        'unauthorized': 'unauthorized',
+        'forbidden': 'unauthorized',
+        'conflict': 'booking_conflict',
+        'too_many_requests': 'rate_limited',
+        'internal_server_error': 'server_error',
+    };
+
+    if (backendErrorTypeMap[normalizedCode]) {
+        return ERROR_MESSAGES[backendErrorTypeMap[normalizedCode]];
     }
 
     // Buscamos patrones conocidos en el mensaje

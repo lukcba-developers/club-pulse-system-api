@@ -14,9 +14,10 @@ interface BookingModalProps {
     onClose: () => void;
     facilityId: string;
     facilityName: string;
+    guestFee?: number; // Dynamic fee from facility, defaults to 0
 }
 
-export function BookingModal({ isOpen, onClose, facilityId, facilityName }: BookingModalProps) {
+export function BookingModal({ isOpen, onClose, facilityId, facilityName, guestFee = 0 }: BookingModalProps) {
     const { user } = useAuth();
     const [date, setDate] = useState('');
     const [startTime, setStartTime] = useState('');
@@ -70,7 +71,7 @@ export function BookingModal({ isOpen, onClose, facilityId, facilityName }: Book
                 guest_details: addGuest && guestName ? [{
                     name: guestName,
                     dni: guestDNI,
-                    fee_amount: 1500 // Hardcoded fee for guest for MVP
+                    fee_amount: guestFee
                 }] : undefined
             });
 
@@ -159,7 +160,7 @@ export function BookingModal({ isOpen, onClose, facilityId, facilityName }: Book
                                     </label>
                                 </div>
                                 <span className="text-xs text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-full">
-                                    +$1.500 por invitado
+                                    {guestFee > 0 ? `+$${guestFee.toLocaleString('es-AR')} por invitado` : 'Sin cargo adicional'}
                                 </span>
                             </div>
 
