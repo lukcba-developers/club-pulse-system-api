@@ -68,11 +68,11 @@ func TestSuperAdminAccess(t *testing.T) {
 		db.Unscoped().Delete(existingSA)
 	}
 
-	saUser := &userDomain.User{
+	saUser := &userRepo.UserModel{
 		ID:        "sa-id-123",
 		Name:      saName,
 		Email:     saEmail,
-		Role:      userDomain.RoleSuperAdmin,
+		Role:      string(userDomain.RoleSuperAdmin),
 		ClubID:    "system", // Special system club
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -86,11 +86,11 @@ func TestSuperAdminAccess(t *testing.T) {
 	if existingNorm != nil {
 		db.Unscoped().Delete(existingNorm)
 	}
-	normUser := &userDomain.User{
+	normUser := &userRepo.UserModel{
 		ID:        "norm-id-456",
 		Name:      "Normal User",
 		Email:     normEmail,
-		Role:      userDomain.RoleMember,
+		Role:      string(userDomain.RoleMember),
 		ClubID:    "club-A",
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -129,7 +129,7 @@ func TestSuperAdminAccess(t *testing.T) {
 	// Strict Auth Middleware to enforce Super Admin role
 	strictAuth := func(c *gin.Context) {
 		role, exists := c.Get("userRole")
-		if !exists || role != userDomain.RoleSuperAdmin {
+		if !exists || role != string(userDomain.RoleSuperAdmin) {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
 			return
 		}

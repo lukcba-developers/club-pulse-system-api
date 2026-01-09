@@ -32,7 +32,7 @@ func TestCancellationRefundFlow(t *testing.T) {
 	db := SetupTestDB(t)
 
 	// Ensure UserStats and Wallet tables exist
-	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
+	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &paymentDomain.Payment{})
 
 	// Repos
 	bRepo := bookingRepo.NewPostgresBookingRepository(db)

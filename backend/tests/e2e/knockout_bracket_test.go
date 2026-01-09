@@ -117,8 +117,8 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 	teamIDs := make([]string, 4)
 	for i := 0; i < 4; i++ {
 		teamIDs[i] = uuid.New().String()
-		// Insert teams directly into DB (or use Team module if available)
-		db.Exec("INSERT INTO teams (id, name) VALUES (?, ?)", teamIDs[i], "Team "+string(rune('A'+i)))
+		// Insert teams directly into DB with all required fields
+		db.Exec("INSERT INTO teams (id, name, club_id, championship_id, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())", teamIDs[i], "Team "+string(rune('A'+i)), clubID, tournament.ID)
 	}
 
 	// 6. Test: Generate Knockout Bracket via API

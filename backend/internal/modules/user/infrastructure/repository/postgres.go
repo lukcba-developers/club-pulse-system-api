@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	"gorm.io/gorm"
 )
@@ -32,9 +33,10 @@ type UserModel struct {
 	UpdatedAt         time.Time
 	DeletedAt         gorm.DeletedAt `gorm:"index"`
 	// Join fields for GORM Preloading (mapping back to domain entities)
-	Stats  *domain.UserStats `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE,name:fk_users_stats_model"`
-	Wallet *domain.Wallet    `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE,name:fk_users_wallet_model"`
-	ClubID string            `gorm:"index;not null"`
+	Stats         *domain.UserStats `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE,name:fk_users_stats_model"`
+	Wallet        *domain.Wallet    `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE,name:fk_users_wallet_model"`
+	ClubID        string            `gorm:"index;not null"`
+	FamilyGroupID *uuid.UUID        `gorm:"type:uuid;index"`
 
 	// Operational Fields
 	EmergencyContactName  string
