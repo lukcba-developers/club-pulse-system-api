@@ -1,6 +1,20 @@
 -- Migration: Add gamification streak fields to user_stats
 -- Part of Gamification Phase 1
 
+-- Ensure table exists (safeguard for CI/CD if 001 didn't run fully)
+CREATE TABLE IF NOT EXISTS user_stats (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    matches_played INT DEFAULT 0,
+    matches_won INT DEFAULT 0,
+    ranking_points INT DEFAULT 0,
+    level INT DEFAULT 1,
+    experience INT DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
 -- Add streak tracking columns
 ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS current_streak INT DEFAULT 0;
 ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS longest_streak INT DEFAULT 0;

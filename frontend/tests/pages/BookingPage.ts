@@ -55,7 +55,8 @@ export class BookingPage {
                 name: 'Test User',
                 email: 'test@example.com',
                 role: 'ADMIN',
-                club_id: 'club-1'
+                club_id: 'club-1',
+                medical_cert_status: 'VALID'
             };
             await route.fulfill({ status: 200, json });
         });
