@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -19,18 +20,19 @@ func NewPostgresFamilyGroupRepository(db *gorm.DB) *PostgresFamilyGroupRepositor
 	return &PostgresFamilyGroupRepository{db: db}
 }
 
-func (r *PostgresFamilyGroupRepository) Create(group *domain.FamilyGroup) error {
+func (r *PostgresFamilyGroupRepository) Create(ctx context.Context, group *domain.FamilyGroup) error {
 	if group.ID == uuid.Nil {
 		group.ID = uuid.New()
 	}
 	group.CreatedAt = time.Now()
 	group.UpdatedAt = time.Now()
-	return r.db.Create(group).Error
+	// Pass context to GORM
+	return r.db.WithContext(ctx).Create(group).Error
 }
 
-func (r *PostgresFamilyGroupRepository) GetByID(clubID string, id uuid.UUID) (*domain.FamilyGroup, error) {
+func (r *PostgresFamilyGroupRepository) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.FamilyGroup, error) {
 	var group domain.FamilyGroup
-	result := r.db.Preload("Members").Where("id = ? AND club_id = ?", id, clubID).First(&group)
+	result := r.db.WithContext(ctx).Preload("Members").Where("id = ? AND club_id = ?", id, clubID).First(&group)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -40,9 +42,9 @@ func (r *PostgresFamilyGroupRepository) GetByID(clubID string, id uuid.UUID) (*d
 	return &group, nil
 }
 
-func (r *PostgresFamilyGroupRepository) GetByHeadUserID(clubID, headUserID string) (*domain.FamilyGroup, error) {
+func (r *PostgresFamilyGroupRepository) GetByHeadUserID(ctx context.Context, clubID, headUserID string) (*domain.FamilyGroup, error) {
 	var group domain.FamilyGroup
-	result := r.db.Preload("Members").Where("head_user_id = ? AND club_id = ?", headUserID, clubID).First(&group)
+	result := r.db.WithContext(ctx).Preload("Members").Where("head_user_id = ? AND club_id = ?", headUserID, clubID).First(&group)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -52,24 +54,24 @@ func (r *PostgresFamilyGroupRepository) GetByHeadUserID(clubID, headUserID strin
 	return &group, nil
 }
 
-func (r *PostgresFamilyGroupRepository) GetByMemberID(clubID, userID string) (*domain.FamilyGroup, error) {
+func (r *PostgresFamilyGroupRepository) GetByMemberID(ctx context.Context, clubID, userID string) (*domain.FamilyGroup, error) {
 	// Find user first to get their family_group_id
 	var user struct {
 		FamilyGroupID *uuid.UUID
 	}
-	result := r.db.Table("users").Select("family_group_id").Where("id = ? AND club_id = ?", userID, clubID).Scan(&user)
+	result := r.db.WithContext(ctx).Table("users").Select("family_group_id").Where("id = ? AND club_id = ?", userID, clubID).Scan(&user)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	if user.FamilyGroupID == nil {
 		return nil, nil
 	}
-	return r.GetByID(clubID, *user.FamilyGroupID)
+	return r.GetByID(ctx, clubID, *user.FamilyGroupID)
 }
 
-func (r *PostgresFamilyGroupRepository) AddMember(clubID string, groupID uuid.UUID, userID string) error {
+func (r *PostgresFamilyGroupRepository) AddMember(ctx context.Context, clubID string, groupID uuid.UUID, userID string) error {
 	// Verify group exists and belongs to club
-	group, err := r.GetByID(clubID, groupID)
+	group, err := r.GetByID(ctx, clubID, groupID)
 	if err != nil {
 		return err
 	}
@@ -78,14 +80,14 @@ func (r *PostgresFamilyGroupRepository) AddMember(clubID string, groupID uuid.UU
 	}
 
 	// Update user's family_group_id
-	return r.db.Table("users").
+	return r.db.WithContext(ctx).Table("users").
 		Where("id = ? AND club_id = ?", userID, clubID).
 		Update("family_group_id", groupID).Error
 }
 
-func (r *PostgresFamilyGroupRepository) RemoveMember(clubID string, groupID uuid.UUID, userID string) error {
+func (r *PostgresFamilyGroupRepository) RemoveMember(ctx context.Context, clubID string, groupID uuid.UUID, userID string) error {
 	// Verify group exists
-	group, err := r.GetByID(clubID, groupID)
+	group, err := r.GetByID(ctx, clubID, groupID)
 	if err != nil {
 		return err
 	}
@@ -99,7 +101,7 @@ func (r *PostgresFamilyGroupRepository) RemoveMember(clubID string, groupID uuid
 	}
 
 	// Set user's family_group_id to NULL
-	return r.db.Table("users").
+	return r.db.WithContext(ctx).Table("users").
 		Where("id = ? AND club_id = ? AND family_group_id = ?", userID, clubID, groupID).
 		Update("family_group_id", nil).Error
 }

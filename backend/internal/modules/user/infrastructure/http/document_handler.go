@@ -82,7 +82,7 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 		ExpirationDate: expirationDate,
 	}
 
-	if err := h.docRepo.Create(doc); err != nil {
+	if err := h.docRepo.Create(c.Request.Context(), doc); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al guardar documento"})
 		return
 	}
@@ -96,7 +96,7 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 	clubID := c.GetString("club_id")
 	userID := c.Param("userId")
 
-	docs, err := h.docRepo.GetByUserID(clubID, userID)
+	docs, err := h.docRepo.GetByUserID(c.Request.Context(), clubID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener documentos"})
 		return
@@ -121,7 +121,7 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 		return
 	}
 
-	doc, err := h.docRepo.GetByID(clubID, docUUID)
+	doc, err := h.docRepo.GetByID(c.Request.Context(), clubID, docUUID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Documento no encontrado"})
 		return
@@ -178,7 +178,7 @@ func (h *DocumentHandler) ValidateDocument(c *gin.Context) {
 		return
 	}
 
-	err := h.eligibilityService.ValidateDocument(clubID, docID, validatorID, req.Approve, req.Notes)
+	err := h.eligibilityService.ValidateDocument(c.Request.Context(), clubID, docID, validatorID, req.Approve, req.Notes)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -186,7 +186,7 @@ func (h *DocumentHandler) ValidateDocument(c *gin.Context) {
 
 	// Obtener el documento actualizado
 	docUUID, _ := uuid.Parse(docID)
-	doc, _ := h.docRepo.GetByID(clubID, docUUID)
+	doc, _ := h.docRepo.GetByID(c.Request.Context(), clubID, docUUID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Documento validado exitosamente",
@@ -215,7 +215,7 @@ func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
 		return
 	}
 
-	if err := h.docRepo.Delete(clubID, docUUID); err != nil {
+	if err := h.docRepo.Delete(c.Request.Context(), clubID, docUUID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al eliminar documento"})
 		return
 	}
@@ -229,7 +229,7 @@ func (h *DocumentHandler) CheckEligibility(c *gin.Context) {
 	clubID := c.GetString("club_id")
 	userID := c.Param("userId")
 
-	result, err := h.eligibilityService.CheckEligibility(clubID, userID)
+	result, err := h.eligibilityService.CheckEligibility(c.Request.Context(), clubID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al verificar elegibilidad"})
 		return
@@ -244,7 +244,7 @@ func (h *DocumentHandler) GetDocumentSummary(c *gin.Context) {
 	clubID := c.GetString("club_id")
 	userID := c.Param("userId")
 
-	summary, err := h.eligibilityService.GetDocumentSummary(clubID, userID)
+	summary, err := h.eligibilityService.GetDocumentSummary(c.Request.Context(), clubID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener resumen"})
 		return

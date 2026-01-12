@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -92,7 +93,7 @@ type Standing struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 
 	// Enriched Fields
-	TeamName string `json:"team_name,omitempty" gorm:"-"`
+	TeamName string `json:"team_name,omitempty" gorm:"->"`
 }
 
 type MatchStatus string
@@ -129,22 +130,22 @@ func (TournamentMatch) TableName() string {
 }
 
 type ChampionshipRepository interface {
-	CreateTournament(tournament *Tournament) error
-	GetTournament(clubID, id string) (*Tournament, error)
-	ListTournaments(clubID string) ([]Tournament, error)
-	CreateStage(stage *TournamentStage) error
-	GetStage(clubID, id string) (*TournamentStage, error)
-	CreateGroup(group *Group) error
-	GetGroup(clubID, id string) (*Group, error)
-	CreateMatch(match *TournamentMatch) error
-	CreateMatchesBatch(matches []TournamentMatch) error // Atomic batch creation
-	GetMatch(clubID, id string) (*TournamentMatch, error)
-	GetMatchesByGroup(clubID, groupID string) ([]TournamentMatch, error)
-	UpdateMatchResult(clubID, matchID string, homeScore, awayScore int) error
-	UpdateMatchScheduling(clubID, matchID string, date time.Time, bookingID uuid.UUID) error
-	GetStandings(clubID, groupID string) ([]Standing, error)
-	RegisterTeam(standing *Standing) error
-	UpdateStanding(standing *Standing) error
-	UpdateStandingsBatch(standings []Standing) error
-	GetTeamMembers(teamID string) ([]string, error)
+	CreateTournament(ctx context.Context, tournament *Tournament) error
+	GetTournament(ctx context.Context, clubID, id string) (*Tournament, error)
+	ListTournaments(ctx context.Context, clubID string) ([]Tournament, error)
+	CreateStage(ctx context.Context, stage *TournamentStage) error
+	GetStage(ctx context.Context, clubID, id string) (*TournamentStage, error)
+	CreateGroup(ctx context.Context, group *Group) error
+	GetGroup(ctx context.Context, clubID, id string) (*Group, error)
+	CreateMatch(ctx context.Context, match *TournamentMatch) error
+	CreateMatchesBatch(ctx context.Context, matches []TournamentMatch) error // Atomic batch creation
+	GetMatch(ctx context.Context, clubID, id string) (*TournamentMatch, error)
+	GetMatchesByGroup(ctx context.Context, clubID, groupID string) ([]TournamentMatch, error)
+	UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore int) error
+	UpdateMatchScheduling(ctx context.Context, clubID, matchID string, date time.Time, bookingID uuid.UUID) error
+	GetStandings(ctx context.Context, clubID, groupID string) ([]Standing, error)
+	RegisterTeam(ctx context.Context, standing *Standing) error
+	UpdateStanding(ctx context.Context, standing *Standing) error
+	UpdateStandingsBatch(ctx context.Context, standings []Standing) error
+	GetTeamMembers(ctx context.Context, teamID string) ([]string, error)
 }

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/google/uuid"
@@ -16,19 +17,19 @@ func NewPostgresDisciplineRepository(db *gorm.DB) *PostgresDisciplineRepository 
 	return &PostgresDisciplineRepository{db: db}
 }
 
-func (r *PostgresDisciplineRepository) CreateDiscipline(discipline *domain.Discipline) error {
-	return r.db.Create(discipline).Error
+func (r *PostgresDisciplineRepository) CreateDiscipline(ctx context.Context, discipline *domain.Discipline) error {
+	return r.db.WithContext(ctx).Create(discipline).Error
 }
 
-func (r *PostgresDisciplineRepository) ListDisciplines(clubID string) ([]domain.Discipline, error) {
+func (r *PostgresDisciplineRepository) ListDisciplines(ctx context.Context, clubID string) ([]domain.Discipline, error) {
 	var disciplines []domain.Discipline
-	err := r.db.Where("is_active = ? AND club_id = ?", true, clubID).Find(&disciplines).Error
+	err := r.db.WithContext(ctx).Where("is_active = ? AND club_id = ?", true, clubID).Find(&disciplines).Error
 	return disciplines, err
 }
 
-func (r *PostgresDisciplineRepository) GetDisciplineByID(clubID string, id uuid.UUID) (*domain.Discipline, error) {
+func (r *PostgresDisciplineRepository) GetDisciplineByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Discipline, error) {
 	var discipline domain.Discipline
-	if err := r.db.First(&discipline, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&discipline, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -37,13 +38,13 @@ func (r *PostgresDisciplineRepository) GetDisciplineByID(clubID string, id uuid.
 	return &discipline, nil
 }
 
-func (r *PostgresDisciplineRepository) CreateGroup(group *domain.TrainingGroup) error {
-	return r.db.Create(group).Error
+func (r *PostgresDisciplineRepository) CreateGroup(ctx context.Context, group *domain.TrainingGroup) error {
+	return r.db.WithContext(ctx).Create(group).Error
 }
 
-func (r *PostgresDisciplineRepository) ListGroups(clubID string, filter map[string]interface{}) ([]domain.TrainingGroup, error) {
+func (r *PostgresDisciplineRepository) ListGroups(ctx context.Context, clubID string, filter map[string]interface{}) ([]domain.TrainingGroup, error) {
 	var groups []domain.TrainingGroup
-	query := r.db.Preload("Discipline").Where("club_id = ?", clubID)
+	query := r.db.WithContext(ctx).Preload("Discipline").Where("club_id = ?", clubID)
 	if dID, ok := filter["discipline_id"]; ok {
 		query = query.Where("discipline_id = ?", dID)
 	}
@@ -60,9 +61,9 @@ func (r *PostgresDisciplineRepository) ListGroups(clubID string, filter map[stri
 	return groups, err
 }
 
-func (r *PostgresDisciplineRepository) GetGroupByID(clubID string, id uuid.UUID) (*domain.TrainingGroup, error) {
+func (r *PostgresDisciplineRepository) GetGroupByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.TrainingGroup, error) {
 	var group domain.TrainingGroup
-	if err := r.db.Preload("Discipline").First(&group, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Discipline").First(&group, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}

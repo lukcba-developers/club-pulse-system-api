@@ -18,13 +18,13 @@ func NewPostgresBookingRepository(db *gorm.DB) domain.BookingRepository {
 	return &PostgresBookingRepository{db: db}
 }
 
-func (r *PostgresBookingRepository) Create(booking *domain.Booking) error {
-	return r.db.Create(booking).Error
+func (r *PostgresBookingRepository) Create(ctx context.Context, booking *domain.Booking) error {
+	return r.db.WithContext(ctx).Create(booking).Error
 }
 
-func (r *PostgresBookingRepository) GetByID(clubID string, id uuid.UUID) (*domain.Booking, error) {
+func (r *PostgresBookingRepository) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Booking, error) {
 	var booking domain.Booking
-	if err := r.db.First(&booking, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&booking, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -33,9 +33,9 @@ func (r *PostgresBookingRepository) GetByID(clubID string, id uuid.UUID) (*domai
 	return &booking, nil
 }
 
-func (r *PostgresBookingRepository) List(clubID string, filter map[string]interface{}) ([]domain.Booking, error) {
+func (r *PostgresBookingRepository) List(ctx context.Context, clubID string, filter map[string]interface{}) ([]domain.Booking, error) {
 	var bookings []domain.Booking
-	query := r.db.Model(&domain.Booking{}).Where("club_id = ?", clubID)
+	query := r.db.WithContext(ctx).Model(&domain.Booking{}).Where("club_id = ?", clubID)
 
 	for key, value := range filter {
 		query = query.Where(key+" = ?", value)
@@ -49,15 +49,15 @@ func (r *PostgresBookingRepository) List(clubID string, filter map[string]interf
 	return bookings, nil
 }
 
-func (r *PostgresBookingRepository) Update(booking *domain.Booking) error {
-	return r.db.Save(booking).Error
+func (r *PostgresBookingRepository) Update(ctx context.Context, booking *domain.Booking) error {
+	return r.db.WithContext(ctx).Save(booking).Error
 }
 
-func (r *PostgresBookingRepository) HasTimeConflict(clubID string, facilityID uuid.UUID, start, end time.Time) (bool, error) {
+func (r *PostgresBookingRepository) HasTimeConflict(ctx context.Context, clubID string, facilityID uuid.UUID, start, end time.Time) (bool, error) {
 	var count int64
 	// Check for any confirmed booking that overlaps with [start, end)
 	// Overlap condition: (ExistingStart < NewEnd) AND (ExistingEnd > NewStart)
-	err := r.db.Model(&domain.Booking{}).
+	err := r.db.WithContext(ctx).Model(&domain.Booking{}).
 		Where("club_id = ?", clubID).
 		Where("facility_id = ?", facilityID).
 		Where("status IN (?)", []domain.BookingStatus{domain.BookingStatusConfirmed, domain.BookingStatusPendingPayment}).
@@ -71,7 +71,7 @@ func (r *PostgresBookingRepository) HasTimeConflict(clubID string, facilityID uu
 	return count > 0, nil
 }
 
-func (r *PostgresBookingRepository) ListByFacilityAndDate(clubID string, facilityID uuid.UUID, date time.Time) ([]domain.Booking, error) {
+func (r *PostgresBookingRepository) ListByFacilityAndDate(ctx context.Context, clubID string, facilityID uuid.UUID, date time.Time) ([]domain.Booking, error) {
 	var bookings []domain.Booking
 	// Filter by facility and date range (start of day to end of day)
 	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
@@ -79,7 +79,7 @@ func (r *PostgresBookingRepository) ListByFacilityAndDate(clubID string, facilit
 
 	// We want bookings that overlap with this day (though usually bookings are contained within a day)
 	// Simple overlap check: Start < EndOfDay AND End > StartOfDay
-	err := r.db.Model(&domain.Booking{}).
+	err := r.db.WithContext(ctx).Model(&domain.Booking{}).
 		Where("club_id = ?", clubID).
 		Where("facility_id = ?", facilityID).
 		Where("status IN (?)", []domain.BookingStatus{domain.BookingStatusConfirmed, domain.BookingStatusPendingPayment}).
@@ -91,9 +91,9 @@ func (r *PostgresBookingRepository) ListByFacilityAndDate(clubID string, facilit
 	return bookings, err
 }
 
-func (r *PostgresBookingRepository) ListAll(clubID string, filter map[string]interface{}, from, to *time.Time) ([]domain.Booking, error) {
+func (r *PostgresBookingRepository) ListAll(ctx context.Context, clubID string, filter map[string]interface{}, from, to *time.Time) ([]domain.Booking, error) {
 	var bookings []domain.Booking
-	query := r.db.Model(&domain.Booking{}).Where("club_id = ?", clubID)
+	query := r.db.WithContext(ctx).Model(&domain.Booking{}).Where("club_id = ?", clubID)
 
 	for key, value := range filter {
 		query = query.Where(key+" = ?", value)

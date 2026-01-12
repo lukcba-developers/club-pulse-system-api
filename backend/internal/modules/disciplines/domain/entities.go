@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,29 +35,29 @@ type TrainingGroup struct {
 }
 
 type DisciplineRepository interface {
-	CreateDiscipline(discipline *Discipline) error
-	ListDisciplines(clubID string) ([]Discipline, error)
-	GetDisciplineByID(clubID string, id uuid.UUID) (*Discipline, error)
+	CreateDiscipline(ctx context.Context, discipline *Discipline) error
+	ListDisciplines(ctx context.Context, clubID string) ([]Discipline, error)
+	GetDisciplineByID(ctx context.Context, clubID string, id uuid.UUID) (*Discipline, error)
 
-	CreateGroup(group *TrainingGroup) error
-	ListGroups(clubID string, filter map[string]interface{}) ([]TrainingGroup, error)
-	GetGroupByID(clubID string, id uuid.UUID) (*TrainingGroup, error)
+	CreateGroup(ctx context.Context, group *TrainingGroup) error
+	ListGroups(ctx context.Context, clubID string, filter map[string]interface{}) ([]TrainingGroup, error)
+	GetGroupByID(ctx context.Context, clubID string, id uuid.UUID) (*TrainingGroup, error)
 }
 
 type TournamentRepository interface {
-	CreateTournament(tournament *Tournament) error
-	GetTournamentByID(clubID string, id uuid.UUID) (*Tournament, error)
-	ListTournaments(clubID string) ([]Tournament, error)
-	UpdateTournament(tournament *Tournament) error
+	CreateTournament(ctx context.Context, tournament *Tournament) error
+	GetTournamentByID(ctx context.Context, clubID string, id uuid.UUID) (*Tournament, error)
+	ListTournaments(ctx context.Context, clubID string) ([]Tournament, error)
+	UpdateTournament(ctx context.Context, tournament *Tournament) error
 
-	CreateTeam(team *Team) error
-	GetTeamByID(clubID string, id uuid.UUID) (*Team, error)
-	ListTeams(clubID string, tournamentID uuid.UUID) ([]Team, error)
+	CreateTeam(ctx context.Context, team *Team) error
+	GetTeamByID(ctx context.Context, clubID string, id uuid.UUID) (*Team, error)
+	ListTeams(ctx context.Context, clubID string, tournamentID uuid.UUID) ([]Team, error)
 
-	CreateMatch(match *Match) error
-	UpdateMatch(match *Match) error
-	GetMatchByID(clubID string, id uuid.UUID) (*Match, error)
-	ListMatches(clubID string, tournamentID uuid.UUID) ([]Match, error)
+	CreateMatch(ctx context.Context, match *Match) error
+	UpdateMatch(ctx context.Context, match *Match) error
+	GetMatchByID(ctx context.Context, clubID string, id uuid.UUID) (*Match, error)
+	ListMatches(ctx context.Context, clubID string, tournamentID uuid.UUID) ([]Match, error)
 
-	GetStandings(clubID string, tournamentID uuid.UUID) ([]Standing, error)
+	GetStandings(ctx context.Context, clubID string, tournamentID uuid.UUID) ([]Standing, error)
 }

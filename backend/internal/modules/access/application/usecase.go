@@ -42,7 +42,7 @@ func (uc *AccessUseCases) RequestEntry(ctx context.Context, clubID string, req E
 	}
 
 	// 2. Validate User Exists
-	user, err := uc.userRepo.GetByID(clubID, req.UserID)
+	user, err := uc.userRepo.GetByID(ctx, clubID, req.UserID)
 	if err != nil || user == nil {
 		return uc.logAccess(ctx, clubID, req, domain.AccessStatusDenied, "User not found")
 	}

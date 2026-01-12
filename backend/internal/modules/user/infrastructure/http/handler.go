@@ -48,7 +48,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	user, err := h.useCases.GetProfile(clubID, userID.(string))
+	user, err := h.useCases.GetProfile(c.Request.Context(), clubID, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -86,7 +86,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		clubID = "system"
 	}
 
-	user, err := h.useCases.UpdateProfile(clubID, userID.(string), dto)
+	user, err := h.useCases.UpdateProfile(c.Request.Context(), clubID, userID.(string), dto)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -105,7 +105,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	search := c.Query("search")
 
 	clubID := c.GetString("clubID")
-	users, err := h.useCases.ListUsers(clubID, limit, offset, search)
+	users, err := h.useCases.ListUsers(c.Request.Context(), clubID, limit, offset, search)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -129,7 +129,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	if err := h.useCases.DeleteUser(clubID, deleteID, userID.(string)); err != nil {
+	if err := h.useCases.DeleteUser(c.Request.Context(), clubID, deleteID, userID.(string)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}) // Bad Request for logical limits
 		return
 	}
@@ -150,7 +150,7 @@ func (h *UserHandler) GetChildren(c *gin.Context) {
 		clubID = "system"
 	}
 
-	children, err := h.useCases.ListChildren(clubID, userID.(string))
+	children, err := h.useCases.ListChildren(c.Request.Context(), clubID, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -178,7 +178,7 @@ func (h *UserHandler) RegisterChild(c *gin.Context) {
 		clubID = "system"
 	}
 
-	child, err := h.useCases.RegisterChild(clubID, userID.(string), dto)
+	child, err := h.useCases.RegisterChild(c.Request.Context(), clubID, userID.(string), dto)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -222,7 +222,7 @@ func (h *UserHandler) GetStats(c *gin.Context) {
 		clubID = "system"
 	}
 
-	stats, err := h.useCases.GetStats(clubID, id)
+	stats, err := h.useCases.GetStats(c.Request.Context(), clubID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -269,7 +269,7 @@ func (h *UserHandler) GetWallet(c *gin.Context) {
 		clubID = "system"
 	}
 
-	wallet, err := h.useCases.GetWallet(clubID, id)
+	wallet, err := h.useCases.GetWallet(c.Request.Context(), clubID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -304,7 +304,7 @@ func (h *UserHandler) UpdateEmergencyInfo(c *gin.Context) {
 	}
 	clubID := c.GetString("clubID")
 
-	if err := h.useCases.UpdateEmergencyInfo(clubID, userID.(string), req.ContactName, req.ContactPhone, req.InsuranceProvider, req.InsuranceNumber); err != nil {
+	if err := h.useCases.UpdateEmergencyInfo(c.Request.Context(), clubID, userID.(string), req.ContactName, req.ContactPhone, req.InsuranceProvider, req.InsuranceNumber); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -330,7 +330,7 @@ func (h *UserHandler) LogIncident(c *gin.Context) {
 	reporterID, _ := c.Get("userID")
 	clubID := c.GetString("clubID")
 
-	incident, err := h.useCases.LogIncident(clubID, req.InjuredUserID, req.Description, req.ActionTaken, req.Witnesses, reporterID.(string))
+	incident, err := h.useCases.LogIncident(c.Request.Context(), clubID, req.InjuredUserID, req.Description, req.ActionTaken, req.Witnesses, reporterID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -395,7 +395,7 @@ func (h *UserHandler) CreateFamilyGroup(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	clubID := c.GetString("clubID")
 
-	group, err := h.useCases.CreateFamilyGroup(clubID, userID.(string), req.Name)
+	group, err := h.useCases.CreateFamilyGroup(c.Request.Context(), clubID, userID.(string), req.Name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -408,7 +408,7 @@ func (h *UserHandler) GetMyFamilyGroup(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	clubID := c.GetString("clubID")
 
-	group, err := h.useCases.GetMyFamilyGroup(clubID, userID.(string))
+	group, err := h.useCases.GetMyFamilyGroup(c.Request.Context(), clubID, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -451,7 +451,7 @@ func (h *UserHandler) AddFamilyMember(c *gin.Context) {
 	}
 
 	// SECURITY FIX (VUL-002): Validate ownership - only HeadUserID can add members
-	if err := h.useCases.AddFamilyMemberSecure(clubID, groupID, req.UserID, currentUserID.(string)); err != nil {
+	if err := h.useCases.AddFamilyMemberSecure(c.Request.Context(), clubID, groupID, req.UserID, currentUserID.(string)); err != nil {
 		if err.Error() == "only the family head can add members" {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
@@ -476,7 +476,7 @@ func (h *UserHandler) RegisterDependentPublic(c *gin.Context) {
 		return
 	}
 
-	user, err := h.useCases.RegisterDependent(clubID, dto)
+	user, err := h.useCases.RegisterDependent(c.Request.Context(), clubID, dto)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -509,7 +509,7 @@ func (h *UserHandler) ExportMyData(c *gin.Context) {
 		clubID = "system"
 	}
 
-	exportData, err := h.useCases.ExportUserData(clubID, userID.(string))
+	exportData, err := h.useCases.ExportUserData(c.Request.Context(), clubID, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -539,7 +539,7 @@ func (h *UserHandler) RequestErasure(c *gin.Context) {
 
 	// Users can request erasure of their own data
 	// This will anonymize their data rather than delete it, preserving referential integrity
-	if err := h.useCases.DeleteUserGDPR(clubID, userID.(string), "SELF_REQUEST"); err != nil {
+	if err := h.useCases.DeleteUserGDPR(c.Request.Context(), clubID, userID.(string), "SELF_REQUEST"); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

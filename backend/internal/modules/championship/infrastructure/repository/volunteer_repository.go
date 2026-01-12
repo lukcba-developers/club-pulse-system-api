@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/domain"
 	"gorm.io/gorm"
@@ -17,44 +19,44 @@ func NewPostgresVolunteerRepository(db *gorm.DB) *PostgresVolunteerRepository {
 }
 
 // Create crea una nueva asignación de voluntario
-func (r *PostgresVolunteerRepository) Create(assignment *domain.VolunteerAssignment) error {
-	return r.db.Create(assignment).Error
+func (r *PostgresVolunteerRepository) Create(ctx context.Context, assignment *domain.VolunteerAssignment) error {
+	return r.db.WithContext(ctx).Create(assignment).Error
 }
 
 // GetByMatchID obtiene todas las asignaciones de un partido
-func (r *PostgresVolunteerRepository) GetByMatchID(clubID string, matchID uuid.UUID) ([]domain.VolunteerAssignment, error) {
+func (r *PostgresVolunteerRepository) GetByMatchID(ctx context.Context, clubID string, matchID uuid.UUID) ([]domain.VolunteerAssignment, error) {
 	var assignments []domain.VolunteerAssignment
-	err := r.db.Where("club_id = ? AND match_id = ?", clubID, matchID).
+	err := r.db.WithContext(ctx).Where("club_id = ? AND match_id = ?", clubID, matchID).
 		Order("role ASC, assigned_at ASC").
 		Find(&assignments).Error
 	return assignments, err
 }
 
 // GetByUserID obtiene todas las asignaciones de un usuario
-func (r *PostgresVolunteerRepository) GetByUserID(clubID, userID string) ([]domain.VolunteerAssignment, error) {
+func (r *PostgresVolunteerRepository) GetByUserID(ctx context.Context, clubID, userID string) ([]domain.VolunteerAssignment, error) {
 	var assignments []domain.VolunteerAssignment
-	err := r.db.Where("club_id = ? AND user_id = ?", clubID, userID).
+	err := r.db.WithContext(ctx).Where("club_id = ? AND user_id = ?", clubID, userID).
 		Order("assigned_at DESC").
 		Find(&assignments).Error
 	return assignments, err
 }
 
 // Delete elimina una asignación de voluntario
-func (r *PostgresVolunteerRepository) Delete(clubID string, id uuid.UUID) error {
-	return r.db.Where("club_id = ? AND id = ?", clubID, id).
+func (r *PostgresVolunteerRepository) Delete(ctx context.Context, clubID string, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Where("club_id = ? AND id = ?", clubID, id).
 		Delete(&domain.VolunteerAssignment{}).Error
 }
 
 // GetByRoleAndMatch obtiene voluntarios de un rol específico en un partido
-func (r *PostgresVolunteerRepository) GetByRoleAndMatch(clubID string, matchID uuid.UUID, role domain.VolunteerRole) ([]domain.VolunteerAssignment, error) {
+func (r *PostgresVolunteerRepository) GetByRoleAndMatch(ctx context.Context, clubID string, matchID uuid.UUID, role domain.VolunteerRole) ([]domain.VolunteerAssignment, error) {
 	var assignments []domain.VolunteerAssignment
-	err := r.db.Where("club_id = ? AND match_id = ? AND role = ?", clubID, matchID, role).
+	err := r.db.WithContext(ctx).Where("club_id = ? AND match_id = ? AND role = ?", clubID, matchID, role).
 		Order("assigned_at ASC").
 		Find(&assignments).Error
 	return assignments, err
 }
 
 // Update actualiza una asignación existente
-func (r *PostgresVolunteerRepository) Update(assignment *domain.VolunteerAssignment) error {
-	return r.db.Save(assignment).Error
+func (r *PostgresVolunteerRepository) Update(ctx context.Context, assignment *domain.VolunteerAssignment) error {
+	return r.db.WithContext(ctx).Save(assignment).Error
 }

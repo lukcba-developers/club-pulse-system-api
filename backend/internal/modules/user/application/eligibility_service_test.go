@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,59 +17,59 @@ type MockUserDocumentRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserDocumentRepository) Create(doc *domain.UserDocument) error {
-	args := m.Called(doc)
+func (m *MockUserDocumentRepository) Create(ctx context.Context, doc *domain.UserDocument) error {
+	args := m.Called(ctx, doc)
 	return args.Error(0)
 }
 
-func (m *MockUserDocumentRepository) GetByID(clubID string, id uuid.UUID) (*domain.UserDocument, error) {
-	args := m.Called(clubID, id)
+func (m *MockUserDocumentRepository) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.UserDocument, error) {
+	args := m.Called(ctx, clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.UserDocument), args.Error(1)
 }
 
-func (m *MockUserDocumentRepository) GetByUserID(clubID, userID string) ([]domain.UserDocument, error) {
-	args := m.Called(clubID, userID)
+func (m *MockUserDocumentRepository) GetByUserID(ctx context.Context, clubID, userID string) ([]domain.UserDocument, error) {
+	args := m.Called(ctx, clubID, userID)
 	return args.Get(0).([]domain.UserDocument), args.Error(1)
 }
 
-func (m *MockUserDocumentRepository) GetByUserAndType(clubID, userID string, docType domain.DocumentType) (*domain.UserDocument, error) {
-	args := m.Called(clubID, userID, docType)
+func (m *MockUserDocumentRepository) GetByUserAndType(ctx context.Context, clubID, userID string, docType domain.DocumentType) (*domain.UserDocument, error) {
+	args := m.Called(ctx, clubID, userID, docType)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.UserDocument), args.Error(1)
 }
 
-func (m *MockUserDocumentRepository) Update(doc *domain.UserDocument) error {
-	args := m.Called(doc)
+func (m *MockUserDocumentRepository) Update(ctx context.Context, doc *domain.UserDocument) error {
+	args := m.Called(ctx, doc)
 	return args.Error(0)
 }
 
-func (m *MockUserDocumentRepository) Delete(clubID string, id uuid.UUID) error {
-	args := m.Called(clubID, id)
+func (m *MockUserDocumentRepository) Delete(ctx context.Context, clubID string, id uuid.UUID) error {
+	args := m.Called(ctx, clubID, id)
 	return args.Error(0)
 }
 
-func (m *MockUserDocumentRepository) GetExpiringDocuments(clubID string, daysUntilExpiration int) ([]domain.UserDocument, error) {
-	args := m.Called(clubID, daysUntilExpiration)
+func (m *MockUserDocumentRepository) GetExpiringDocuments(ctx context.Context, clubID string, daysUntilExpiration int) ([]domain.UserDocument, error) {
+	args := m.Called(ctx, clubID, daysUntilExpiration)
 	return args.Get(0).([]domain.UserDocument), args.Error(1)
 }
 
-func (m *MockUserDocumentRepository) GetExpiredDocuments(clubID string) ([]domain.UserDocument, error) {
-	args := m.Called(clubID)
+func (m *MockUserDocumentRepository) GetExpiredDocuments(ctx context.Context, clubID string) ([]domain.UserDocument, error) {
+	args := m.Called(ctx, clubID)
 	return args.Get(0).([]domain.UserDocument), args.Error(1)
 }
 
-func (m *MockUserDocumentRepository) GetAllByType(clubID string, docType domain.DocumentType) ([]domain.UserDocument, error) {
-	args := m.Called(clubID, docType)
+func (m *MockUserDocumentRepository) GetAllByType(ctx context.Context, clubID string, docType domain.DocumentType) ([]domain.UserDocument, error) {
+	args := m.Called(ctx, clubID, docType)
 	return args.Get(0).([]domain.UserDocument), args.Error(1)
 }
 
-func (m *MockUserDocumentRepository) GetPendingValidation(clubID string) ([]domain.UserDocument, error) {
-	args := m.Called(clubID)
+func (m *MockUserDocumentRepository) GetPendingValidation(ctx context.Context, clubID string) ([]domain.UserDocument, error) {
+	args := m.Called(ctx, clubID)
 	return args.Get(0).([]domain.UserDocument), args.Error(1)
 }
 
@@ -98,10 +99,10 @@ func TestCheckEligibility_EligibleUser(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetByUserID", clubID, userID).Return(docs, nil)
+	mockRepo.On("GetByUserID", mock.Anything, clubID, userID).Return(docs, nil)
 
 	// Act
-	result, err := service.CheckEligibility(clubID, userID)
+	result, err := service.CheckEligibility(context.Background(), clubID, userID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -132,10 +133,10 @@ func TestCheckEligibility_MissingDNI(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetByUserID", clubID, userID).Return(docs, nil)
+	mockRepo.On("GetByUserID", mock.Anything, clubID, userID).Return(docs, nil)
 
 	// Act
-	result, err := service.CheckEligibility(clubID, userID)
+	result, err := service.CheckEligibility(context.Background(), clubID, userID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -171,10 +172,10 @@ func TestCheckEligibility_ExpiredEMMAC(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetByUserID", clubID, userID).Return(docs, nil)
+	mockRepo.On("GetByUserID", mock.Anything, clubID, userID).Return(docs, nil)
 
 	// Act
-	result, err := service.CheckEligibility(clubID, userID)
+	result, err := service.CheckEligibility(context.Background(), clubID, userID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -210,10 +211,10 @@ func TestCheckEligibility_PendingValidation(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetByUserID", clubID, userID).Return(docs, nil)
+	mockRepo.On("GetByUserID", mock.Anything, clubID, userID).Return(docs, nil)
 
 	// Act
-	result, err := service.CheckEligibility(clubID, userID)
+	result, err := service.CheckEligibility(context.Background(), clubID, userID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -236,10 +237,10 @@ func TestCheckEligibility_NoDocuments(t *testing.T) {
 	// Usuario sin documentos
 	docs := []domain.UserDocument{}
 
-	mockRepo.On("GetByUserID", clubID, userID).Return(docs, nil)
+	mockRepo.On("GetByUserID", mock.Anything, clubID, userID).Return(docs, nil)
 
 	// Act
-	result, err := service.CheckEligibility(clubID, userID)
+	result, err := service.CheckEligibility(context.Background(), clubID, userID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -266,11 +267,11 @@ func TestValidateDocument_Approve(t *testing.T) {
 		Status: domain.DocumentStatusPending,
 	}
 
-	mockRepo.On("GetByID", clubID, docID).Return(doc, nil)
-	mockRepo.On("Update", mock.AnythingOfType("*domain.UserDocument")).Return(nil)
+	mockRepo.On("GetByID", mock.Anything, clubID, docID).Return(doc, nil)
+	mockRepo.On("Update", mock.Anything, mock.AnythingOfType("*domain.UserDocument")).Return(nil)
 
 	// Act
-	err := service.ValidateDocument(clubID, docID.String(), validatorID, true, "")
+	err := service.ValidateDocument(context.Background(), clubID, docID.String(), validatorID, true, "")
 
 	// Assert
 	assert.NoError(t, err)
@@ -297,11 +298,11 @@ func TestValidateDocument_Reject(t *testing.T) {
 		Status: domain.DocumentStatusPending,
 	}
 
-	mockRepo.On("GetByID", clubID, docID).Return(doc, nil)
-	mockRepo.On("Update", mock.AnythingOfType("*domain.UserDocument")).Return(nil)
+	mockRepo.On("GetByID", mock.Anything, clubID, docID).Return(doc, nil)
+	mockRepo.On("Update", mock.Anything, mock.AnythingOfType("*domain.UserDocument")).Return(nil)
 
 	// Act
-	err := service.ValidateDocument(clubID, docID.String(), validatorID, false, rejectionNotes)
+	err := service.ValidateDocument(context.Background(), clubID, docID.String(), validatorID, false, rejectionNotes)
 
 	// Assert
 	assert.NoError(t, err)
@@ -328,10 +329,10 @@ func TestValidateDocument_CannotValidateExpired(t *testing.T) {
 		ExpirationDate: &pastDate,
 	}
 
-	mockRepo.On("GetByID", clubID, docID).Return(doc, nil)
+	mockRepo.On("GetByID", mock.Anything, clubID, docID).Return(doc, nil)
 
 	// Act
-	err := service.ValidateDocument(clubID, docID.String(), validatorID, true, "")
+	err := service.ValidateDocument(context.Background(), clubID, docID.String(), validatorID, true, "")
 
 	// Assert
 	assert.Error(t, err)

@@ -20,7 +20,7 @@ func NewDisciplineHandler(useCases *application.DisciplineUseCases) *DisciplineH
 
 func (h *DisciplineHandler) ListDisciplines(c *gin.Context) {
 	clubID := c.GetString("clubID")
-	disciplines, err := h.useCases.ListDisciplines(clubID)
+	disciplines, err := h.useCases.ListDisciplines(c.Request.Context(), clubID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -32,7 +32,7 @@ func (h *DisciplineHandler) ListGroups(c *gin.Context) {
 	clubID := c.GetString("clubID")
 	disciplineID := c.Query("discipline_id")
 	category := c.Query("category")
-	groups, err := h.useCases.ListGroups(clubID, disciplineID, category)
+	groups, err := h.useCases.ListGroups(c.Request.Context(), clubID, disciplineID, category)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -49,7 +49,7 @@ func (h *DisciplineHandler) ListStudentsInGroup(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	students, err := h.useCases.ListStudentsInGroup(clubID, id)
+	students, err := h.useCases.ListStudentsInGroup(c.Request.Context(), clubID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -92,7 +92,7 @@ func (h *DisciplineHandler) CreateTournament(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	t, err := h.useCases.CreateTournament(clubID, req.Name, req.DisciplineID, start, end, req.Format)
+	t, err := h.useCases.CreateTournament(c.Request.Context(), clubID, req.Name, req.DisciplineID, start, end, req.Format)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -102,7 +102,7 @@ func (h *DisciplineHandler) CreateTournament(c *gin.Context) {
 
 func (h *DisciplineHandler) ListTournaments(c *gin.Context) {
 	clubID := c.GetString("clubID")
-	tournaments, err := h.useCases.ListTournaments(clubID)
+	tournaments, err := h.useCases.ListTournaments(c.Request.Context(), clubID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -125,7 +125,7 @@ func (h *DisciplineHandler) RegisterTeam(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	team, err := h.useCases.RegisterTeam(clubID, tournamentID, req.Name, req.CaptainID, req.MemberIDs)
+	team, err := h.useCases.RegisterTeam(c.Request.Context(), clubID, tournamentID, req.Name, req.CaptainID, req.MemberIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -157,7 +157,7 @@ func (h *DisciplineHandler) ScheduleMatch(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	match, err := h.useCases.ScheduleMatch(clubID, tournamentID, req.HomeTeamID, req.AwayTeamID, req.StartTime, req.Location, req.Round)
+	match, err := h.useCases.ScheduleMatch(c.Request.Context(), clubID, tournamentID, req.HomeTeamID, req.AwayTeamID, req.StartTime, req.Location, req.Round)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -168,7 +168,7 @@ func (h *DisciplineHandler) ScheduleMatch(c *gin.Context) {
 func (h *DisciplineHandler) ListMatches(c *gin.Context) {
 	tournamentID := c.Param("id")
 	clubID := c.GetString("clubID")
-	matches, err := h.useCases.ListMatches(clubID, tournamentID)
+	matches, err := h.useCases.ListMatches(c.Request.Context(), clubID, tournamentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -197,7 +197,7 @@ func (h *DisciplineHandler) UpdateMatchResult(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	match, err := h.useCases.UpdateMatchResult(clubID, matchID, req.ScoreHome, req.ScoreAway)
+	match, err := h.useCases.UpdateMatchResult(c.Request.Context(), clubID, matchID, req.ScoreHome, req.ScoreAway)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -208,7 +208,7 @@ func (h *DisciplineHandler) UpdateMatchResult(c *gin.Context) {
 func (h *DisciplineHandler) GetStandings(c *gin.Context) {
 	tournamentID := c.Param("id")
 	clubID := c.GetString("clubID")
-	standings, err := h.useCases.GetStandings(clubID, tournamentID)
+	standings, err := h.useCases.GetStandings(c.Request.Context(), clubID, tournamentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

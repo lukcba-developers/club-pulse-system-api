@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,19 +65,19 @@ func (UserMission) TableName() string {
 // MissionRepository defines the interface for mission persistence.
 type MissionRepository interface {
 	// Mission CRUD
-	Create(mission *Mission) error
-	GetByID(clubID string, id uuid.UUID) (*Mission, error)
-	GetByCode(clubID, code string) (*Mission, error)
-	ListActive(clubID string, missionType MissionType) ([]Mission, error)
+	Create(ctx context.Context, mission *Mission) error
+	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*Mission, error)
+	GetByCode(ctx context.Context, clubID, code string) (*Mission, error)
+	ListActive(ctx context.Context, clubID string, missionType MissionType) ([]Mission, error)
 
 	// UserMission operations
-	AssignMission(userMission *UserMission) error
-	GetUserMissions(userID string, missionType MissionType) ([]UserMission, error)
-	GetActiveUserMissions(userID string) ([]UserMission, error)
-	UpdateProgress(userMissionID uuid.UUID, progress int) error
-	CompleteMission(userMissionID uuid.UUID) error
-	ClaimReward(userMissionID uuid.UUID) error
-	ExpireOldMissions(before time.Time) error
+	AssignMission(ctx context.Context, userMission *UserMission) error
+	GetUserMissions(ctx context.Context, userID string, missionType MissionType) ([]UserMission, error)
+	GetActiveUserMissions(ctx context.Context, userID string) ([]UserMission, error)
+	UpdateProgress(ctx context.Context, userMissionID uuid.UUID, progress int) error
+	CompleteMission(ctx context.Context, userMissionID uuid.UUID) error
+	ClaimReward(ctx context.Context, userMissionID uuid.UUID) error
+	ExpireOldMissions(ctx context.Context, before time.Time) error
 }
 
 // PredefinedMissions contains the default missions for the system.

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,7 +24,7 @@ func NewBadgeService(badgeRepo domain.BadgeRepository, userRepo userDomain.UserR
 }
 
 // CheckAndAwardProgressionBadges checks if user qualifies for level-based badges.
-func (s *BadgeService) CheckAndAwardProgressionBadges(clubID, userID string, level int) error {
+func (s *BadgeService) CheckAndAwardProgressionBadges(ctx context.Context, clubID, userID string, level int) error {
 	levelBadges := map[int]string{
 		5:   "LEVEL_5",
 		10:  "LEVEL_10",
@@ -34,7 +35,7 @@ func (s *BadgeService) CheckAndAwardProgressionBadges(clubID, userID string, lev
 
 	for requiredLevel, badgeCode := range levelBadges {
 		if level >= requiredLevel {
-			if err := s.awardBadgeIfNotOwned(clubID, userID, badgeCode); err != nil {
+			if err := s.awardBadgeIfNotOwned(ctx, clubID, userID, badgeCode); err != nil {
 				return err
 			}
 		}
@@ -44,7 +45,7 @@ func (s *BadgeService) CheckAndAwardProgressionBadges(clubID, userID string, lev
 }
 
 // CheckAndAwardStreakBadges checks if user qualifies for streak-based badges.
-func (s *BadgeService) CheckAndAwardStreakBadges(clubID, userID string, streak int) error {
+func (s *BadgeService) CheckAndAwardStreakBadges(ctx context.Context, clubID, userID string, streak int) error {
 	streakBadges := map[int]string{
 		7:   "STREAK_7",
 		30:  "STREAK_30",
@@ -53,7 +54,7 @@ func (s *BadgeService) CheckAndAwardStreakBadges(clubID, userID string, streak i
 
 	for requiredStreak, badgeCode := range streakBadges {
 		if streak >= requiredStreak {
-			if err := s.awardBadgeIfNotOwned(clubID, userID, badgeCode); err != nil {
+			if err := s.awardBadgeIfNotOwned(ctx, clubID, userID, badgeCode); err != nil {
 				return err
 			}
 		}
@@ -63,7 +64,7 @@ func (s *BadgeService) CheckAndAwardStreakBadges(clubID, userID string, streak i
 }
 
 // CheckAndAwardBookingBadges checks if user qualifies for booking-based badges.
-func (s *BadgeService) CheckAndAwardBookingBadges(clubID, userID string, totalBookings int) error {
+func (s *BadgeService) CheckAndAwardBookingBadges(ctx context.Context, clubID, userID string, totalBookings int) error {
 	bookingBadges := map[int]string{
 		10:  "BOOKING_10",
 		50:  "BOOKING_50",
@@ -72,7 +73,7 @@ func (s *BadgeService) CheckAndAwardBookingBadges(clubID, userID string, totalBo
 
 	for requiredBookings, badgeCode := range bookingBadges {
 		if totalBookings >= requiredBookings {
-			if err := s.awardBadgeIfNotOwned(clubID, userID, badgeCode); err != nil {
+			if err := s.awardBadgeIfNotOwned(ctx, clubID, userID, badgeCode); err != nil {
 				return err
 			}
 		}
@@ -82,7 +83,7 @@ func (s *BadgeService) CheckAndAwardBookingBadges(clubID, userID string, totalBo
 }
 
 // AwardTournamentBadge awards a tournament-related badge.
-func (s *BadgeService) AwardTournamentBadge(clubID, userID string, position int) error {
+func (s *BadgeService) AwardTournamentBadge(ctx context.Context, clubID, userID string, position int) error {
 	var badgeCode string
 	switch position {
 	case 1:
@@ -93,11 +94,11 @@ func (s *BadgeService) AwardTournamentBadge(clubID, userID string, position int)
 		badgeCode = "TOURNAMENT_PARTICIPANT"
 	}
 
-	return s.awardBadgeIfNotOwned(clubID, userID, badgeCode)
+	return s.awardBadgeIfNotOwned(ctx, clubID, userID, badgeCode)
 }
 
 // AwardReferralBadge checks and awards referral badges based on count.
-func (s *BadgeService) AwardReferralBadge(clubID, userID string, referralCount int) error {
+func (s *BadgeService) AwardReferralBadge(ctx context.Context, clubID, userID string, referralCount int) error {
 	referralBadges := map[int]string{
 		1:  "REFERRAL_1",
 		5:  "REFERRAL_5",
@@ -106,7 +107,7 @@ func (s *BadgeService) AwardReferralBadge(clubID, userID string, referralCount i
 
 	for requiredReferrals, badgeCode := range referralBadges {
 		if referralCount >= requiredReferrals {
-			if err := s.awardBadgeIfNotOwned(clubID, userID, badgeCode); err != nil {
+			if err := s.awardBadgeIfNotOwned(ctx, clubID, userID, badgeCode); err != nil {
 				return err
 			}
 		}
@@ -116,25 +117,25 @@ func (s *BadgeService) AwardReferralBadge(clubID, userID string, referralCount i
 }
 
 // GetUserBadges returns all badges earned by a user.
-func (s *BadgeService) GetUserBadges(userID string) ([]domain.UserBadge, error) {
-	return s.badgeRepo.GetUserBadges(userID)
+func (s *BadgeService) GetUserBadges(ctx context.Context, userID string) ([]domain.UserBadge, error) {
+	return s.badgeRepo.GetUserBadges(ctx, userID)
 }
 
 // GetFeaturedBadges returns the user's featured badges (max 3).
-func (s *BadgeService) GetFeaturedBadges(userID string) ([]domain.UserBadge, error) {
-	return s.badgeRepo.GetFeaturedBadges(userID)
+func (s *BadgeService) GetFeaturedBadges(ctx context.Context, userID string) ([]domain.UserBadge, error) {
+	return s.badgeRepo.GetFeaturedBadges(ctx, userID)
 }
 
 // GetAllBadges returns all badges available in a club.
-func (s *BadgeService) GetAllBadges(clubID string) ([]domain.Badge, error) {
-	return s.badgeRepo.List(clubID)
+func (s *BadgeService) GetAllBadges(ctx context.Context, clubID string) ([]domain.Badge, error) {
+	return s.badgeRepo.List(ctx, clubID)
 }
 
 // SetFeaturedBadge toggles whether a badge is featured on the user's profile.
-func (s *BadgeService) SetFeaturedBadge(userID string, badgeID uuid.UUID, featured bool) error {
+func (s *BadgeService) SetFeaturedBadge(ctx context.Context, userID string, badgeID uuid.UUID, featured bool) error {
 	if featured {
 		// Check if user already has 3 featured badges
-		current, err := s.badgeRepo.GetFeaturedBadges(userID)
+		current, err := s.badgeRepo.GetFeaturedBadges(ctx, userID)
 		if err != nil {
 			return err
 		}
@@ -143,13 +144,13 @@ func (s *BadgeService) SetFeaturedBadge(userID string, badgeID uuid.UUID, featur
 		}
 	}
 
-	return s.badgeRepo.SetFeatured(userID, badgeID, featured)
+	return s.badgeRepo.SetFeatured(ctx, userID, badgeID, featured)
 }
 
 // awardBadgeIfNotOwned awards a badge to a user if they don't already have it.
-func (s *BadgeService) awardBadgeIfNotOwned(clubID, userID, badgeCode string) error {
+func (s *BadgeService) awardBadgeIfNotOwned(ctx context.Context, clubID, userID, badgeCode string) error {
 	// Check if user already has this badge
-	hasBadge, err := s.badgeRepo.HasBadge(userID, badgeCode)
+	hasBadge, err := s.badgeRepo.HasBadge(ctx, userID, badgeCode)
 	if err != nil {
 		return err
 	}
@@ -158,7 +159,7 @@ func (s *BadgeService) awardBadgeIfNotOwned(clubID, userID, badgeCode string) er
 	}
 
 	// Get the badge
-	badge, err := s.badgeRepo.GetByCode(clubID, badgeCode)
+	badge, err := s.badgeRepo.GetByCode(ctx, clubID, badgeCode)
 	if err != nil {
 		return err
 	}
@@ -175,21 +176,21 @@ func (s *BadgeService) awardBadgeIfNotOwned(clubID, userID, badgeCode string) er
 		CreatedAt: time.Now(),
 	}
 
-	if err := s.badgeRepo.AwardBadge(userBadge); err != nil {
+	if err := s.badgeRepo.AwardBadge(ctx, userBadge); err != nil {
 		return err
 	}
 
 	// Grant XP reward if applicable
 	if badge.XPReward > 0 {
-		s.grantBadgeXP(clubID, userID, badge.XPReward)
+		s.grantBadgeXP(ctx, clubID, userID, badge.XPReward)
 	}
 
 	return nil
 }
 
 // grantBadgeXP adds XP to user for earning a badge.
-func (s *BadgeService) grantBadgeXP(clubID, userID string, xp int) {
-	user, err := s.userRepo.GetByID(clubID, userID)
+func (s *BadgeService) grantBadgeXP(ctx context.Context, clubID, userID string, xp int) {
+	user, err := s.userRepo.GetByID(context.Background(), clubID, userID)
 	if err != nil || user == nil || user.Stats == nil {
 		return
 	}
@@ -198,11 +199,11 @@ func (s *BadgeService) grantBadgeXP(clubID, userID string, xp int) {
 	user.Stats.TotalXP += xp
 	user.Stats.UpdatedAt = time.Now()
 
-	_ = s.userRepo.Update(user)
+	_ = s.userRepo.Update(ctx, user)
 }
 
-// SeedBadgesForClub creates default badges for a new club.
-func (s *BadgeService) SeedBadgesForClub(clubID string) error {
+// SeedBadges for a club.
+func (s *BadgeService) SeedBadgesForClub(ctx context.Context, clubID string) error {
 	for _, badge := range domain.PredefinedBadges {
 		badge.ID = uuid.New()
 		badge.ClubID = clubID
@@ -210,7 +211,7 @@ func (s *BadgeService) SeedBadgesForClub(clubID string) error {
 		badge.UpdatedAt = time.Now()
 		badge.IsActive = true
 
-		if err := s.badgeRepo.Create(&badge); err != nil {
+		if err := s.badgeRepo.Create(ctx, &badge); err != nil {
 			// Ignore duplicate errors
 			continue
 		}

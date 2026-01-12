@@ -62,7 +62,7 @@ func (h *FacilityHandler) Create(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	facility, err := h.useCases.CreateFacility(clubID, dto)
+	facility, err := h.useCases.CreateFacility(c.Request.Context(), clubID, dto)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -102,7 +102,7 @@ func (h *FacilityHandler) List(c *gin.Context) {
 	}
 
 	// 2. DB Lookups
-	facilities, err := h.useCases.ListFacilities(clubID, limit, offset)
+	facilities, err := h.useCases.ListFacilities(ctx, clubID, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -119,7 +119,7 @@ func (h *FacilityHandler) List(c *gin.Context) {
 func (h *FacilityHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	clubID := c.GetString("clubID")
-	facility, err := h.useCases.GetFacility(clubID, id)
+	facility, err := h.useCases.GetFacility(c.Request.Context(), clubID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -147,7 +147,7 @@ func (h *FacilityHandler) Update(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	facility, err := h.useCases.UpdateFacility(clubID, id, dto)
+	facility, err := h.useCases.UpdateFacility(c.Request.Context(), clubID, id, dto)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -173,7 +173,7 @@ func (h *FacilityHandler) AddEquipment(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	eq, err := h.useCases.AddEquipment(clubID, facilityID, dto)
+	eq, err := h.useCases.AddEquipment(c.Request.Context(), clubID, facilityID, dto)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -185,7 +185,7 @@ func (h *FacilityHandler) ListEquipment(c *gin.Context) {
 	facilityID := c.Param("id")
 	clubID := c.GetString("clubID")
 
-	eqs, err := h.useCases.ListEquipment(clubID, facilityID)
+	eqs, err := h.useCases.ListEquipment(c.Request.Context(), clubID, facilityID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -213,7 +213,7 @@ func (h *FacilityHandler) LoanEquipment(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	loan, err := h.useCases.LoanEquipment(clubID, req.UserID, equipmentID, expectedReturn)
+	loan, err := h.useCases.LoanEquipment(c.Request.Context(), clubID, req.UserID, equipmentID, expectedReturn)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -234,7 +234,7 @@ func (h *FacilityHandler) ReturnLoan(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	if err := h.useCases.ReturnLoan(clubID, loanID, req.Condition); err != nil {
+	if err := h.useCases.ReturnLoan(c.Request.Context(), clubID, loanID, req.Condition); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

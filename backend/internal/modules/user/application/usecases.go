@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"math"
 	"time"
@@ -21,11 +22,11 @@ func NewUserUseCases(repo domain.UserRepository, familyGroupRepo domain.FamilyGr
 	}
 }
 
-func (uc *UserUseCases) GetProfile(clubID, userID string) (*domain.User, error) {
+func (uc *UserUseCases) GetProfile(ctx context.Context, clubID, userID string) (*domain.User, error) {
 	if userID == "" {
 		return nil, errors.New("invalid user ID")
 	}
-	return uc.repo.GetByID(clubID, userID)
+	return uc.repo.GetByID(ctx, clubID, userID)
 }
 
 type UpdateProfileDTO struct {
@@ -34,8 +35,8 @@ type UpdateProfileDTO struct {
 	SportsPreferences map[string]interface{} `json:"sports_preferences"`
 }
 
-func (uc *UserUseCases) UpdateProfile(clubID, userID string, dto UpdateProfileDTO) (*domain.User, error) {
-	user, err := uc.repo.GetByID(clubID, userID)
+func (uc *UserUseCases) UpdateProfile(ctx context.Context, clubID, userID string, dto UpdateProfileDTO) (*domain.User, error) {
+	user, err := uc.repo.GetByID(ctx, clubID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,21 +58,21 @@ func (uc *UserUseCases) UpdateProfile(clubID, userID string, dto UpdateProfileDT
 	// Update timestamp
 	user.UpdatedAt = time.Now()
 
-	if err := uc.repo.Update(user); err != nil {
+	if err := uc.repo.Update(ctx, user); err != nil {
 		return nil, err
 	}
 
 	return user, nil
 }
 
-func (uc *UserUseCases) DeleteUser(clubID, id string, requesterID string) error {
+func (uc *UserUseCases) DeleteUser(ctx context.Context, clubID, id string, requesterID string) error {
 	if id == requesterID {
 		return errors.New("cannot delete yourself")
 	}
-	return uc.repo.Delete(clubID, id)
+	return uc.repo.Delete(ctx, clubID, id)
 }
 
-func (uc *UserUseCases) ListUsers(clubID string, limit, offset int, search string) ([]domain.User, error) {
+func (uc *UserUseCases) ListUsers(ctx context.Context, clubID string, limit, offset int, search string) ([]domain.User, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -84,14 +85,14 @@ func (uc *UserUseCases) ListUsers(clubID string, limit, offset int, search strin
 		filters["search"] = search
 	}
 
-	return uc.repo.List(clubID, limit, offset, filters)
+	return uc.repo.List(ctx, clubID, limit, offset, filters)
 }
 
-func (uc *UserUseCases) ListChildren(clubID, parentID string) ([]domain.User, error) {
+func (uc *UserUseCases) ListChildren(ctx context.Context, clubID, parentID string) ([]domain.User, error) {
 	if parentID == "" {
 		return nil, errors.New("parent ID required")
 	}
-	return uc.repo.FindChildren(clubID, parentID)
+	return uc.repo.FindChildren(ctx, clubID, parentID)
 }
 
 type RegisterChildDTO struct {
@@ -100,7 +101,7 @@ type RegisterChildDTO struct {
 	DateOfBirth *time.Time `json:"date_of_birth"`
 }
 
-func (uc *UserUseCases) RegisterChild(clubID, parentID string, dto RegisterChildDTO) (*domain.User, error) {
+func (uc *UserUseCases) RegisterChild(ctx context.Context, clubID, parentID string, dto RegisterChildDTO) (*domain.User, error) {
 	if parentID == "" {
 		return nil, errors.New("parent ID required")
 	}
@@ -129,7 +130,7 @@ func (uc *UserUseCases) RegisterChild(clubID, parentID string, dto RegisterChild
 		UpdatedAt:   time.Now(),
 	}
 
-	if err := uc.repo.Create(child); err != nil {
+	if err := uc.repo.Create(ctx, child); err != nil {
 		return nil, err
 	}
 
@@ -146,12 +147,12 @@ type RegisterDependentDTO struct {
 	SportsPreferences map[string]interface{} `json:"sports_preferences"`
 }
 
-func (uc *UserUseCases) RegisterDependent(clubID string, dto RegisterDependentDTO) (*domain.User, error) {
+func (uc *UserUseCases) RegisterDependent(ctx context.Context, clubID string, dto RegisterDependentDTO) (*domain.User, error) {
 	if dto.ParentEmail == "" {
 		return nil, errors.New("parent email is required")
 	}
 
-	parent, err := uc.repo.GetByEmail(dto.ParentEmail)
+	parent, err := uc.repo.GetByEmail(ctx, dto.ParentEmail)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +170,7 @@ func (uc *UserUseCases) RegisterDependent(clubID string, dto RegisterDependentDT
 			UpdatedAt:             time.Now(),
 			EmergencyContactPhone: dto.ParentPhone,
 		}
-		if err := uc.repo.Create(newParent); err != nil {
+		if err := uc.repo.Create(ctx, newParent); err != nil {
 			return nil, err
 		}
 		parentID = newParent.ID
@@ -191,15 +192,15 @@ func (uc *UserUseCases) RegisterDependent(clubID string, dto RegisterDependentDT
 		DateOfBirth:       dto.ChildDOB,
 	}
 
-	if err := uc.repo.Create(child); err != nil {
+	if err := uc.repo.Create(ctx, child); err != nil {
 		return nil, err
 	}
 
 	return child, nil
 }
 
-func (uc *UserUseCases) GetStats(clubID, userID string) (*domain.UserStats, error) {
-	user, err := uc.repo.GetByID(clubID, userID)
+func (uc *UserUseCases) GetStats(ctx context.Context, clubID, userID string) (*domain.UserStats, error) {
+	user, err := uc.repo.GetByID(ctx, clubID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -209,8 +210,8 @@ func (uc *UserUseCases) GetStats(clubID, userID string) (*domain.UserStats, erro
 	return user.Stats, nil
 }
 
-func (uc *UserUseCases) GetWallet(clubID, userID string) (*domain.Wallet, error) {
-	user, err := uc.repo.GetByID(clubID, userID)
+func (uc *UserUseCases) GetWallet(ctx context.Context, clubID, userID string) (*domain.Wallet, error) {
+	user, err := uc.repo.GetByID(ctx, clubID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -220,8 +221,8 @@ func (uc *UserUseCases) GetWallet(clubID, userID string) (*domain.Wallet, error)
 	return user.Wallet, nil
 }
 
-func (uc *UserUseCases) CreateManualDebt(clubID, userID string, amount float64, description string, adminID string) error {
-	user, err := uc.repo.GetByID(clubID, userID)
+func (uc *UserUseCases) CreateManualDebt(ctx context.Context, clubID, userID string, amount float64, description string, adminID string) error {
+	user, err := uc.repo.GetByID(ctx, clubID, userID)
 	if err != nil {
 		return err
 	}
@@ -261,11 +262,11 @@ func (uc *UserUseCases) CreateManualDebt(clubID, userID string, amount float64, 
 	user.Wallet.UpdatedAt = time.Now()
 
 	// Since Wallet is part of User struct in our Domain (aggregates), updating User Updates Wallet (cascade).
-	return uc.repo.Update(user)
+	return uc.repo.Update(ctx, user)
 }
 
-func (uc *UserUseCases) UpdateEmergencyInfo(clubID, userID string, contactName, contactPhone, insuranceProvider, insuranceNumber string) error {
-	user, err := uc.repo.GetByID(clubID, userID)
+func (uc *UserUseCases) UpdateEmergencyInfo(ctx context.Context, clubID, userID string, contactName, contactPhone, insuranceProvider, insuranceNumber string) error {
+	user, err := uc.repo.GetByID(ctx, clubID, userID)
 	if err != nil {
 		return err
 	}
@@ -279,10 +280,10 @@ func (uc *UserUseCases) UpdateEmergencyInfo(clubID, userID string, contactName, 
 	user.InsuranceNumber = insuranceNumber
 	user.UpdatedAt = time.Now()
 
-	return uc.repo.Update(user)
+	return uc.repo.Update(ctx, user)
 }
 
-func (uc *UserUseCases) LogIncident(clubID, injuredUserID, description, actionTaken, witnesses, reporterID string) (*domain.IncidentLog, error) {
+func (uc *UserUseCases) LogIncident(ctx context.Context, clubID, injuredUserID, description, actionTaken, witnesses, reporterID string) (*domain.IncidentLog, error) {
 	// injuredUserID can be empty if it's a visitor, but if provided, validate existence?
 	// For now, trust input or loose coupling.
 
@@ -302,15 +303,15 @@ func (uc *UserUseCases) LogIncident(clubID, injuredUserID, description, actionTa
 		incident.InjuredUserID = &injuredUserID
 	}
 
-	if err := uc.repo.CreateIncident(incident); err != nil {
+	if err := uc.repo.CreateIncident(ctx, incident); err != nil {
 		return nil, err
 	}
 
 	return incident, nil
 }
 
-func (uc *UserUseCases) UpdateMatchStats(clubID, userID string, won bool, xpGained int) error {
-	user, err := uc.repo.GetByID(clubID, userID)
+func (uc *UserUseCases) UpdateMatchStats(ctx context.Context, clubID, userID string, won bool, xpGained int) error {
+	user, err := uc.repo.GetByID(ctx, clubID, userID)
 	if err != nil {
 		return err
 	}
@@ -374,7 +375,7 @@ func (uc *UserUseCases) UpdateMatchStats(clubID, userID string, won bool, xpGain
 
 	user.Stats.UpdatedAt = time.Now()
 
-	return uc.repo.Update(user)
+	return uc.repo.Update(ctx, user)
 }
 
 // CalculateRequiredXP returns XP needed to advance from the given level.
@@ -418,7 +419,7 @@ func (uc *UserUseCases) updateStreak(stats *domain.UserStats) {
 
 // --- Family Group Use Cases ---
 
-func (uc *UserUseCases) CreateFamilyGroup(clubID, headUserID, name string) (*domain.FamilyGroup, error) {
+func (uc *UserUseCases) CreateFamilyGroup(ctx context.Context, clubID, headUserID, name string) (*domain.FamilyGroup, error) {
 	if uc.familyGroupRepo == nil {
 		return nil, errors.New("family groups not enabled")
 	}
@@ -427,7 +428,7 @@ func (uc *UserUseCases) CreateFamilyGroup(clubID, headUserID, name string) (*dom
 	}
 
 	// Check if user already has a family group as head
-	existing, _ := uc.familyGroupRepo.GetByHeadUserID(clubID, headUserID)
+	existing, _ := uc.familyGroupRepo.GetByHeadUserID(ctx, clubID, headUserID)
 	if existing != nil {
 		return nil, errors.New("user already has a family group")
 	}
@@ -438,39 +439,39 @@ func (uc *UserUseCases) CreateFamilyGroup(clubID, headUserID, name string) (*dom
 		HeadUserID: headUserID,
 	}
 
-	if err := uc.familyGroupRepo.Create(group); err != nil {
+	if err := uc.familyGroupRepo.Create(ctx, group); err != nil {
 		return nil, err
 	}
 
 	// Add head user to the group
-	_ = uc.familyGroupRepo.AddMember(clubID, group.ID, headUserID)
+	_ = uc.familyGroupRepo.AddMember(ctx, clubID, group.ID, headUserID)
 
 	return group, nil
 }
 
-func (uc *UserUseCases) GetMyFamilyGroup(clubID, userID string) (*domain.FamilyGroup, error) {
+func (uc *UserUseCases) GetMyFamilyGroup(ctx context.Context, clubID, userID string) (*domain.FamilyGroup, error) {
 	if uc.familyGroupRepo == nil {
 		return nil, errors.New("family groups not enabled")
 	}
-	return uc.familyGroupRepo.GetByMemberID(clubID, userID)
+	return uc.familyGroupRepo.GetByMemberID(ctx, clubID, userID)
 }
 
-func (uc *UserUseCases) AddFamilyMember(clubID string, groupID uuid.UUID, memberUserID string) error {
+func (uc *UserUseCases) AddFamilyMember(ctx context.Context, clubID string, groupID uuid.UUID, memberUserID string) error {
 	if uc.familyGroupRepo == nil {
 		return errors.New("family groups not enabled")
 	}
-	return uc.familyGroupRepo.AddMember(clubID, groupID, memberUserID)
+	return uc.familyGroupRepo.AddMember(ctx, clubID, groupID, memberUserID)
 }
 
 // AddFamilyMemberSecure validates that the requesting user is the family head before adding members.
 // SECURITY FIX (VUL-002): Prevents IDOR by ensuring ownership validation.
-func (uc *UserUseCases) AddFamilyMemberSecure(clubID string, groupID uuid.UUID, memberUserID, requestingUserID string) error {
+func (uc *UserUseCases) AddFamilyMemberSecure(ctx context.Context, clubID string, groupID uuid.UUID, memberUserID, requestingUserID string) error {
 	if uc.familyGroupRepo == nil {
 		return errors.New("family groups not enabled")
 	}
 
 	// Validate ownership - only HeadUserID can add members
-	group, err := uc.familyGroupRepo.GetByID(clubID, groupID)
+	group, err := uc.familyGroupRepo.GetByID(ctx, clubID, groupID)
 	if err != nil {
 		return errors.New("group not found")
 	}
@@ -482,14 +483,14 @@ func (uc *UserUseCases) AddFamilyMemberSecure(clubID string, groupID uuid.UUID, 
 		return errors.New("only the family head can add members")
 	}
 
-	return uc.familyGroupRepo.AddMember(clubID, groupID, memberUserID)
+	return uc.familyGroupRepo.AddMember(ctx, clubID, groupID, memberUserID)
 }
 
-func (uc *UserUseCases) RemoveFamilyMember(clubID string, groupID uuid.UUID, memberUserID string) error {
+func (uc *UserUseCases) RemoveFamilyMember(ctx context.Context, clubID string, groupID uuid.UUID, memberUserID string) error {
 	if uc.familyGroupRepo == nil {
 		return errors.New("family groups not enabled")
 	}
-	return uc.familyGroupRepo.RemoveMember(clubID, groupID, memberUserID)
+	return uc.familyGroupRepo.RemoveMember(ctx, clubID, groupID, memberUserID)
 }
 
 // --- GDPR Compliance Use Cases ---
@@ -504,8 +505,8 @@ type GDPRExportData struct {
 
 // ExportUserData implements GDPR Article 20 - Right to data portability
 // Returns all personal data for the user in a structured, portable format
-func (uc *UserUseCases) ExportUserData(clubID, userID string) (*GDPRExportData, error) {
-	user, err := uc.repo.GetByID(clubID, userID)
+func (uc *UserUseCases) ExportUserData(ctx context.Context, clubID, userID string) (*GDPRExportData, error) {
+	user, err := uc.repo.GetByID(ctx, clubID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -553,7 +554,7 @@ func (uc *UserUseCases) ExportUserData(clubID, userID string) (*GDPRExportData, 
 	}
 
 	// Export children data if any
-	children, err := uc.repo.FindChildren(clubID, userID)
+	children, err := uc.repo.FindChildren(ctx, clubID, userID)
 	if err == nil && len(children) > 0 {
 		childExports := make([]map[string]interface{}, len(children))
 		for i, child := range children {
@@ -571,7 +572,7 @@ func (uc *UserUseCases) ExportUserData(clubID, userID string) (*GDPRExportData, 
 
 	// Export family group if member
 	if uc.familyGroupRepo != nil {
-		group, err := uc.familyGroupRepo.GetByMemberID(clubID, userID)
+		group, err := uc.familyGroupRepo.GetByMemberID(ctx, clubID, userID)
 		if err == nil && group != nil {
 			fg := map[string]interface{}{
 				"id":      group.ID.String(),
@@ -587,9 +588,9 @@ func (uc *UserUseCases) ExportUserData(clubID, userID string) (*GDPRExportData, 
 
 // DeleteUserGDPR implements GDPR Article 17 - Right to erasure
 // Uses anonymization instead of simple deletion
-func (uc *UserUseCases) DeleteUserGDPR(clubID, id string, requesterID string) error {
+func (uc *UserUseCases) DeleteUserGDPR(ctx context.Context, clubID, id string, requesterID string) error {
 	if id == requesterID {
 		return errors.New("cannot delete yourself")
 	}
-	return uc.repo.AnonymizeForGDPR(clubID, id)
+	return uc.repo.AnonymizeForGDPR(ctx, clubID, id)
 }

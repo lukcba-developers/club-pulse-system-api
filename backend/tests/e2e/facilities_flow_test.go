@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -113,7 +114,7 @@ func TestFacilitiesFlow(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 
 		// Verify update
-		facility, _ := repo.GetByID("test-club-facilities", createdFacilityID)
+		facility, _ := repo.GetByID(context.Background(), "test-club-facilities", createdFacilityID)
 		require.NotNil(t, facility)
 		assert.Equal(t, "Tennis Court 1 (Updated)", facility.Name)
 	})

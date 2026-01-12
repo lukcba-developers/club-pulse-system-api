@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
@@ -26,7 +28,9 @@ func TenantMiddleware(clubRepo clubDomain.ClubRepository) gin.HandlerFunc {
 		}
 		if publicPaths[c.Request.URL.Path] {
 			if clubID != "" {
-				c.Set(ContextClubID, clubID)
+				// Resolve slug/domain to UUID if needed (for non-UUID values)
+				resolvedID := resolveClubID(c.Request.Context(), clubRepo, clubID)
+				c.Set(ContextClubID, resolvedID)
 			}
 			c.Next()
 			return
@@ -66,4 +70,22 @@ func TenantMiddleware(clubRepo clubDomain.ClubRepository) gin.HandlerFunc {
 		c.Set(ContextClubID, userClubID)
 		c.Next()
 	}
+}
+
+// resolveClubID attempts to resolve a slug/domain to a UUID if the input is not already a UUID.
+// This allows the frontend to send either the UUID directly or a slug like 'club-alpha'.
+func resolveClubID(ctx context.Context, clubRepo clubDomain.ClubRepository, input string) string {
+	// Check if input looks like a UUID (contains dashes and is ~36 chars)
+	if len(input) == 36 && strings.Count(input, "-") == 4 {
+		return input // Already a UUID
+	}
+
+	// Attempt to resolve slug to UUID
+	club, err := clubRepo.GetBySlug(ctx, input)
+	if err == nil && club != nil {
+		return club.ID
+	}
+
+	// Fallback: return as-is (will fail gracefully in auth)
+	return input
 }

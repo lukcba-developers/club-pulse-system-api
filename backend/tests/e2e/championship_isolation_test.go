@@ -45,7 +45,7 @@ func TestChampionshipIsolation(t *testing.T) {
 	_ = db.Migrator().DropTable(&domain.Tournament{}, &domain.TournamentStage{}, &domain.Group{}, &domain.TournamentMatch{}, &domain.Standing{})
 	_ = db.AutoMigrate(&domain.Tournament{}, &domain.TournamentStage{}, &domain.Group{}, &domain.TournamentMatch{}, &domain.Standing{})
 
-	db.Exec("DISCARD ALL")
+	// 3. Setup
 
 	// Dependencies
 	champRepo := championshipRepo.NewPostgresChampionshipRepository(db)
@@ -90,7 +90,7 @@ func TestChampionshipIsolation(t *testing.T) {
 		Sport:  "FUTBOL",
 		Status: domain.TournamentActive,
 	}
-	require.NoError(t, champRepo.CreateTournament(t1))
+	require.NoError(t, champRepo.CreateTournament(context.TODO(), t1))
 
 	t2 := &domain.Tournament{
 		ID:     uuid.New(),
@@ -99,7 +99,7 @@ func TestChampionshipIsolation(t *testing.T) {
 		Sport:  "TENNIS",
 		Status: domain.TournamentActive,
 	}
-	require.NoError(t, champRepo.CreateTournament(t2))
+	require.NoError(t, champRepo.CreateTournament(context.TODO(), t2))
 
 	// 3. Verify Isolation
 	t.Run("Club A Admin sees only T1", func(t *testing.T) {

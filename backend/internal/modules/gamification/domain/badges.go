@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,18 +66,18 @@ func (UserBadge) TableName() string {
 // BadgeRepository defines the interface for badge persistence.
 type BadgeRepository interface {
 	// Badge CRUD
-	Create(badge *Badge) error
-	GetByID(clubID string, id uuid.UUID) (*Badge, error)
-	GetByCode(clubID, code string) (*Badge, error)
-	List(clubID string) ([]Badge, error)
-	Update(badge *Badge) error
+	Create(ctx context.Context, badge *Badge) error
+	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*Badge, error)
+	GetByCode(ctx context.Context, clubID, code string) (*Badge, error)
+	List(ctx context.Context, clubID string) ([]Badge, error)
+	Update(ctx context.Context, badge *Badge) error
 
 	// UserBadge operations
-	AwardBadge(userBadge *UserBadge) error
-	GetUserBadges(userID string) ([]UserBadge, error)
-	HasBadge(userID string, badgeCode string) (bool, error)
-	SetFeatured(userID string, badgeID uuid.UUID, featured bool) error
-	GetFeaturedBadges(userID string) ([]UserBadge, error)
+	AwardBadge(ctx context.Context, userBadge *UserBadge) error
+	GetUserBadges(ctx context.Context, userID string) ([]UserBadge, error)
+	HasBadge(ctx context.Context, userID string, badgeCode string) (bool, error)
+	SetFeatured(ctx context.Context, userID string, badgeID uuid.UUID, featured bool) error
+	GetFeaturedBadges(ctx context.Context, userID string) ([]UserBadge, error)
 }
 
 // PredefinedBadges contains the default badges for the system.

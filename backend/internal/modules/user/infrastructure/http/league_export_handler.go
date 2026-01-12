@@ -42,7 +42,7 @@ func (h *LeagueExportHandler) ExportLeagueFolder(c *gin.Context) {
 
 	// Obtener documentos de cada miembro
 	for i := range members {
-		docs, err := h.exportService.GetMemberDocuments(clubID, members[i].ID)
+		docs, err := h.exportService.GetMemberDocuments(c.Request.Context(), clubID, members[i].ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error obteniendo documentos"})
 			return

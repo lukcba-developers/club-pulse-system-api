@@ -72,19 +72,19 @@ type Token struct {
 }
 
 type AuthRepository interface {
-	SaveUser(user *User) error
+	SaveUser(ctx context.Context, user *User) error
 	FindUserByEmail(ctx context.Context, email, clubID string) (*User, error)
 	FindUserByID(ctx context.Context, id, clubID string) (*User, error)
 
 	// Refresh Token Methods
-	SaveRefreshToken(token *RefreshToken) error
+	SaveRefreshToken(ctx context.Context, token *RefreshToken) error
 	GetRefreshToken(ctx context.Context, token, clubID string) (*RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, tokenID, userID string) error
-	RevokeAllUserTokens(userID string) error
-	ListUserSessions(userID string) ([]RefreshToken, error)
+	RevokeAllUserTokens(ctx context.Context, userID string) error
+	ListUserSessions(ctx context.Context, userID string) ([]RefreshToken, error)
 
 	// Auth Logs
-	LogAuthentication(log *AuthenticationLog) error
+	LogAuthentication(ctx context.Context, log *AuthenticationLog) error
 }
 
 type TokenService interface {

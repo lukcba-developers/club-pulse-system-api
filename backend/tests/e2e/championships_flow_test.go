@@ -35,7 +35,7 @@ func TestChampionshipsFlow(t *testing.T) {
 	_ = db.AutoMigrate(&domain.Discipline{}, &domain.Tournament{}, &domain.Match{}, &domain.Team{}, &domain.Standing{}, &userRepo.UserModel{})
 
 	// Clear PostgreSQL cached prepared statements after schema change
-	db.Exec("DISCARD ALL")
+	// Repos
 
 	// 2. Setup Dependencies
 	userR := userRepo.NewPostgresUserRepository(db)

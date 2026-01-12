@@ -55,7 +55,7 @@ func (h *TeamHandler) ScheduleMatch(c *gin.Context) {
 		return
 	}
 
-	event, err := h.useCases.ScheduleMatch(clubID, groupID, req.Opponent, req.IsHome, req.MeetupTime, req.Location)
+	event, err := h.useCases.ScheduleMatch(c.Request.Context(), clubID, groupID, req.Opponent, req.IsHome, req.MeetupTime, req.Location)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -84,7 +84,7 @@ func (h *TeamHandler) RespondAvailability(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCases.RespondAvailability(clubID, req.EventID, userID.(string), req.Status, req.Reason); err != nil {
+	if err := h.useCases.RespondAvailability(c.Request.Context(), clubID, req.EventID, userID.(string), req.Status, req.Reason); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -31,7 +32,7 @@ type CreateFacilityDTO struct {
 	Location       domain.Location       `json:"location"`
 }
 
-func (uc *FacilityUseCases) CreateFacility(clubID string, dto CreateFacilityDTO) (*domain.Facility, error) {
+func (uc *FacilityUseCases) CreateFacility(ctx context.Context, clubID string, dto CreateFacilityDTO) (*domain.Facility, error) {
 	// Defaults
 	opening := dto.OpeningHour
 	if opening == 0 {
@@ -58,25 +59,25 @@ func (uc *FacilityUseCases) CreateFacility(clubID string, dto CreateFacilityDTO)
 		UpdatedAt:      time.Now(),
 	}
 
-	if err := uc.repo.Create(facility); err != nil {
+	if err := uc.repo.Create(ctx, facility); err != nil {
 		return nil, err
 	}
 
 	return facility, nil
 }
 
-func (uc *FacilityUseCases) ListFacilities(clubID string, limit, offset int) ([]*domain.Facility, error) {
+func (uc *FacilityUseCases) ListFacilities(ctx context.Context, clubID string, limit, offset int) ([]*domain.Facility, error) {
 	if limit <= 0 {
 		limit = 10
 	}
-	return uc.repo.List(clubID, limit, offset)
+	return uc.repo.List(ctx, clubID, limit, offset)
 }
 
-func (uc *FacilityUseCases) GetFacility(clubID, id string) (*domain.Facility, error) {
+func (uc *FacilityUseCases) GetFacility(ctx context.Context, clubID, id string) (*domain.Facility, error) {
 	if id == "" {
 		return nil, errors.New("invalid ID")
 	}
-	return uc.repo.GetByID(clubID, id)
+	return uc.repo.GetByID(ctx, clubID, id)
 }
 
 type UpdateFacilityDTO struct {
@@ -87,8 +88,8 @@ type UpdateFacilityDTO struct {
 	Specifications *domain.Specifications `json:"specifications,omitempty"`
 }
 
-func (uc *FacilityUseCases) UpdateFacility(clubID, id string, dto UpdateFacilityDTO) (*domain.Facility, error) {
-	facility, err := uc.repo.GetByID(clubID, id)
+func (uc *FacilityUseCases) UpdateFacility(ctx context.Context, clubID, id string, dto UpdateFacilityDTO) (*domain.Facility, error) {
+	facility, err := uc.repo.GetByID(ctx, clubID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +118,7 @@ func (uc *FacilityUseCases) UpdateFacility(clubID, id string, dto UpdateFacility
 		facility.Specifications = *dto.Specifications
 	}
 
-	if err := uc.repo.Update(facility); err != nil {
+	if err := uc.repo.Update(ctx, facility); err != nil {
 		return nil, err
 	}
 
@@ -132,9 +133,9 @@ type AddEquipmentDTO struct {
 	Condition domain.EquipmentCondition `json:"condition" binding:"required"`
 }
 
-func (uc *FacilityUseCases) AddEquipment(clubID, facilityID string, dto AddEquipmentDTO) (*domain.Equipment, error) {
+func (uc *FacilityUseCases) AddEquipment(ctx context.Context, clubID, facilityID string, dto AddEquipmentDTO) (*domain.Equipment, error) {
 	// 1. Verify Facility belongs to Club
-	fac, err := uc.repo.GetByID(clubID, facilityID)
+	fac, err := uc.repo.GetByID(ctx, clubID, facilityID)
 	if err != nil {
 		return nil, err
 	}
@@ -153,16 +154,16 @@ func (uc *FacilityUseCases) AddEquipment(clubID, facilityID string, dto AddEquip
 		UpdatedAt:  time.Now(),
 	}
 
-	if err := uc.repo.CreateEquipment(equipment); err != nil {
+	if err := uc.repo.CreateEquipment(ctx, equipment); err != nil {
 		return nil, err
 	}
 	return equipment, nil
 }
 
-func (uc *FacilityUseCases) ListEquipment(clubID, facilityID string) ([]*domain.Equipment, error) {
+func (uc *FacilityUseCases) ListEquipment(ctx context.Context, clubID, facilityID string) ([]*domain.Equipment, error) {
 	// Verify Facility first? Or rely on ID.
 	// For security, checking if facility belongs to club is better.
-	fac, err := uc.repo.GetByID(clubID, facilityID)
+	fac, err := uc.repo.GetByID(ctx, clubID, facilityID)
 	if err != nil {
 		return nil, err
 	}
@@ -170,14 +171,14 @@ func (uc *FacilityUseCases) ListEquipment(clubID, facilityID string) ([]*domain.
 		return nil, errors.New("facility not found")
 	}
 
-	return uc.repo.ListEquipmentByFacility(facilityID)
+	return uc.repo.ListEquipmentByFacility(ctx, facilityID)
 }
 
-func (uc *FacilityUseCases) LoanEquipment(clubID, userID, equipmentID string, expectedReturn time.Time) (*domain.EquipmentLoan, error) {
+func (uc *FacilityUseCases) LoanEquipment(ctx context.Context, clubID, userID, equipmentID string, expectedReturn time.Time) (*domain.EquipmentLoan, error) {
 	// 1. Get Equipment
 	// Note: GetEquipmentByID doesn't take ClubID, so we should verify ownership ideally.
 	// But Equipment is linked to Facility. We can check Facility -> Club.
-	eq, err := uc.repo.GetEquipmentByID(equipmentID)
+	eq, err := uc.repo.GetEquipmentByID(ctx, equipmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +187,7 @@ func (uc *FacilityUseCases) LoanEquipment(clubID, userID, equipmentID string, ex
 	}
 
 	// Verify Club (Indirectly via Facility)
-	fac, err := uc.repo.GetByID(clubID, eq.FacilityID)
+	fac, err := uc.repo.GetByID(ctx, clubID, eq.FacilityID)
 	if err != nil || fac == nil {
 		return nil, errors.New("unauthorized access to equipment (club mismatch)")
 	}
@@ -207,7 +208,7 @@ func (uc *FacilityUseCases) LoanEquipment(clubID, userID, equipmentID string, ex
 	}
 
 	// Atomic Loan Creation
-	if err := uc.repo.LoanEquipmentAtomic(loan, equipmentID); err != nil {
+	if err := uc.repo.LoanEquipmentAtomic(ctx, loan, equipmentID); err != nil {
 		return nil, err
 	}
 	// Note: We don't need to manually update loanRepo or repo.UpdateEquipment as Atomic method does it.
@@ -215,8 +216,8 @@ func (uc *FacilityUseCases) LoanEquipment(clubID, userID, equipmentID string, ex
 	return loan, nil
 }
 
-func (uc *FacilityUseCases) ReturnLoan(clubID, loanID, condition string) error {
-	loan, err := uc.loanRepo.GetByID(loanID)
+func (uc *FacilityUseCases) ReturnLoan(ctx context.Context, clubID, loanID, condition string) error {
+	loan, err := uc.loanRepo.GetByID(ctx, loanID) // LoanRepo usually NO Context? Or does it need it?
 	if err != nil {
 		return err
 	}
@@ -225,11 +226,11 @@ func (uc *FacilityUseCases) ReturnLoan(clubID, loanID, condition string) error {
 	}
 
 	// Verify Club via Equipment -> Facility
-	eq, err := uc.repo.GetEquipmentByID(loan.EquipmentID)
+	eq, err := uc.repo.GetEquipmentByID(ctx, loan.EquipmentID)
 	if err != nil || eq == nil {
 		return errors.New("equipment not found for loan")
 	}
-	fac, err := uc.repo.GetByID(clubID, eq.FacilityID)
+	fac, err := uc.repo.GetByID(ctx, clubID, eq.FacilityID)
 	if err != nil || fac == nil {
 		return errors.New("unauthorized (club mismatch)")
 	}
@@ -244,7 +245,7 @@ func (uc *FacilityUseCases) ReturnLoan(clubID, loanID, condition string) error {
 	loan.ConditionOnReturn = condition
 	loan.UpdatedAt = now
 
-	if err := uc.loanRepo.Update(loan); err != nil {
+	if err := uc.loanRepo.Update(ctx, loan); err != nil {
 		return err
 	}
 
@@ -253,7 +254,7 @@ func (uc *FacilityUseCases) ReturnLoan(clubID, loanID, condition string) error {
 	if condition != "" {
 		eq.Condition = domain.EquipmentCondition(condition) // assuming valid enum string
 	}
-	if err := uc.repo.UpdateEquipment(eq); err != nil {
+	if err := uc.repo.UpdateEquipment(ctx, eq); err != nil {
 		return err
 	}
 

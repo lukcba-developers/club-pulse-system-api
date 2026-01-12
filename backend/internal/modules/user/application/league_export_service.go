@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -236,6 +237,6 @@ func (s *LeagueExportService) FilterEligibleMembers(members []TeamMember) []Team
 }
 
 // GetMemberDocuments obtiene los documentos de un miembro
-func (s *LeagueExportService) GetMemberDocuments(clubID, userID string) ([]domain.UserDocument, error) {
-	return s.docRepo.GetByUserID(clubID, userID)
+func (s *LeagueExportService) GetMemberDocuments(ctx context.Context, clubID, userID string) ([]domain.UserDocument, error) {
+	return s.docRepo.GetByUserID(ctx, clubID, userID)
 }

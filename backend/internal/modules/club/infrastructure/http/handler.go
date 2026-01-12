@@ -34,7 +34,8 @@ func (h *ClubHandler) CreateClub(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	club, err := h.useCases.CreateClub(req.Name, req.Slug, req.Domain, req.Settings)
+	ctx := c.Request.Context()
+	club, err := h.useCases.CreateClub(ctx, req.Name, req.Slug, req.Domain, req.Settings)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -43,7 +44,8 @@ func (h *ClubHandler) CreateClub(c *gin.Context) {
 }
 
 func (h *ClubHandler) ListClubs(c *gin.Context) {
-	clubs, err := h.useCases.ListClubs(100, 0)
+	ctx := c.Request.Context()
+	clubs, err := h.useCases.ListClubs(ctx, 100, 0)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -53,7 +55,8 @@ func (h *ClubHandler) ListClubs(c *gin.Context) {
 
 func (h *ClubHandler) GetPublicClubBySlug(c *gin.Context) {
 	slug := c.Param("slug")
-	club, err := h.useCases.GetClubBySlug(slug)
+	ctx := c.Request.Context()
+	club, err := h.useCases.GetClubBySlug(ctx, slug)
 	if err != nil {
 		// Assuming error means not found or DB error.
 		// For stricter 404, we'd check error type.
@@ -84,7 +87,8 @@ func (h *ClubHandler) RegisterSponsor(c *gin.Context) {
 		return
 	}
 
-	sponsor, err := h.useCases.RegisterSponsor(clubID, req.Name, req.ContactInfo, req.LogoURL)
+	ctx := c.Request.Context()
+	sponsor, err := h.useCases.RegisterSponsor(ctx, clubID, req.Name, req.ContactInfo, req.LogoURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -108,7 +112,8 @@ func (h *ClubHandler) CreateAdPlacement(c *gin.Context) {
 		return
 	}
 
-	ad, err := h.useCases.CreateAdPlacement(req.SponsorID, req.LocationType, req.Detail, req.EndDate, req.Amount)
+	ctx := c.Request.Context()
+	ad, err := h.useCases.CreateAdPlacement(ctx, req.SponsorID, req.LocationType, req.Detail, req.EndDate, req.Amount)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -119,7 +124,8 @@ func (h *ClubHandler) CreateAdPlacement(c *gin.Context) {
 
 func (h *ClubHandler) GetActiveAds(c *gin.Context) {
 	clubID := c.GetString("clubID")
-	ads, err := h.useCases.GetActiveAds(clubID)
+	ctx := c.Request.Context()
+	ads, err := h.useCases.GetActiveAds(ctx, clubID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -129,13 +135,14 @@ func (h *ClubHandler) GetActiveAds(c *gin.Context) {
 
 func (h *ClubHandler) GetPublicActiveAds(c *gin.Context) {
 	slug := c.Param("slug")
-	club, err := h.useCases.GetClubBySlug(slug)
+	ctx := c.Request.Context()
+	club, err := h.useCases.GetClubBySlug(ctx, slug)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
 		return
 	}
 
-	ads, err := h.useCases.GetActiveAds(club.ID)
+	ads, err := h.useCases.GetActiveAds(ctx, club.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -145,7 +152,8 @@ func (h *ClubHandler) GetPublicActiveAds(c *gin.Context) {
 
 func (h *ClubHandler) GetPublicNews(c *gin.Context) {
 	slug := c.Param("slug")
-	news, err := h.useCases.GetPublicNews(slug)
+	ctx := c.Request.Context()
+	news, err := h.useCases.GetPublicNews(ctx, slug)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -174,7 +182,8 @@ func (h *ClubHandler) PublishNews(c *gin.Context) {
 	}
 
 	// Assuming we have a method PublishNews in UseCases
-	news, err := h.useCases.PublishNews(clubID, req.Title, req.Content, req.ImageURL, req.Notify)
+	ctx := c.Request.Context()
+	news, err := h.useCases.PublishNews(ctx, clubID, req.Title, req.Content, req.ImageURL, req.Notify)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

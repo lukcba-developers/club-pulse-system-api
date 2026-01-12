@@ -28,28 +28,28 @@ func (s *TravelEventService) CreateEvent(ctx context.Context, clubID string, tea
 	event.TeamID = teamID
 	event.CreatedBy = createdBy
 
-	return s.eventRepo.Create(event)
+	return s.eventRepo.Create(ctx, event)
 }
 
 // GetEvent obtiene un evento por su ID
 func (s *TravelEventService) GetEvent(ctx context.Context, clubID string, eventID uuid.UUID) (*domain.TravelEvent, error) {
-	return s.eventRepo.GetByID(clubID, eventID)
+	return s.eventRepo.GetByID(ctx, clubID, eventID)
 }
 
 // GetTeamEvents obtiene todos los eventos de un equipo
 func (s *TravelEventService) GetTeamEvents(ctx context.Context, clubID string, teamID uuid.UUID) ([]domain.TravelEvent, error) {
-	return s.eventRepo.GetByTeamID(clubID, teamID)
+	return s.eventRepo.GetByTeamID(ctx, clubID, teamID)
 }
 
 // GetUpcomingEvents obtiene eventos futuros de un equipo
 func (s *TravelEventService) GetUpcomingEvents(ctx context.Context, clubID string, teamID uuid.UUID) ([]domain.TravelEvent, error) {
-	return s.eventRepo.GetUpcoming(clubID, teamID)
+	return s.eventRepo.GetUpcoming(ctx, clubID, teamID)
 }
 
 // RespondToEvent registra la respuesta de un usuario a un evento
 func (s *TravelEventService) RespondToEvent(ctx context.Context, eventID uuid.UUID, userID string, status domain.RSVPStatus, notes string) error {
 	// Verificar si ya existe una respuesta
-	existingRSVP, err := s.eventRepo.GetRSVPByUserAndEvent(eventID, userID)
+	existingRSVP, err := s.eventRepo.GetRSVPByUserAndEvent(ctx, eventID, userID)
 
 	now := time.Now()
 
@@ -58,7 +58,7 @@ func (s *TravelEventService) RespondToEvent(ctx context.Context, eventID uuid.UU
 		existingRSVP.Status = status
 		existingRSVP.Notes = notes
 		existingRSVP.RespondedAt = &now
-		return s.eventRepo.UpdateRSVP(existingRSVP)
+		return s.eventRepo.UpdateRSVP(ctx, existingRSVP)
 	}
 
 	// Crear nueva respuesta
@@ -70,17 +70,17 @@ func (s *TravelEventService) RespondToEvent(ctx context.Context, eventID uuid.UU
 		RespondedAt: &now,
 	}
 
-	return s.eventRepo.CreateRSVP(rsvp)
+	return s.eventRepo.CreateRSVP(ctx, rsvp)
 }
 
 // GetEventSummary obtiene un resumen del evento con estadísticas
 func (s *TravelEventService) GetEventSummary(ctx context.Context, clubID string, eventID uuid.UUID) (*domain.EventSummary, error) {
-	event, err := s.eventRepo.GetByID(clubID, eventID)
+	event, err := s.eventRepo.GetByID(ctx, clubID, eventID)
 	if err != nil {
 		return nil, err
 	}
 
-	rsvps, err := s.eventRepo.GetRSVPsByEventID(eventID)
+	rsvps, err := s.eventRepo.GetRSVPsByEventID(ctx, eventID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,14 +108,14 @@ func (s *TravelEventService) GetEventSummary(ctx context.Context, clubID string,
 
 	// Actualizar el evento con el costo calculado
 	event.CostPerPerson = summary.CostPerPerson
-	_ = s.eventRepo.Update(event)
+	_ = s.eventRepo.Update(ctx, event)
 
 	return summary, nil
 }
 
 // UpdateEventCost actualiza el costo real de un evento
 func (s *TravelEventService) UpdateEventCost(ctx context.Context, clubID string, eventID uuid.UUID, actualCost decimal.Decimal) error {
-	event, err := s.eventRepo.GetByID(clubID, eventID)
+	event, err := s.eventRepo.GetByID(ctx, clubID, eventID)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (s *TravelEventService) UpdateEventCost(ctx context.Context, clubID string,
 	event.ActualCost = actualCost
 
 	// Recalcular costo per cápita
-	rsvps, err := s.eventRepo.GetRSVPsByEventID(eventID)
+	rsvps, err := s.eventRepo.GetRSVPsByEventID(ctx, eventID)
 	if err != nil {
 		return err
 	}
@@ -137,23 +137,23 @@ func (s *TravelEventService) UpdateEventCost(ctx context.Context, clubID string,
 
 	event.CostPerPerson = event.CalculateCostPerPerson(confirmedCount)
 
-	return s.eventRepo.Update(event)
+	return s.eventRepo.Update(ctx, event)
 }
 
 // CancelEvent cancela un evento
 func (s *TravelEventService) CancelEvent(ctx context.Context, clubID string, eventID uuid.UUID) error {
 	// TODO: Enviar notificaciones a todos los confirmados
-	return s.eventRepo.Delete(clubID, eventID)
+	return s.eventRepo.Delete(ctx, clubID, eventID)
 }
 
 // GetUserRSVP obtiene la respuesta de un usuario para un evento
 func (s *TravelEventService) GetUserRSVP(ctx context.Context, eventID uuid.UUID, userID string) (*domain.EventRSVP, error) {
-	return s.eventRepo.GetRSVPByUserAndEvent(eventID, userID)
+	return s.eventRepo.GetRSVPByUserAndEvent(ctx, eventID, userID)
 }
 
 // ValidateEventCapacity verifica si el evento puede aceptar más confirmaciones
 func (s *TravelEventService) ValidateEventCapacity(ctx context.Context, clubID string, eventID uuid.UUID) error {
-	event, err := s.eventRepo.GetByID(clubID, eventID)
+	event, err := s.eventRepo.GetByID(ctx, clubID, eventID)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (s *TravelEventService) ValidateEventCapacity(ctx context.Context, clubID s
 		return fmt.Errorf("el evento ya pasó")
 	}
 
-	rsvps, err := s.eventRepo.GetRSVPsByEventID(eventID)
+	rsvps, err := s.eventRepo.GetRSVPsByEventID(ctx, eventID)
 	if err != nil {
 		return err
 	}

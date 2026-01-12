@@ -53,7 +53,7 @@ func (h *AttendanceHandler) GetGroupAttendance(c *gin.Context) {
 
 	// Logic: Get or Create List
 	clubID := c.GetString("clubID")
-	list, err := h.useCases.GetOrCreateList(clubID, group, date, coachID.(string))
+	list, err := h.useCases.GetOrCreateList(c.Request.Context(), clubID, group, date, coachID.(string))
 	if err != nil {
 		log.Printf("Error getting attendance list: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -90,7 +90,7 @@ func (h *AttendanceHandler) GetTrainingGroupAttendance(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	list, err := h.useCases.GetOrCreateListByTrainingGroup(clubID, groupID, groupName, category, date, coachID.(string))
+	list, err := h.useCases.GetOrCreateListByTrainingGroup(c.Request.Context(), clubID, groupID, groupName, category, date, coachID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -123,7 +123,7 @@ func (h *AttendanceHandler) SubmitAttendance(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	if err := h.useCases.MarkAttendance(clubID, listID, dto); err != nil {
+	if err := h.useCases.MarkAttendance(c.Request.Context(), clubID, listID, dto); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

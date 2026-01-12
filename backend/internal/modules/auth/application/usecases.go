@@ -104,7 +104,7 @@ func (uc *AuthUseCases) Register(ctx context.Context, dto RegisterDTO, clubID st
 		PrivacyPolicyVersion: privacyVersion, // GDPR: Record version accepted
 	}
 
-	if err := uc.repo.SaveUser(user); err != nil {
+	if err := uc.repo.SaveUser(ctx, user); err != nil {
 		return nil, err
 	}
 
@@ -115,7 +115,7 @@ func (uc *AuthUseCases) Register(ctx context.Context, dto RegisterDTO, clubID st
 	}
 
 	// 6. Save Refresh Token
-	if err := uc.saveRefreshToken(user.ID, token.RefreshToken); err != nil {
+	if err := uc.saveRefreshToken(ctx, user.ID, token.RefreshToken); err != nil {
 		return nil, err
 	}
 
@@ -141,12 +141,12 @@ func (uc *AuthUseCases) Login(ctx context.Context, dto LoginDTO, clubID string) 
 	}
 
 	// 4. Save Refresh Token
-	if err := uc.saveRefreshToken(user.ID, token.RefreshToken); err != nil {
+	if err := uc.saveRefreshToken(ctx, user.ID, token.RefreshToken); err != nil {
 		return nil, err
 	}
 
 	// 5. Log Success (Async or Sync? Sync for MVP to ensure audit trail)
-	_ = uc.repo.LogAuthentication(&domain.AuthenticationLog{
+	_ = uc.repo.LogAuthentication(ctx, &domain.AuthenticationLog{
 		ID:        uuid.New().String(),
 		UserID:    user.ID,
 		Type:      "LOGIN",
@@ -201,7 +201,7 @@ func (uc *AuthUseCases) RefreshToken(ctx context.Context, refreshToken, clubID s
 	}
 
 	// 6. Save New Refresh Token
-	if err := uc.saveRefreshToken(user.ID, token.RefreshToken); err != nil {
+	if err := uc.saveRefreshToken(ctx, user.ID, token.RefreshToken); err != nil {
 		return nil, err
 	}
 
@@ -216,7 +216,7 @@ func (uc *AuthUseCases) Logout(ctx context.Context, refreshToken, clubID string)
 	return uc.repo.RevokeRefreshToken(ctx, storedToken.ID, storedToken.UserID)
 }
 
-func (uc *AuthUseCases) saveRefreshToken(userID, tokenString string) error {
+func (uc *AuthUseCases) saveRefreshToken(ctx context.Context, userID, tokenString string) error {
 	refreshToken := &domain.RefreshToken{
 		ID:        uuid.New().String(),
 		UserID:    userID,
@@ -225,44 +225,15 @@ func (uc *AuthUseCases) saveRefreshToken(userID, tokenString string) error {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	return uc.repo.SaveRefreshToken(refreshToken)
+	return uc.repo.SaveRefreshToken(ctx, refreshToken)
 }
 
-func (uc *AuthUseCases) ListUserSessions(userID string) ([]domain.RefreshToken, error) {
-	return uc.repo.ListUserSessions(userID)
+func (uc *AuthUseCases) ListUserSessions(ctx context.Context, userID string) ([]domain.RefreshToken, error) {
+	return uc.repo.ListUserSessions(ctx, userID)
 }
 
-func (uc *AuthUseCases) RevokeSession(sessionID, userID string) error {
-	// Verify ownership?
-	// Get session first
-	// session, err := uc.repo.GetRefreshToken(sessionID) // Skipped ownership check for MVP
-	// Wait, repo.GetRefreshToken takes "token string", not ID.
-	// We need GetRefreshTokenByID or assuming ID access.
-	// Looking at repo interface: GetRefreshToken(token string).
-	// We lack GetRefreshTokenByID. For MVP, if we only expose List (returning models with ID) and Revoke (by ID),
-	// we can call RevokeRefreshToken directly IF we trust the ID.
-	// To be safe, we should check ownership. But we lack FindByID for token.
-	// Let's rely on RevokeRefreshToken doing a blind update on ID.
-	// Ideally we'd validte user_id matches.
-	// For MVP: JUST CALL REVOKE.
-	// Improvements: Add GetRefreshTokenByID to repo.
-	// 4. Revoke (Now securely checking user_id via Repo)
-	// We lack context in this signature? The method assumes context background or we update signature.
-	// For MVP simplicity and because typically called from handler with context, we should update signature to accept context.
-	// But to avoid cascading signature changes if possible, we can use context.Background() if lazy, BUT better is to update logic.
-	// The function RevokeSession calls uc.repo.RevokeRefreshToken.
-	// We can add ctx to RevokeSession signature? Or use TODO.
-	// Wait, I can't change signature of RevokeSession without checking who calls it.
-	// Assuming Handler calls it.
-	// For now let's use context.TODO() or Background() if signature update is too risky blindly.
-	// But wait, `RevokeSession(sessionID, userID string)`...
-	// Let's check `RevokeSession` signature again.
-	// It is `func (uc *AuthUseCases) RevokeSession(sessionID, userID string) error`.
-	// I'll update signature to `RevokeSession(ctx context.Context, sessionID, userID string) error` as well, assuming only Handler calls it.
-	// Actually, let's look at `handler.go` first?
-	// Risk: breaking handler.
-	// Let's try to update signature and if build fails, I fix handler.
-	return uc.repo.RevokeRefreshToken(context.Background(), sessionID, userID)
+func (uc *AuthUseCases) RevokeSession(ctx context.Context, sessionID, userID string) error {
+	return uc.repo.RevokeRefreshToken(ctx, sessionID, userID)
 }
 
 func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code, clubID string) (*domain.Token, error) {
@@ -291,7 +262,7 @@ func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code, clubID string) (*
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		if err := uc.repo.SaveUser(user); err != nil {
+		if err := uc.repo.SaveUser(ctx, user); err != nil {
 			return nil, err
 		}
 	} else if user.GoogleID == "" {
@@ -299,7 +270,7 @@ func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code, clubID string) (*
 		user.GoogleID = googleUser.ID
 		user.AvatarURL = googleUser.Picture
 		user.UpdatedAt = time.Now()
-		if err := uc.repo.SaveUser(user); err != nil {
+		if err := uc.repo.SaveUser(ctx, user); err != nil {
 			return nil, err
 		}
 	}
@@ -311,7 +282,7 @@ func (uc *AuthUseCases) GoogleLogin(ctx context.Context, code, clubID string) (*
 	}
 
 	// 4. Save Refresh Token
-	if err := uc.saveRefreshToken(user.ID, token.RefreshToken); err != nil {
+	if err := uc.saveRefreshToken(ctx, user.ID, token.RefreshToken); err != nil {
 		return nil, err
 	}
 

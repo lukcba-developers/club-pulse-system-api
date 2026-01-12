@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
 // Create generic axios instance
 const api = axios.create({
@@ -26,6 +27,12 @@ api.interceptors.request.use(
             // Inject Club ID (Priority: LocalStorage > Env > Default)
             const clubID = localStorage.getItem('clubID') || process.env.NEXT_PUBLIC_DEFAULT_CLUB_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
             config.headers['X-Club-ID'] = clubID;
+
+            // Inject Trace ID / Correlation ID
+            const requestID = uuidv4();
+            config.headers['X-Request-ID'] = requestID;
+            // Also useful for simple logs
+            config.headers['X-Correlation-ID'] = requestID;
 
             // Inject CSRF Token for state-changing methods
             const method = config.method?.toUpperCase();

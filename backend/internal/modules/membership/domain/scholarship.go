@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -19,10 +20,10 @@ type Scholarship struct {
 }
 
 type ScholarshipRepository interface {
-	Create(scholarship *Scholarship) error
-	GetByUserID(userID string) ([]*Scholarship, error)
-	GetActiveByUserID(userID string) (*Scholarship, error) // Assuming one active per user
-	ListActiveByUserIDs(userIDs []string) (map[string]*Scholarship, error)
+	Create(ctx context.Context, scholarship *Scholarship) error
+	GetByUserID(ctx context.Context, userID string) ([]*Scholarship, error)
+	GetActiveByUserID(ctx context.Context, userID string) (*Scholarship, error) // Assuming one active per user
+	ListActiveByUserIDs(ctx context.Context, userIDs []string) (map[string]*Scholarship, error)
 }
 
 // ApplyDiscount calculates the discounted amount.

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,8 +49,8 @@ func NewSubscription(userID string, membershipID uuid.UUID, amount decimal.Decim
 }
 
 type SubscriptionRepository interface {
-	Create(subscription *Subscription) error
-	GetByID(id uuid.UUID) (*Subscription, error)
-	GetByUserID(userID string) ([]Subscription, error)
-	Update(subscription *Subscription) error
+	Create(ctx context.Context, subscription *Subscription) error
+	GetByID(ctx context.Context, id uuid.UUID) (*Subscription, error)
+	GetByUserID(ctx context.Context, userID string) ([]Subscription, error)
+	Update(ctx context.Context, subscription *Subscription) error
 }

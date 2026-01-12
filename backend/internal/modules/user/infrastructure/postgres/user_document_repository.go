@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,14 +20,14 @@ func NewUserDocumentRepository(db *gorm.DB) *UserDocumentRepository {
 }
 
 // Create crea un nuevo documento de usuario
-func (r *UserDocumentRepository) Create(doc *domain.UserDocument) error {
-	return r.db.Create(doc).Error
+func (r *UserDocumentRepository) Create(ctx context.Context, doc *domain.UserDocument) error {
+	return r.db.WithContext(ctx).Create(doc).Error
 }
 
 // GetByID obtiene un documento por su ID
-func (r *UserDocumentRepository) GetByID(clubID string, id uuid.UUID) (*domain.UserDocument, error) {
+func (r *UserDocumentRepository) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.UserDocument, error) {
 	var doc domain.UserDocument
-	err := r.db.Where("club_id = ? AND id = ?", clubID, id).First(&doc).Error
+	err := r.db.WithContext(ctx).Where("club_id = ? AND id = ?", clubID, id).First(&doc).Error
 	if err != nil {
 		return nil, err
 	}
@@ -34,18 +35,18 @@ func (r *UserDocumentRepository) GetByID(clubID string, id uuid.UUID) (*domain.U
 }
 
 // GetByUserID obtiene todos los documentos de un usuario
-func (r *UserDocumentRepository) GetByUserID(clubID, userID string) ([]domain.UserDocument, error) {
+func (r *UserDocumentRepository) GetByUserID(ctx context.Context, clubID, userID string) ([]domain.UserDocument, error) {
 	var docs []domain.UserDocument
-	err := r.db.Where("club_id = ? AND user_id = ?", clubID, userID).
+	err := r.db.WithContext(ctx).Where("club_id = ? AND user_id = ?", clubID, userID).
 		Order("created_at DESC").
 		Find(&docs).Error
 	return docs, err
 }
 
 // GetByUserAndType obtiene un documento específico de un usuario por tipo
-func (r *UserDocumentRepository) GetByUserAndType(clubID, userID string, docType domain.DocumentType) (*domain.UserDocument, error) {
+func (r *UserDocumentRepository) GetByUserAndType(ctx context.Context, clubID, userID string, docType domain.DocumentType) (*domain.UserDocument, error) {
 	var doc domain.UserDocument
-	err := r.db.Where("club_id = ? AND user_id = ? AND type = ?", clubID, userID, docType).
+	err := r.db.WithContext(ctx).Where("club_id = ? AND user_id = ? AND type = ?", clubID, userID, docType).
 		Order("created_at DESC").
 		First(&doc).Error
 	if err != nil {
@@ -55,25 +56,25 @@ func (r *UserDocumentRepository) GetByUserAndType(clubID, userID string, docType
 }
 
 // Update actualiza un documento existente
-func (r *UserDocumentRepository) Update(doc *domain.UserDocument) error {
-	return r.db.Save(doc).Error
+func (r *UserDocumentRepository) Update(ctx context.Context, doc *domain.UserDocument) error {
+	return r.db.WithContext(ctx).Save(doc).Error
 }
 
 // Delete elimina un documento (soft delete si está configurado)
-func (r *UserDocumentRepository) Delete(clubID string, id uuid.UUID) error {
-	return r.db.Where("club_id = ? AND id = ?", clubID, id).
+func (r *UserDocumentRepository) Delete(ctx context.Context, clubID string, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Where("club_id = ? AND id = ?", clubID, id).
 		Delete(&domain.UserDocument{}).Error
 }
 
 // GetExpiringDocuments obtiene documentos que vencen en X días
-func (r *UserDocumentRepository) GetExpiringDocuments(clubID string, daysUntilExpiration int) ([]domain.UserDocument, error) {
+func (r *UserDocumentRepository) GetExpiringDocuments(ctx context.Context, clubID string, daysUntilExpiration int) ([]domain.UserDocument, error) {
 	var docs []domain.UserDocument
 
 	targetDate := time.Now().AddDate(0, 0, daysUntilExpiration)
 	startOfDay := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, targetDate.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
-	query := r.db.Where("expiration_date >= ? AND expiration_date < ?", startOfDay, endOfDay).
+	query := r.db.WithContext(ctx).Where("expiration_date >= ? AND expiration_date < ?", startOfDay, endOfDay).
 		Where("status = ?", domain.DocumentStatusValid)
 
 	if clubID != "" {
@@ -85,10 +86,10 @@ func (r *UserDocumentRepository) GetExpiringDocuments(clubID string, daysUntilEx
 }
 
 // GetExpiredDocuments obtiene documentos que ya han vencido pero aún tienen status VALID
-func (r *UserDocumentRepository) GetExpiredDocuments(clubID string) ([]domain.UserDocument, error) {
+func (r *UserDocumentRepository) GetExpiredDocuments(ctx context.Context, clubID string) ([]domain.UserDocument, error) {
 	var docs []domain.UserDocument
 
-	query := r.db.Where("expiration_date < ?", time.Now()).
+	query := r.db.WithContext(ctx).Where("expiration_date < ?", time.Now()).
 		Where("status = ?", domain.DocumentStatusValid)
 
 	if clubID != "" {
@@ -100,18 +101,18 @@ func (r *UserDocumentRepository) GetExpiredDocuments(clubID string) ([]domain.Us
 }
 
 // GetAllByType obtiene todos los documentos de un tipo específico
-func (r *UserDocumentRepository) GetAllByType(clubID string, docType domain.DocumentType) ([]domain.UserDocument, error) {
+func (r *UserDocumentRepository) GetAllByType(ctx context.Context, clubID string, docType domain.DocumentType) ([]domain.UserDocument, error) {
 	var docs []domain.UserDocument
-	err := r.db.Where("club_id = ? AND type = ?", clubID, docType).
+	err := r.db.WithContext(ctx).Where("club_id = ? AND type = ?", clubID, docType).
 		Order("created_at DESC").
 		Find(&docs).Error
 	return docs, err
 }
 
 // GetPendingValidation obtiene todos los documentos pendientes de validación
-func (r *UserDocumentRepository) GetPendingValidation(clubID string) ([]domain.UserDocument, error) {
+func (r *UserDocumentRepository) GetPendingValidation(ctx context.Context, clubID string) ([]domain.UserDocument, error) {
 	var docs []domain.UserDocument
-	err := r.db.Where("club_id = ? AND status = ?", clubID, domain.DocumentStatusPending).
+	err := r.db.WithContext(ctx).Where("club_id = ? AND status = ?", clubID, domain.DocumentStatusPending).
 		Order("created_at ASC").
 		Find(&docs).Error
 	return docs, err

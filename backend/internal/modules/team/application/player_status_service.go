@@ -70,7 +70,7 @@ func (s *PlayerStatusService) GetPlayerStatus(ctx context.Context, clubID, userI
 	}
 
 	// 2. Estado Médico (desde UserDocuments)
-	docs, err := s.documentRepo.GetByUserID(clubID, userID)
+	docs, err := s.documentRepo.GetByUserID(ctx, clubID, userID)
 	if err == nil {
 		hasValidEMMAC := false
 		for _, doc := range docs {
@@ -103,7 +103,7 @@ func (s *PlayerStatusService) GetPlayerStatus(ctx context.Context, clubID, userI
 	}
 
 	// 3. Tasa de Asistencia (último mes)
-	flags.AttendanceRate = s.calculateAttendanceRate(clubID, userID)
+	flags.AttendanceRate = s.calculateAttendanceRate(ctx, clubID, userID)
 
 	// 4. Regla de Inhabilitación
 	flags.IsInhabilitado = flags.FinancialStatus == "DEBTOR" ||
@@ -118,7 +118,7 @@ func (s *PlayerStatusService) GetTeamPlayersWithStatus(ctx context.Context, club
 
 	for _, userID := range userIDs {
 		// Obtener usuario
-		user, err := s.userRepo.GetByID(clubID, userID)
+		user, err := s.userRepo.GetByID(ctx, clubID, userID)
 		if err != nil {
 			continue // Skip si no se encuentra el usuario
 		}
@@ -145,13 +145,13 @@ func (s *PlayerStatusService) GetTeamPlayersWithStatus(ctx context.Context, club
 }
 
 // calculateAttendanceRate calcula el porcentaje de asistencia del último mes
-func (s *PlayerStatusService) calculateAttendanceRate(clubID, userID string) float64 {
+func (s *PlayerStatusService) calculateAttendanceRate(ctx context.Context, clubID, userID string) float64 {
 	// Calcular rango del último mes
 	now := time.Now()
 	oneMonthAgo := now.AddDate(0, -1, 0)
 
 	// Consultar estadísticas reales desde el repositorio
-	present, total, err := s.attendanceRepo.GetAttendanceStats(clubID, userID, oneMonthAgo, now)
+	present, total, err := s.attendanceRepo.GetAttendanceStats(ctx, clubID, userID, oneMonthAgo, now)
 	if err != nil {
 		// En caso de error, retornar 0 (desconocido)
 		return 0.0

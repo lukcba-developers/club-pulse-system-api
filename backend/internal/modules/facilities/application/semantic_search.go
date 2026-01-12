@@ -1,6 +1,8 @@
 package application
 
 import (
+	"context"
+
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/embedding"
 )
@@ -27,7 +29,7 @@ func NewSemanticSearchUseCase(repo domain.FacilityRepository) *SemanticSearchUse
 
 // Search performs a semantic search for facilities matching the query
 // Example queries: "canchas techadas para lluvia", "piscina climatizada", "tenis noche"
-func (uc *SemanticSearchUseCase) Search(clubID, query string, limit int) ([]*SemanticSearchResult, error) {
+func (uc *SemanticSearchUseCase) Search(ctx context.Context, clubID, query string, limit int) ([]*SemanticSearchResult, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -36,7 +38,7 @@ func (uc *SemanticSearchUseCase) Search(clubID, query string, limit int) ([]*Sem
 	queryEmbedding := uc.embedder.GenerateEmbedding(query)
 
 	// Search in database using pgvector
-	results, err := uc.repo.SemanticSearch(clubID, queryEmbedding, limit)
+	results, err := uc.repo.SemanticSearch(ctx, clubID, queryEmbedding, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +56,7 @@ func (uc *SemanticSearchUseCase) Search(clubID, query string, limit int) ([]*Sem
 }
 
 // GenerateAndStoreEmbedding generates an embedding for a facility and stores it
-func (uc *SemanticSearchUseCase) GenerateAndStoreEmbedding(facility *domain.Facility) error {
+func (uc *SemanticSearchUseCase) GenerateAndStoreEmbedding(ctx context.Context, facility *domain.Facility) error {
 	// Build text from facility data for embedding
 	text := buildFacilityText(facility)
 
@@ -62,19 +64,19 @@ func (uc *SemanticSearchUseCase) GenerateAndStoreEmbedding(facility *domain.Faci
 	emb := uc.embedder.GenerateEmbedding(text)
 
 	// Store in database
-	return uc.repo.UpdateEmbedding(facility.ID, emb)
+	return uc.repo.UpdateEmbedding(ctx, facility.ID, emb)
 }
 
 // GenerateAllEmbeddings generates embeddings for all facilities (batch operation)
-func (uc *SemanticSearchUseCase) GenerateAllEmbeddings(clubID string) (int, error) {
-	facilities, err := uc.repo.List(clubID, 1000, 0)
+func (uc *SemanticSearchUseCase) GenerateAllEmbeddings(ctx context.Context, clubID string) (int, error) {
+	facilities, err := uc.repo.List(ctx, clubID, 1000, 0)
 	if err != nil {
 		return 0, err
 	}
 
 	count := 0
 	for _, fac := range facilities {
-		if err := uc.GenerateAndStoreEmbedding(fac); err != nil {
+		if err := uc.GenerateAndStoreEmbedding(ctx, fac); err != nil {
 			// Log error but continue with other facilities
 			continue
 		}

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -58,10 +59,10 @@ func (UserModel) TableName() string {
 	return "users"
 }
 
-func (r *PostgresUserRepository) GetByID(clubID, id string) (*domain.User, error) {
+func (r *PostgresUserRepository) GetByID(ctx context.Context, clubID, id string) (*domain.User, error) {
 	var model UserModel
 	// Preload Stats and Wallet
-	result := r.db.Preload("Stats").Preload("Wallet").Where("id = ? AND club_id = ?", id, clubID).First(&model)
+	result := r.db.WithContext(ctx).Preload("Stats").Preload("Wallet").Where("id = ? AND club_id = ?", id, clubID).First(&model)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil // Or specific domain error
@@ -92,7 +93,7 @@ func (r *PostgresUserRepository) GetByID(clubID, id string) (*domain.User, error
 	}, nil
 }
 
-func (r *PostgresUserRepository) Update(user *domain.User) error {
+func (r *PostgresUserRepository) Update(ctx context.Context, user *domain.User) error {
 	// We only update fields allowed by this module (e.g. Name, DoB, Preferences).
 	updates := map[string]interface{}{
 		"name":       user.Name,
@@ -128,18 +129,18 @@ func (r *PostgresUserRepository) Update(user *domain.User) error {
 
 	// Defensive: Ensure we only update the user belonging to this club
 	// (Assuming user struct has ID and ClubID set correctly by the UseCase)
-	result := r.db.Model(&UserModel{}).Where("id = ? AND club_id = ?", user.ID, user.ClubID).Updates(updates)
+	result := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ? AND club_id = ?", user.ID, user.ClubID).Updates(updates)
 
 	return result.Error
 }
 
-func (r *PostgresUserRepository) Delete(clubID, id string) error {
-	return r.db.Delete(&UserModel{}, "id = ? AND club_id = ?", id, clubID).Error
+func (r *PostgresUserRepository) Delete(ctx context.Context, clubID, id string) error {
+	return r.db.WithContext(ctx).Delete(&UserModel{}, "id = ? AND club_id = ?", id, clubID).Error
 }
 
-func (r *PostgresUserRepository) List(clubID string, limit, offset int, filters map[string]interface{}) ([]domain.User, error) {
+func (r *PostgresUserRepository) List(ctx context.Context, clubID string, limit, offset int, filters map[string]interface{}) ([]domain.User, error) {
 	var models []UserModel
-	query := r.db.Model(&UserModel{}).Where("club_id = ?", clubID).Limit(limit).Offset(offset)
+	query := r.db.WithContext(ctx).Model(&UserModel{}).Where("club_id = ?", clubID).Limit(limit).Offset(offset)
 
 	if search, ok := filters["search"].(string); ok && search != "" {
 		// PostgreSQL ILIKE
@@ -178,12 +179,12 @@ func (r *PostgresUserRepository) List(clubID string, limit, offset int, filters 
 	}
 	return users, nil
 }
-func (r *PostgresUserRepository) ListByIDs(clubID string, ids []string) ([]domain.User, error) {
+func (r *PostgresUserRepository) ListByIDs(ctx context.Context, clubID string, ids []string) ([]domain.User, error) {
 	if len(ids) == 0 {
 		return []domain.User{}, nil
 	}
 	var models []UserModel
-	if err := r.db.Where("id IN ? AND club_id = ?", ids, clubID).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id IN ? AND club_id = ?", ids, clubID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 
@@ -209,9 +210,9 @@ func (r *PostgresUserRepository) ListByIDs(clubID string, ids []string) ([]domai
 	return users, nil
 }
 
-func (r *PostgresUserRepository) FindChildren(clubID, parentID string) ([]domain.User, error) {
+func (r *PostgresUserRepository) FindChildren(ctx context.Context, clubID, parentID string) ([]domain.User, error) {
 	var models []UserModel
-	result := r.db.Where("parent_id = ? AND club_id = ?", parentID, clubID).Find(&models)
+	result := r.db.WithContext(ctx).Where("parent_id = ? AND club_id = ?", parentID, clubID).Find(&models)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -237,7 +238,7 @@ func (r *PostgresUserRepository) FindChildren(clubID, parentID string) ([]domain
 	return users, nil
 }
 
-func (r *PostgresUserRepository) Create(user *domain.User) error {
+func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) error {
 	model := UserModel{
 		ID:                user.ID,
 		Name:              user.Name,
@@ -284,16 +285,16 @@ func (r *PostgresUserRepository) Create(user *domain.User) error {
 	// Update: also need to set ClubID
 	model.ClubID = user.ClubID
 
-	return r.db.Create(&model).Error
+	return r.db.WithContext(ctx).Create(&model).Error
 }
 
-func (r *PostgresUserRepository) CreateIncident(incident *domain.IncidentLog) error {
-	return r.db.Create(incident).Error
+func (r *PostgresUserRepository) CreateIncident(ctx context.Context, incident *domain.IncidentLog) error {
+	return r.db.WithContext(ctx).Create(incident).Error
 }
 
-func (r *PostgresUserRepository) GetByEmail(email string) (*domain.User, error) {
+func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var model UserModel
-	result := r.db.Where("email = ?", email).First(&model)
+	result := r.db.WithContext(ctx).Where("email = ?", email).First(&model)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -321,8 +322,8 @@ func (r *PostgresUserRepository) GetByEmail(email string) (*domain.User, error) 
 
 // AnonymizeForGDPR implements GDPR Article 17 - Right to Erasure
 // Instead of soft-delete, it anonymizes personal data and removes sensitive documents
-func (r *PostgresUserRepository) AnonymizeForGDPR(clubID, id string) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
+func (r *PostgresUserRepository) AnonymizeForGDPR(ctx context.Context, clubID, id string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. Check user exists
 		var user UserModel
 		if err := tx.Where("id = ? AND club_id = ?", id, clubID).First(&user).Error; err != nil {

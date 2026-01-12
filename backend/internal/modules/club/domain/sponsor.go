@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,7 +41,7 @@ type AdPlacement struct {
 }
 
 type SponsorRepository interface {
-	CreateSponsor(sponsor *Sponsor) error
-	CreateAdPlacement(ad *AdPlacement) error
-	GetActiveAds(clubID string) ([]AdPlacement, error)
+	CreateSponsor(ctx context.Context, sponsor *Sponsor) error
+	CreateAdPlacement(ctx context.Context, ad *AdPlacement) error
+	GetActiveAds(ctx context.Context, clubID string) ([]AdPlacement, error)
 }

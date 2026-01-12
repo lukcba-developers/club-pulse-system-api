@@ -35,7 +35,7 @@ func NewClubUseCases(
 
 // --- News Management ---
 
-func (uc *ClubUseCases) PublishNews(clubID, title, content, imageURL string, notify bool) (*domain.News, error) {
+func (uc *ClubUseCases) PublishNews(ctx context.Context, clubID, title, content, imageURL string, notify bool) (*domain.News, error) {
 	news := &domain.News{
 		ClubID:    clubID,
 		Title:     title,
@@ -46,7 +46,7 @@ func (uc *ClubUseCases) PublishNews(clubID, title, content, imageURL string, not
 		UpdatedAt: time.Now(),
 	}
 
-	if err := uc.newsRepo.CreateNews(news); err != nil {
+	if err := uc.newsRepo.CreateNews(ctx, news); err != nil {
 		return nil, err
 	}
 
@@ -54,7 +54,7 @@ func (uc *ClubUseCases) PublishNews(clubID, title, content, imageURL string, not
 		// Broadcast Notification Async with restricted concurrency
 		go func() {
 			bgCtx := context.Background()
-			emails, err := uc.clubRepo.GetMemberEmails(clubID)
+			emails, err := uc.clubRepo.GetMemberEmails(bgCtx, clubID)
 			if err != nil {
 				// In production, use a proper logger
 				return
@@ -91,19 +91,19 @@ func (uc *ClubUseCases) PublishNews(clubID, title, content, imageURL string, not
 	return news, nil
 }
 
-func (uc *ClubUseCases) GetPublicNews(slug string) ([]domain.News, error) {
-	club, err := uc.clubRepo.GetBySlug(slug)
+func (uc *ClubUseCases) GetPublicNews(ctx context.Context, slug string) ([]domain.News, error) {
+	club, err := uc.clubRepo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	return uc.newsRepo.GetPublicNewsByClub(club.ID, 10, 0)
+	return uc.newsRepo.GetPublicNewsByClub(ctx, club.ID, 10, 0)
 }
 
 // ... (Sponsor methods below)
 
 // --- Club Management (Super Admin) ---
 
-func (uc *ClubUseCases) CreateClub(name, slug, domainStr, settings string) (*domain.Club, error) {
+func (uc *ClubUseCases) CreateClub(ctx context.Context, name, slug, domainStr, settings string) (*domain.Club, error) {
 	club := &domain.Club{
 		ID:        uuid.New().String(),
 		Name:      name,
@@ -114,26 +114,26 @@ func (uc *ClubUseCases) CreateClub(name, slug, domainStr, settings string) (*dom
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	if err := uc.clubRepo.Create(club); err != nil {
+	if err := uc.clubRepo.Create(ctx, club); err != nil {
 		return nil, err
 	}
 	return club, nil
 }
 
-func (uc *ClubUseCases) GetClub(id string) (*domain.Club, error) {
-	return uc.clubRepo.GetByID(id)
+func (uc *ClubUseCases) GetClub(ctx context.Context, id string) (*domain.Club, error) {
+	return uc.clubRepo.GetByID(ctx, id)
 }
 
-func (uc *ClubUseCases) GetClubBySlug(slug string) (*domain.Club, error) {
-	return uc.clubRepo.GetBySlug(slug)
+func (uc *ClubUseCases) GetClubBySlug(ctx context.Context, slug string) (*domain.Club, error) {
+	return uc.clubRepo.GetBySlug(ctx, slug)
 }
 
-func (uc *ClubUseCases) ListClubs(limit, offset int) ([]domain.Club, error) {
-	return uc.clubRepo.List(limit, offset)
+func (uc *ClubUseCases) ListClubs(ctx context.Context, limit, offset int) ([]domain.Club, error) {
+	return uc.clubRepo.List(ctx, limit, offset)
 }
 
-func (uc *ClubUseCases) UpdateClub(id string, name, domainStr, settings string, status domain.ClubStatus) (*domain.Club, error) {
-	club, err := uc.clubRepo.GetByID(id)
+func (uc *ClubUseCases) UpdateClub(ctx context.Context, id string, name, domainStr, settings string, status domain.ClubStatus) (*domain.Club, error) {
+	club, err := uc.clubRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -155,19 +155,19 @@ func (uc *ClubUseCases) UpdateClub(id string, name, domainStr, settings string, 
 	}
 	club.UpdatedAt = time.Now()
 
-	if err := uc.clubRepo.Update(club); err != nil {
+	if err := uc.clubRepo.Update(ctx, club); err != nil {
 		return nil, err
 	}
 	return club, nil
 }
 
-func (uc *ClubUseCases) DeleteClub(id string) error {
-	return uc.clubRepo.Delete(id)
+func (uc *ClubUseCases) DeleteClub(ctx context.Context, id string) error {
+	return uc.clubRepo.Delete(ctx, id)
 }
 
 // --- Sponsor Management ---
 
-func (uc *ClubUseCases) RegisterSponsor(clubID, name, contactInfo, logoURL string) (*domain.Sponsor, error) {
+func (uc *ClubUseCases) RegisterSponsor(ctx context.Context, clubID, name, contactInfo, logoURL string) (*domain.Sponsor, error) {
 	sponsor := &domain.Sponsor{
 		ID:          uuid.New(),
 		ClubID:      clubID,
@@ -178,13 +178,13 @@ func (uc *ClubUseCases) RegisterSponsor(clubID, name, contactInfo, logoURL strin
 		UpdatedAt:   time.Now(),
 	}
 
-	if err := uc.sponsorRepo.CreateSponsor(sponsor); err != nil {
+	if err := uc.sponsorRepo.CreateSponsor(ctx, sponsor); err != nil {
 		return nil, err
 	}
 	return sponsor, nil
 }
 
-func (uc *ClubUseCases) CreateAdPlacement(sponsorID string, locationType domain.LocationType, detail string, endDate time.Time, amount float64) (*domain.AdPlacement, error) {
+func (uc *ClubUseCases) CreateAdPlacement(ctx context.Context, sponsorID string, locationType domain.LocationType, detail string, endDate time.Time, amount float64) (*domain.AdPlacement, error) {
 	sponsorUUID, err := uuid.Parse(sponsorID)
 	if err != nil {
 		return nil, err
@@ -202,12 +202,12 @@ func (uc *ClubUseCases) CreateAdPlacement(sponsorID string, locationType domain.
 		UpdatedAt:      time.Now(),
 	}
 
-	if err := uc.sponsorRepo.CreateAdPlacement(ad); err != nil {
+	if err := uc.sponsorRepo.CreateAdPlacement(ctx, ad); err != nil {
 		return nil, err
 	}
 	return ad, nil
 }
 
-func (uc *ClubUseCases) GetActiveAds(clubID string) ([]domain.AdPlacement, error) {
-	return uc.sponsorRepo.GetActiveAds(clubID)
+func (uc *ClubUseCases) GetActiveAds(ctx context.Context, clubID string) ([]domain.AdPlacement, error) {
+	return uc.sponsorRepo.GetActiveAds(ctx, clubID)
 }

@@ -64,7 +64,7 @@ func NewBookingUseCases(
 }
 
 // CreateBooking orchestrates the booking creation flow: Validate -> Conflict Check -> Persist -> Notify.
-func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*bookingDomain.Booking, error) {
+func (uc *BookingUseCases) CreateBooking(ctx context.Context, clubID string, dto CreateBookingDTO) (*bookingDomain.Booking, error) {
 	// 1. Parsing & Basic Validation
 	userID, facilityID, err := parseBookingIDs(dto)
 	if err != nil {
@@ -76,13 +76,13 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 	}
 
 	// 2. Business Rule Validation (Facility Status & Conflicts)
-	facility, err := uc.validateBookingRules(clubID, dto.FacilityID, facilityID, dto.StartTime, dto.EndTime)
+	facility, err := uc.validateBookingRules(ctx, clubID, dto.FacilityID, facilityID, dto.StartTime, dto.EndTime)
 	if err != nil {
 		return nil, err
 	}
 
 	// 2.1. Validate User Medical Certificate
-	if err := uc.validateUserHealth(clubID, userID.String()); err != nil {
+	if err := uc.validateUserHealth(ctx, clubID, userID.String()); err != nil {
 		return nil, err
 	}
 
@@ -119,7 +119,7 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 	}
 
 	// 4. Persistence
-	if err := uc.repo.Create(booking); err != nil {
+	if err := uc.repo.Create(ctx, booking); err != nil {
 		return nil, err
 	}
 
@@ -132,19 +132,19 @@ func (uc *BookingUseCases) CreateBooking(clubID string, dto CreateBookingDTO) (*
 }
 
 // ListBookings retrieves bookings with optional filtering.
-func (uc *BookingUseCases) ListBookings(clubID string, userID string) ([]bookingDomain.Booking, error) {
+func (uc *BookingUseCases) ListBookings(ctx context.Context, clubID string, userID string) ([]bookingDomain.Booking, error) {
 	filter := make(map[string]interface{})
 	if userID != "" {
 		if uid, err := uuid.Parse(userID); err == nil {
 			filter["user_id"] = uid
 		}
 	}
-	return uc.repo.List(clubID, filter)
+	return uc.repo.List(ctx, clubID, filter)
 }
 
 // ListClubBookings retrieves all bookings for a club, typically for Admin dashboard.
 // Supports filtering by facility and date range.
-func (uc *BookingUseCases) ListClubBookings(clubID string, facilityID string, from, to *time.Time) ([]bookingDomain.Booking, error) {
+func (uc *BookingUseCases) ListClubBookings(ctx context.Context, clubID string, facilityID string, from, to *time.Time) ([]bookingDomain.Booking, error) {
 	filter := make(map[string]interface{})
 
 	if facilityID != "" {
@@ -153,17 +153,17 @@ func (uc *BookingUseCases) ListClubBookings(clubID string, facilityID string, fr
 		}
 	}
 
-	return uc.repo.ListAll(clubID, filter, from, to)
+	return uc.repo.ListAll(ctx, clubID, filter, from, to)
 }
 
 // CancelBooking handles cancellation with authorization check.
-func (uc *BookingUseCases) CancelBooking(clubID, bookingID, requestingUserID string) error {
+func (uc *BookingUseCases) CancelBooking(ctx context.Context, clubID, bookingID, requestingUserID string) error {
 	bID, err := uuid.Parse(bookingID)
 	if err != nil {
 		return errors.New("invalid booking id")
 	}
 
-	booking, err := uc.repo.GetByID(clubID, bID)
+	booking, err := uc.repo.GetByID(ctx, clubID, bID)
 	if err != nil {
 		return err
 	}
@@ -179,17 +179,16 @@ func (uc *BookingUseCases) CancelBooking(clubID, bookingID, requestingUserID str
 	booking.Status = bookingDomain.BookingStatusCancelled
 	booking.UpdatedAt = time.Now()
 
-	if err := uc.repo.Update(booking); err != nil {
+	if err := uc.repo.Update(ctx, booking); err != nil {
 		return err
 	}
 
 	// Refund Logic (if reference is paid)
 	if uc.refundSvc != nil {
-		_ = uc.refundSvc.Refund(context.Background(), clubID, booking.ID, "BOOKING")
+		_ = uc.refundSvc.Refund(ctx, clubID, booking.ID, "BOOKING")
 	}
 
 	// Waitlist Logic
-	ctx := context.Background()
 	next, err := uc.repo.GetNextInLine(ctx, clubID, booking.FacilityID, booking.StartTime)
 	if err == nil && next != nil {
 		_ = uc.notifier.Send(ctx, service.Notification{
@@ -205,7 +204,7 @@ func (uc *BookingUseCases) CancelBooking(clubID, bookingID, requestingUserID str
 
 // OnPaymentStatusChanged reacts to payment updates to confirm or handle failed bookings.
 func (uc *BookingUseCases) OnPaymentStatusChanged(ctx context.Context, clubID string, referenceID uuid.UUID, status paymentDomain.PaymentStatus) error {
-	booking, err := uc.repo.GetByID(clubID, referenceID)
+	booking, err := uc.repo.GetByID(ctx, clubID, referenceID)
 	if err != nil {
 		return err
 	}
@@ -223,13 +222,13 @@ func (uc *BookingUseCases) OnPaymentStatusChanged(ctx context.Context, clubID st
 	}
 
 	booking.UpdatedAt = time.Now()
-	return uc.repo.Update(booking)
+	return uc.repo.Update(ctx, booking)
 }
 
 // awardBookingXP grants XP to a user for completing a booking.
 // Runs asynchronously to not block the payment flow.
 func (uc *BookingUseCases) awardBookingXP(clubID, userID string) {
-	user, err := uc.userRepo.GetByID(clubID, userID)
+	user, err := uc.userRepo.GetByID(context.Background(), clubID, userID)
 	if err != nil || user == nil {
 		return
 	}
@@ -280,7 +279,7 @@ func (uc *BookingUseCases) awardBookingXP(clubID, userID string) {
 	}
 
 	user.Stats.UpdatedAt = time.Now()
-	_ = uc.userRepo.Update(user)
+	_ = uc.userRepo.Update(context.Background(), user)
 }
 
 // isFirstBookingOfMonth checks if this is the user's first booking this month.
@@ -296,7 +295,7 @@ func (uc *BookingUseCases) isFirstBookingOfMonth(clubID, userID string) bool {
 	filter := map[string]interface{}{
 		"user_id": uid,
 	}
-	bookings, err := uc.repo.ListAll(clubID, filter, &startOfMonth, &now)
+	bookings, err := uc.repo.ListAll(context.Background(), clubID, filter, &startOfMonth, &now)
 	if err != nil {
 		return false
 	}
@@ -349,7 +348,7 @@ func pow(base, exp float64) float64 {
 }
 
 // GetAvailability calculates available slots based on business hours and existing bookings.
-func (uc *BookingUseCases) GetAvailability(clubID, facilityID string, date time.Time) ([]map[string]interface{}, error) {
+func (uc *BookingUseCases) GetAvailability(ctx context.Context, clubID, facilityID string, date time.Time) ([]map[string]interface{}, error) {
 	facUUID, err := uuid.Parse(facilityID)
 	if err != nil {
 		return nil, errors.New("invalid facility id")
@@ -357,7 +356,7 @@ func (uc *BookingUseCases) GetAvailability(clubID, facilityID string, date time.
 
 	// 1. Fetch dependencies (Facility & Existing Bookings)
 	// Suggestion: Use errgroup here for parallel fetching in High Performance scenarios.
-	facility, err := uc.facilityRepo.GetByID(clubID, facilityID)
+	facility, err := uc.facilityRepo.GetByID(ctx, clubID, facilityID)
 	if err != nil {
 		return nil, err
 	}
@@ -365,13 +364,13 @@ func (uc *BookingUseCases) GetAvailability(clubID, facilityID string, date time.
 		return nil, errors.New("facility not found")
 	}
 
-	bookings, err := uc.repo.ListByFacilityAndDate(clubID, facUUID, date)
+	bookings, err := uc.repo.ListByFacilityAndDate(ctx, clubID, facUUID, date)
 	if err != nil {
 		return nil, err
 	}
 
 	// 1.5. OPTIMIZATION: Fetch Maintenance Tasks Upfront (Avoid N+1)
-	allMaintenance, err := uc.facilityRepo.ListMaintenanceByFacility(facilityID)
+	allMaintenance, err := uc.facilityRepo.ListMaintenanceByFacility(ctx, facilityID)
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +422,7 @@ func (uc *BookingUseCases) GetAvailability(clubID, facilityID string, date time.
 }
 
 // CreateRecurringRule creates a pattern for future bookings.
-func (uc *BookingUseCases) CreateRecurringRule(clubID string, dto CreateRecurringRuleDTO) (*bookingDomain.RecurringRule, error) {
+func (uc *BookingUseCases) CreateRecurringRule(ctx context.Context, clubID string, dto CreateRecurringRuleDTO) (*bookingDomain.RecurringRule, error) {
 	facID, err := uuid.Parse(dto.FacilityID)
 	if err != nil {
 		return nil, errors.New("invalid facility id")
@@ -438,6 +437,14 @@ func (uc *BookingUseCases) CreateRecurringRule(clubID string, dto CreateRecurrin
 		return nil, errors.New("invalid end date format (YYYY-MM-DD)")
 	}
 
+	if endD.Before(startD) {
+		return nil, errors.New("end date must be after start date")
+	}
+
+	if !dto.EndTime.After(dto.StartTime) {
+		return nil, errors.New("end time must be after start time")
+	}
+
 	rule := &bookingDomain.RecurringRule{
 		ID:         uuid.New(),
 		FacilityID: facID,
@@ -450,7 +457,7 @@ func (uc *BookingUseCases) CreateRecurringRule(clubID string, dto CreateRecurrin
 		EndDate:    endD,
 	}
 
-	if err := uc.recurringRepo.Create(context.Background(), rule); err != nil {
+	if err := uc.recurringRepo.Create(ctx, rule); err != nil {
 		return nil, err
 	}
 
@@ -472,9 +479,9 @@ func (uc *BookingUseCases) GenerateBookingsFromRules(ctx context.Context, clubID
 		bookings := uc.calculateRecurringBookings(rule, horizon)
 		for _, bk := range bookings {
 			// Check conflict before creation (Double-check safety)
-			conflict, _ := uc.repo.HasTimeConflict(clubID, bk.FacilityID, bk.StartTime, bk.EndTime)
+			conflict, _ := uc.repo.HasTimeConflict(ctx, clubID, bk.FacilityID, bk.StartTime, bk.EndTime)
 			if !conflict {
-				if err := uc.repo.Create(&bk); err == nil {
+				if err := uc.repo.Create(ctx, &bk); err == nil {
 					generatedCount++
 				}
 			}
@@ -497,9 +504,9 @@ func parseBookingIDs(dto CreateBookingDTO) (uuid.UUID, uuid.UUID, error) {
 	return usrID, facID, nil
 }
 
-func (uc *BookingUseCases) validateBookingRules(clubID, facilityIDStr string, facilityID uuid.UUID, start, end time.Time) (*facilityDomain.Facility, error) {
+func (uc *BookingUseCases) validateBookingRules(ctx context.Context, clubID, facilityIDStr string, facilityID uuid.UUID, start, end time.Time) (*facilityDomain.Facility, error) {
 	// 1. Check Facility Existence & Status
-	facility, err := uc.facilityRepo.GetByID(clubID, facilityIDStr)
+	facility, err := uc.facilityRepo.GetByID(ctx, clubID, facilityIDStr)
 	if err != nil {
 		return nil, err
 	}
@@ -511,7 +518,7 @@ func (uc *BookingUseCases) validateBookingRules(clubID, facilityIDStr string, fa
 	}
 
 	// 2. Check Existing Bookings
-	conflict, err := uc.repo.HasTimeConflict(clubID, facilityID, start, end)
+	conflict, err := uc.repo.HasTimeConflict(ctx, clubID, facilityID, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -520,7 +527,7 @@ func (uc *BookingUseCases) validateBookingRules(clubID, facilityIDStr string, fa
 	}
 
 	// 3. Check Maintenance Schedules
-	maintConflict, err := uc.facilityRepo.HasConflict(clubID, facilityIDStr, start, end)
+	maintConflict, err := uc.facilityRepo.HasConflict(ctx, clubID, facilityIDStr, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -531,8 +538,8 @@ func (uc *BookingUseCases) validateBookingRules(clubID, facilityIDStr string, fa
 	return facility, nil
 }
 
-func (uc *BookingUseCases) validateUserHealth(clubID, userID string) error {
-	user, err := uc.userRepo.GetByID(clubID, userID)
+func (uc *BookingUseCases) validateUserHealth(ctx context.Context, clubID, userID string) error {
+	user, err := uc.userRepo.GetByID(ctx, clubID, userID)
 	if err != nil {
 		return err
 	}
@@ -637,7 +644,7 @@ type JoinWaitlistDTO struct {
 	TargetDate time.Time `json:"target_date" binding:"required"`
 }
 
-func (uc *BookingUseCases) JoinWaitlist(clubID string, dto JoinWaitlistDTO) (*bookingDomain.Waitlist, error) {
+func (uc *BookingUseCases) JoinWaitlist(ctx context.Context, clubID string, dto JoinWaitlistDTO) (*bookingDomain.Waitlist, error) {
 	uid, err := uuid.Parse(dto.UserID)
 	if err != nil {
 		return nil, errors.New("invalid user id")
@@ -658,7 +665,7 @@ func (uc *BookingUseCases) JoinWaitlist(clubID string, dto JoinWaitlistDTO) (*bo
 		UpdatedAt:  time.Now(),
 	}
 
-	if err := uc.repo.AddToWaitlist(context.Background(), entry); err != nil {
+	if err := uc.repo.AddToWaitlist(ctx, entry); err != nil {
 		return nil, err
 	}
 	return entry, nil

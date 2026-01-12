@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,7 +32,7 @@ func (a *ChampionshipBookingAdapter) CreateSystemBooking(clubID, courtID string,
 	}
 
 	// CreateBooking(clubID string, dto CreateBookingDTO)
-	booking, err := a.bookingUC.CreateBooking(clubID, dto)
+	booking, err := a.bookingUC.CreateBooking(context.Background(), clubID, dto)
 	if err != nil {
 		return nil, err
 	}

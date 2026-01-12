@@ -52,6 +52,9 @@ func InitInfrastructure() (*Infrastructure, error) {
 	if err := db.AutoMigrate(&userDomain.User{}); err != nil {
 		logger.Error(fmt.Sprintf("Failed to migrate users table: %v", err))
 	}
+	if err := db.AutoMigrate(&userDomain.UserStats{}); err != nil {
+		logger.Error(fmt.Sprintf("Failed to migrate user_stats table: %v", err))
+	}
 
 	return &Infrastructure{
 		DB:         db,

@@ -157,7 +157,7 @@ func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID 
 		userIDs = append(userIDs, m.UserID.String())
 	}
 
-	scholarships, err := uc.scholarshipRepo.ListActiveByUserIDs(userIDs)
+	scholarships, err := uc.scholarshipRepo.ListActiveByUserIDs(ctx, userIDs)
 	if err != nil {
 		return 0, err // Fail entire batch? Or log and proceed? For consistency, fail.
 	}
@@ -223,7 +223,7 @@ func (uc *MembershipUseCases) AssignScholarship(ctx context.Context, clubID stri
 		UpdatedAt:  time.Now(),
 	}
 
-	if err := uc.scholarshipRepo.Create(scholarship); err != nil {
+	if err := uc.scholarshipRepo.Create(ctx, scholarship); err != nil {
 		return nil, err
 	}
 	return scholarship, nil

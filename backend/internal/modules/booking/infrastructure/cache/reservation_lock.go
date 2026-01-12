@@ -12,7 +12,7 @@ import (
 // ReservationLock provides temporary locking for booking slots
 // This prevents "slot stealing" when a user is completing the booking process
 type ReservationLock struct {
-	redis *platformRedis.RedisClient
+	redis platformRedis.Client
 	ttl   time.Duration
 }
 

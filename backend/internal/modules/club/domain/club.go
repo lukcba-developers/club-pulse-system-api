@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -25,11 +26,11 @@ type Club struct {
 }
 
 type ClubRepository interface {
-	Create(club *Club) error
-	GetByID(id string) (*Club, error)
-	GetBySlug(slug string) (*Club, error)
-	GetMemberEmails(clubID string) ([]string, error)
-	List(limit, offset int) ([]Club, error)
-	Update(club *Club) error
-	Delete(id string) error
+	Create(ctx context.Context, club *Club) error
+	GetByID(ctx context.Context, id string) (*Club, error)
+	GetBySlug(ctx context.Context, slug string) (*Club, error)
+	GetMemberEmails(ctx context.Context, clubID string) ([]string, error)
+	List(ctx context.Context, limit, offset int) ([]Club, error)
+	Update(ctx context.Context, club *Club) error
+	Delete(ctx context.Context, id string) error
 }

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -98,23 +99,23 @@ type FacilityWithSimilarity struct {
 // Repository Interface
 
 type FacilityRepository interface {
-	Create(facility *Facility) error
-	GetByID(clubID, id string) (*Facility, error)
-	List(clubID string, limit, offset int) ([]*Facility, error)
-	Update(facility *Facility) error
+	Create(ctx context.Context, facility *Facility) error
+	GetByID(ctx context.Context, clubID, id string) (*Facility, error)
+	List(ctx context.Context, clubID string, limit, offset int) ([]*Facility, error)
+	Update(ctx context.Context, facility *Facility) error
 
 	// Maintenance Extensions
-	HasConflict(clubID, facilityID string, startTime, endTime time.Time) (bool, error)
-	ListMaintenanceByFacility(facilityID string) ([]*MaintenanceTask, error)
+	HasConflict(ctx context.Context, clubID, facilityID string, startTime, endTime time.Time) (bool, error)
+	ListMaintenanceByFacility(ctx context.Context, facilityID string) ([]*MaintenanceTask, error)
 
 	// Semantic Search Extensions
-	SemanticSearch(clubID string, embedding []float32, limit int) ([]*FacilityWithSimilarity, error)
-	UpdateEmbedding(facilityID string, embedding []float32) error
+	SemanticSearch(ctx context.Context, clubID string, embedding []float32, limit int) ([]*FacilityWithSimilarity, error)
+	UpdateEmbedding(ctx context.Context, facilityID string, embedding []float32) error
 
 	// Equipment Management
-	CreateEquipment(equipment *Equipment) error
-	GetEquipmentByID(id string) (*Equipment, error)
-	ListEquipmentByFacility(facilityID string) ([]*Equipment, error)
-	UpdateEquipment(equipment *Equipment) error
-	LoanEquipmentAtomic(loan *EquipmentLoan, equipmentID string) error
+	CreateEquipment(ctx context.Context, equipment *Equipment) error
+	GetEquipmentByID(ctx context.Context, id string) (*Equipment, error)
+	ListEquipmentByFacility(ctx context.Context, facilityID string) ([]*Equipment, error)
+	UpdateEquipment(ctx context.Context, equipment *Equipment) error
+	LoanEquipmentAtomic(ctx context.Context, loan *EquipmentLoan, equipmentID string) error
 }

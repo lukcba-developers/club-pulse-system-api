@@ -48,7 +48,7 @@ func TestSuperAdminAccess(t *testing.T) {
 	_ = db.AutoMigrate(&clubDomain.Club{}, &userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 
 	// Clear PostgreSQL cached prepared statements after schema change
-	db.Exec("DISCARD ALL")
+	// 2. Setup repos
 
 	// Repos & Services
 	cRepo := clubRepo.NewPostgresClubRepository(db)
@@ -146,7 +146,7 @@ func TestSuperAdminAccess(t *testing.T) {
 		req.Header.Set("X-Club-ID", "club-A") // Even with valid club ID
 
 		// Create mock club-A so middleware passes strict check
-		_ = cRepo.Create(&clubDomain.Club{ID: "club-A", Name: "Club A", Status: "ACTIVE"}) // Error if exists, ignore
+		_ = cRepo.Create(context.Background(), &clubDomain.Club{ID: "club-A", Name: "Club A", Status: "ACTIVE"}) // Error if exists, ignore
 
 		r.ServeHTTP(w, req)
 
@@ -171,7 +171,7 @@ func TestSuperAdminAccess(t *testing.T) {
 		createdID := createdClub["id"].(string)
 
 		// Verify DB
-		club, _ := cRepo.GetByID(createdID)
+		club, _ := cRepo.GetByID(context.Background(), createdID)
 		assert.NotNil(t, club)
 		assert.Equal(t, "New Club", club.Name)
 	})

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -48,7 +49,7 @@ func (AttendanceRecordModel) TableName() string {
 	return "attendance_records"
 }
 
-func (r *PostgresAttendanceRepository) CreateList(list *domain.AttendanceList) error {
+func (r *PostgresAttendanceRepository) CreateList(ctx context.Context, list *domain.AttendanceList) error {
 	model := AttendanceListModel{
 		ID:              list.ID,
 		ClubID:          list.ClubID,
@@ -59,12 +60,12 @@ func (r *PostgresAttendanceRepository) CreateList(list *domain.AttendanceList) e
 		CreatedAt:       list.CreatedAt,
 		UpdatedAt:       list.UpdatedAt,
 	}
-	return r.db.Create(&model).Error
+	return r.db.WithContext(ctx).Create(&model).Error
 }
 
-func (r *PostgresAttendanceRepository) GetListByID(clubID string, id uuid.UUID) (*domain.AttendanceList, error) {
+func (r *PostgresAttendanceRepository) GetListByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.AttendanceList, error) {
 	var model AttendanceListModel
-	if err := r.db.Preload("Records").First(&model, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Records").First(&model, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -73,13 +74,13 @@ func (r *PostgresAttendanceRepository) GetListByID(clubID string, id uuid.UUID) 
 	return r.mapToDomain(&model), nil
 }
 
-func (r *PostgresAttendanceRepository) GetListByGroupAndDate(clubID string, group string, date time.Time) (*domain.AttendanceList, error) {
+func (r *PostgresAttendanceRepository) GetListByGroupAndDate(ctx context.Context, clubID string, group string, date time.Time) (*domain.AttendanceList, error) {
 	var model AttendanceListModel
 	// Assuming date match matches the day.
 	// We might need strict equality or range if timestamp includes time.
 	// For simplicity, let's assume we store truncated dates or query range.
 	// Here I'll verify exact match assuming logic truncates it.
-	if err := r.db.Preload("Records").Where("group_name = ? AND date = ? AND club_id = ?", group, date, clubID).First(&model).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Records").Where("group_name = ? AND date = ? AND club_id = ?", group, date, clubID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -91,9 +92,9 @@ func (r *PostgresAttendanceRepository) GetListByGroupAndDate(clubID string, grou
 	return r.mapToDomain(&model), nil
 }
 
-func (r *PostgresAttendanceRepository) GetListByTrainingGroupAndDate(clubID string, groupID uuid.UUID, date time.Time) (*domain.AttendanceList, error) {
+func (r *PostgresAttendanceRepository) GetListByTrainingGroupAndDate(ctx context.Context, clubID string, groupID uuid.UUID, date time.Time) (*domain.AttendanceList, error) {
 	var model AttendanceListModel
-	if err := r.db.Preload("Records").Where("training_group_id = ? AND date = ? AND club_id = ?", groupID, date, clubID).First(&model).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Records").Where("training_group_id = ? AND date = ? AND club_id = ?", groupID, date, clubID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -102,7 +103,7 @@ func (r *PostgresAttendanceRepository) GetListByTrainingGroupAndDate(clubID stri
 	return r.mapToDomain(&model), nil
 }
 
-func (r *PostgresAttendanceRepository) UpsertRecord(record *domain.AttendanceRecord) error {
+func (r *PostgresAttendanceRepository) UpsertRecord(ctx context.Context, record *domain.AttendanceRecord) error {
 	model := AttendanceRecordModel{
 		ID:               record.ID,
 		AttendanceListID: record.AttendanceListID,
@@ -115,11 +116,11 @@ func (r *PostgresAttendanceRepository) UpsertRecord(record *domain.AttendanceRec
 	// But we might want unique (list_id, user_id).
 	// Let's assume ID is provided or we query first.
 	// Ideally Logic handles ID generation.
-	return r.db.Save(&model).Error
+	return r.db.WithContext(ctx).Save(&model).Error
 }
 
-func (r *PostgresAttendanceRepository) UpdateRecord(record *domain.AttendanceRecord) error {
-	return r.UpsertRecord(record)
+func (r *PostgresAttendanceRepository) UpdateRecord(ctx context.Context, record *domain.AttendanceRecord) error {
+	return r.UpsertRecord(ctx, record)
 }
 
 func (r *PostgresAttendanceRepository) mapToDomain(model *AttendanceListModel) *domain.AttendanceList {
@@ -147,10 +148,10 @@ func (r *PostgresAttendanceRepository) mapToDomain(model *AttendanceListModel) *
 }
 
 // GetAttendanceStats returns the count of present sessions (PRESENT or LATE) and total sessions for a user in a date range.
-func (r *PostgresAttendanceRepository) GetAttendanceStats(clubID, userID string, from, to time.Time) (present, total int, err error) {
+func (r *PostgresAttendanceRepository) GetAttendanceStats(ctx context.Context, clubID, userID string, from, to time.Time) (present, total int, err error) {
 	// Count total records for this user in this club within the date range
 	var totalCount int64
-	err = r.db.Table("attendance_records ar").
+	err = r.db.WithContext(ctx).Table("attendance_records ar").
 		Joins("JOIN attendance_lists al ON ar.attendance_list_id = al.id").
 		Where("al.club_id = ?", clubID).
 		Where("ar.user_id = ?", userID).
@@ -162,7 +163,7 @@ func (r *PostgresAttendanceRepository) GetAttendanceStats(clubID, userID string,
 
 	// Count present records (PRESENT or LATE)
 	var presentCount int64
-	err = r.db.Table("attendance_records ar").
+	err = r.db.WithContext(ctx).Table("attendance_records ar").
 		Joins("JOIN attendance_lists al ON ar.attendance_list_id = al.id").
 		Where("al.club_id = ?", clubID).
 		Where("ar.user_id = ?", userID).

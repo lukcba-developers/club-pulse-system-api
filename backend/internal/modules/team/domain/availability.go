@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,8 +36,8 @@ type PlayerAvailability struct {
 }
 
 type TeamRepository interface {
-	CreateMatchEvent(event *MatchEvent) error
-	GetMatchEvent(clubID, id string) (*MatchEvent, error)
-	SetPlayerAvailability(availability *PlayerAvailability) error
-	GetEventAvailabilities(clubID, eventID string) ([]PlayerAvailability, error)
+	CreateMatchEvent(ctx context.Context, event *MatchEvent) error
+	GetMatchEvent(ctx context.Context, clubID, id string) (*MatchEvent, error)
+	SetPlayerAvailability(ctx context.Context, availability *PlayerAvailability) error
+	GetEventAvailabilities(ctx context.Context, clubID, eventID string) ([]PlayerAvailability, error)
 }

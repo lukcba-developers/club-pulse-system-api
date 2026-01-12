@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,11 +45,11 @@ type OrderItem struct {
 }
 
 type StoreRepository interface {
-	CreateProduct(product *Product) error
-	GetProduct(id string) (*Product, error)
-	UpdateProduct(product *Product) error
-	ListProducts(clubID string, category string) ([]Product, error)
-	CreateOrder(order *Order) error
-	CreateOrderWithStockUpdate(order *Order, items []OrderItem) error
-	DecreaseStock(productID string, quantity int) error
+	CreateProduct(ctx context.Context, product *Product) error
+	GetProduct(ctx context.Context, id string) (*Product, error)
+	UpdateProduct(ctx context.Context, product *Product) error
+	ListProducts(ctx context.Context, clubID string, category string) ([]Product, error)
+	CreateOrder(ctx context.Context, order *Order) error
+	CreateOrderWithStockUpdate(ctx context.Context, order *Order, items []OrderItem) error
+	DecreaseStock(ctx context.Context, productID string, quantity int) error
 }

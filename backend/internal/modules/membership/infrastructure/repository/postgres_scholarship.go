@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -34,7 +35,7 @@ func (ScholarshipModel) TableName() string {
 	return "scholarships"
 }
 
-func (r *PostgresScholarshipRepository) Create(scholarship *domain.Scholarship) error {
+func (r *PostgresScholarshipRepository) Create(ctx context.Context, scholarship *domain.Scholarship) error {
 	model := ScholarshipModel{
 		ID:         scholarship.ID,
 		UserID:     scholarship.UserID,
@@ -46,12 +47,12 @@ func (r *PostgresScholarshipRepository) Create(scholarship *domain.Scholarship) 
 		CreatedAt:  scholarship.CreatedAt,
 		UpdatedAt:  scholarship.UpdatedAt,
 	}
-	return r.db.Create(&model).Error
+	return r.db.WithContext(ctx).Create(&model).Error
 }
 
-func (r *PostgresScholarshipRepository) GetByUserID(userID string) ([]*domain.Scholarship, error) {
+func (r *PostgresScholarshipRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Scholarship, error) {
 	var models []ScholarshipModel
-	if err := r.db.Where("user_id = ?", userID).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	scholarships := make([]*domain.Scholarship, len(models))
@@ -61,10 +62,10 @@ func (r *PostgresScholarshipRepository) GetByUserID(userID string) ([]*domain.Sc
 	return scholarships, nil
 }
 
-func (r *PostgresScholarshipRepository) GetActiveByUserID(userID string) (*domain.Scholarship, error) {
+func (r *PostgresScholarshipRepository) GetActiveByUserID(ctx context.Context, userID string) (*domain.Scholarship, error) {
 	var model ScholarshipModel
 	// Find first active scholarship that is either not expired or has no expiry date
-	err := r.db.Where("user_id = ? AND is_active = ?", userID, true).
+	err := r.db.WithContext(ctx).Where("user_id = ? AND is_active = ?", userID, true).
 		Where("valid_until IS NULL OR valid_until > ?", time.Now()).
 		First(&model).Error
 
@@ -77,13 +78,13 @@ func (r *PostgresScholarshipRepository) GetActiveByUserID(userID string) (*domai
 	return r.toDomain(model), nil
 }
 
-func (r *PostgresScholarshipRepository) ListActiveByUserIDs(userIDs []string) (map[string]*domain.Scholarship, error) {
+func (r *PostgresScholarshipRepository) ListActiveByUserIDs(ctx context.Context, userIDs []string) (map[string]*domain.Scholarship, error) {
 	if len(userIDs) == 0 {
 		return make(map[string]*domain.Scholarship), nil
 	}
 
 	var models []ScholarshipModel
-	err := r.db.Where("user_id IN ? AND is_active = ?", userIDs, true).
+	err := r.db.WithContext(ctx).Where("user_id IN ? AND is_active = ?", userIDs, true).
 		Where("valid_until IS NULL OR valid_until > ?", time.Now()).
 		Find(&models).Error
 

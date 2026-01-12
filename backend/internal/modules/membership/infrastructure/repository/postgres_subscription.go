@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,22 +38,22 @@ func (SubscriptionModel) TableName() string {
 	return "subscriptions"
 }
 
-func (r *PostgresSubscriptionRepository) Create(subscription *domain.Subscription) error {
+func (r *PostgresSubscriptionRepository) Create(ctx context.Context, subscription *domain.Subscription) error {
 	model := r.toModel(subscription)
-	return r.db.Create(model).Error
+	return r.db.WithContext(ctx).Create(model).Error
 }
 
-func (r *PostgresSubscriptionRepository) GetByID(id uuid.UUID) (*domain.Subscription, error) {
+func (r *PostgresSubscriptionRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Subscription, error) {
 	var model SubscriptionModel
-	if err := r.db.First(&model, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return r.toDomain(&model), nil
 }
 
-func (r *PostgresSubscriptionRepository) GetByUserID(userID string) ([]domain.Subscription, error) {
+func (r *PostgresSubscriptionRepository) GetByUserID(ctx context.Context, userID string) ([]domain.Subscription, error) {
 	var models []SubscriptionModel
-	if err := r.db.Where("user_id = ?", userID).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	var subscriptions []domain.Subscription
@@ -62,9 +63,9 @@ func (r *PostgresSubscriptionRepository) GetByUserID(userID string) ([]domain.Su
 	return subscriptions, nil
 }
 
-func (r *PostgresSubscriptionRepository) Update(subscription *domain.Subscription) error {
+func (r *PostgresSubscriptionRepository) Update(ctx context.Context, subscription *domain.Subscription) error {
 	model := r.toModel(subscription)
-	return r.db.Save(model).Error
+	return r.db.WithContext(ctx).Save(model).Error
 }
 
 func (r *PostgresSubscriptionRepository) toModel(d *domain.Subscription) *SubscriptionModel {

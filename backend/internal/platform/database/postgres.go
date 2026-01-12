@@ -23,7 +23,7 @@ func InitDB() {
 		// Use simple_protocol to disable prepared statement cache at driver level
 		// This prevents "cached plan must not change result type" errors during schema migrations
 		dsn := fmt.Sprintf(
-			"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC default_query_exec_mode=simple_protocol",
+			"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
 			getEnv("DB_HOST", "localhost"),
 			getEnv("DB_USER", "postgres"),
 			getEnv("DB_PASSWORD", "pulse_secret"),
@@ -39,8 +39,16 @@ func InitDB() {
 
 		// Retry logic for docker startup delay
 		for i := 0; i < 5; i++ {
-			DB, err = gorm.Open(postgres.Open(dsn), config)
+			log.Println("Attempting to connect to database...")
+			DB, err = gorm.Open(postgres.New(postgres.Config{
+				DSN:                  dsn,
+				PreferSimpleProtocol: true, // Disable implicit prepared statements
+			}), config)
 			if err == nil {
+				// Initialize OTel Plugin for GORM
+				// if err := DB.Use(otelgorm.NewPlugin()); err != nil {
+				// 	log.Printf("Warning: failed to use otelgorm plugin: %v", err)
+				// }
 				break
 			}
 			log.Printf("Failed to connect to database, retrying in 2 seconds... (%d/5)", i+1)

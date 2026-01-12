@@ -42,7 +42,7 @@ func (j *DocumentExpirationJob) Run() {
 
 // notifyExpiringDocuments notifica a usuarios sobre documentos próximos a vencer
 func (j *DocumentExpirationJob) notifyExpiringDocuments(days int, title string) {
-	docs, err := j.docRepo.GetExpiringDocuments("", days)
+	docs, err := j.docRepo.GetExpiringDocuments(context.Background(), "", days)
 	if err != nil {
 		log.Printf("❌ Error obteniendo documentos que vencen en %d días: %v\n", days, err)
 		return
@@ -72,7 +72,7 @@ func (j *DocumentExpirationJob) notifyExpiringDocuments(days int, title string) 
 
 // markExpiredDocuments marca documentos vencidos como EXPIRED
 func (j *DocumentExpirationJob) markExpiredDocuments() {
-	docs, err := j.docRepo.GetExpiredDocuments("")
+	docs, err := j.docRepo.GetExpiredDocuments(context.Background(), "")
 	if err != nil {
 		log.Printf("❌ Error obteniendo documentos vencidos: %v\n", err)
 		return
@@ -83,7 +83,7 @@ func (j *DocumentExpirationJob) markExpiredDocuments() {
 	for _, doc := range docs {
 		// Actualizar estado a EXPIRED
 		doc.Status = domain.DocumentStatusExpired
-		if err := j.docRepo.Update(&doc); err != nil {
+		if err := j.docRepo.Update(context.Background(), &doc); err != nil {
 			log.Printf("❌ Error actualizando documento %s: %v\n", doc.ID, err)
 			continue
 		}

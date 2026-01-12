@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/google/uuid"
@@ -13,19 +14,18 @@ type PostgresTournamentRepository struct {
 }
 
 func NewPostgresTournamentRepository(db *gorm.DB) *PostgresTournamentRepository {
-	_ = db.AutoMigrate(&domain.Tournament{}, &domain.Team{}, &domain.Match{})
 	return &PostgresTournamentRepository{db: db}
 }
 
 // --- Tournament ---
 
-func (r *PostgresTournamentRepository) CreateTournament(tournament *domain.Tournament) error {
-	return r.db.Create(tournament).Error
+func (r *PostgresTournamentRepository) CreateTournament(ctx context.Context, tournament *domain.Tournament) error {
+	return r.db.WithContext(ctx).Create(tournament).Error
 }
 
-func (r *PostgresTournamentRepository) GetTournamentByID(clubID string, id uuid.UUID) (*domain.Tournament, error) {
+func (r *PostgresTournamentRepository) GetTournamentByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Tournament, error) {
 	var tournament domain.Tournament
-	if err := r.db.Preload("Teams").Preload("Matches").First(&tournament, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Teams").Preload("Matches").First(&tournament, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -34,25 +34,25 @@ func (r *PostgresTournamentRepository) GetTournamentByID(clubID string, id uuid.
 	return &tournament, nil
 }
 
-func (r *PostgresTournamentRepository) ListTournaments(clubID string) ([]domain.Tournament, error) {
+func (r *PostgresTournamentRepository) ListTournaments(ctx context.Context, clubID string) ([]domain.Tournament, error) {
 	var tournaments []domain.Tournament
-	err := r.db.Where("club_id = ?", clubID).Find(&tournaments).Error
+	err := r.db.WithContext(ctx).Where("club_id = ?", clubID).Find(&tournaments).Error
 	return tournaments, err
 }
 
-func (r *PostgresTournamentRepository) UpdateTournament(tournament *domain.Tournament) error {
-	return r.db.Save(tournament).Error
+func (r *PostgresTournamentRepository) UpdateTournament(ctx context.Context, tournament *domain.Tournament) error {
+	return r.db.WithContext(ctx).Save(tournament).Error
 }
 
 // --- Team ---
 
-func (r *PostgresTournamentRepository) CreateTeam(team *domain.Team) error {
-	return r.db.Create(team).Error
+func (r *PostgresTournamentRepository) CreateTeam(ctx context.Context, team *domain.Team) error {
+	return r.db.WithContext(ctx).Create(team).Error
 }
 
-func (r *PostgresTournamentRepository) GetTeamByID(clubID string, id uuid.UUID) (*domain.Team, error) {
+func (r *PostgresTournamentRepository) GetTeamByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Team, error) {
 	var team domain.Team
-	if err := r.db.First(&team, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&team, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -61,25 +61,25 @@ func (r *PostgresTournamentRepository) GetTeamByID(clubID string, id uuid.UUID) 
 	return &team, nil
 }
 
-func (r *PostgresTournamentRepository) ListTeams(clubID string, tournamentID uuid.UUID) ([]domain.Team, error) {
+func (r *PostgresTournamentRepository) ListTeams(ctx context.Context, clubID string, tournamentID uuid.UUID) ([]domain.Team, error) {
 	var teams []domain.Team
-	err := r.db.Where("tournament_id = ? AND club_id = ?", tournamentID, clubID).Find(&teams).Error
+	err := r.db.WithContext(ctx).Where("tournament_id = ? AND club_id = ?", tournamentID, clubID).Find(&teams).Error
 	return teams, err
 }
 
 // --- Match ---
 
-func (r *PostgresTournamentRepository) CreateMatch(match *domain.Match) error {
-	return r.db.Create(match).Error
+func (r *PostgresTournamentRepository) CreateMatch(ctx context.Context, match *domain.Match) error {
+	return r.db.WithContext(ctx).Create(match).Error
 }
 
-func (r *PostgresTournamentRepository) UpdateMatch(match *domain.Match) error {
-	return r.db.Save(match).Error
+func (r *PostgresTournamentRepository) UpdateMatch(ctx context.Context, match *domain.Match) error {
+	return r.db.WithContext(ctx).Save(match).Error
 }
 
-func (r *PostgresTournamentRepository) GetMatchByID(clubID string, id uuid.UUID) (*domain.Match, error) {
+func (r *PostgresTournamentRepository) GetMatchByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Match, error) {
 	var match domain.Match
-	if err := r.db.First(&match, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&match, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -88,23 +88,23 @@ func (r *PostgresTournamentRepository) GetMatchByID(clubID string, id uuid.UUID)
 	return &match, nil
 }
 
-func (r *PostgresTournamentRepository) ListMatches(clubID string, tournamentID uuid.UUID) ([]domain.Match, error) {
+func (r *PostgresTournamentRepository) ListMatches(ctx context.Context, clubID string, tournamentID uuid.UUID) ([]domain.Match, error) {
 	var matches []domain.Match
-	err := r.db.Where("tournament_id = ? AND club_id = ?", tournamentID, clubID).Order("start_time asc").Find(&matches).Error
+	err := r.db.WithContext(ctx).Where("tournament_id = ? AND club_id = ?", tournamentID, clubID).Order("start_time asc").Find(&matches).Error
 	return matches, err
 }
 
 // --- Standings ---
 
-func (r *PostgresTournamentRepository) GetStandings(clubID string, tournamentID uuid.UUID) ([]domain.Standing, error) {
+func (r *PostgresTournamentRepository) GetStandings(ctx context.Context, clubID string, tournamentID uuid.UUID) ([]domain.Standing, error) {
 	// 1. Get all matches for tournament
-	matches, err := r.ListMatches(clubID, tournamentID)
+	matches, err := r.ListMatches(ctx, clubID, tournamentID)
 	if err != nil {
 		return nil, err
 	}
 
 	// 2. Get all teams to initialize map
-	teams, err := r.ListTeams(clubID, tournamentID)
+	teams, err := r.ListTeams(ctx, clubID, tournamentID)
 	if err != nil {
 		return nil, err
 	}

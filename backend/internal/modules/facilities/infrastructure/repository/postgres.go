@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -47,7 +48,7 @@ func (FacilityModel) TableName() string {
 	return "facilities"
 }
 
-func (r *PostgresFacilityRepository) Create(facility *domain.Facility) error {
+func (r *PostgresFacilityRepository) Create(ctx context.Context, facility *domain.Facility) error {
 	model := FacilityModel{
 		ID:             facility.ID,
 		Name:           facility.Name,
@@ -64,12 +65,12 @@ func (r *PostgresFacilityRepository) Create(facility *domain.Facility) error {
 		CreatedAt:      facility.CreatedAt,
 		UpdatedAt:      facility.UpdatedAt,
 	}
-	return r.db.Create(&model).Error
+	return r.db.WithContext(ctx).Create(&model).Error
 }
 
-func (r *PostgresFacilityRepository) GetByID(clubID, id string) (*domain.Facility, error) {
+func (r *PostgresFacilityRepository) GetByID(ctx context.Context, clubID, id string) (*domain.Facility, error) {
 	var model FacilityModel
-	result := r.db.Where("id = ? AND club_id = ?", id, clubID).First(&model)
+	result := r.db.WithContext(ctx).Where("id = ? AND club_id = ?", id, clubID).First(&model)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -79,9 +80,9 @@ func (r *PostgresFacilityRepository) GetByID(clubID, id string) (*domain.Facilit
 	return r.toDomain(model), nil
 }
 
-func (r *PostgresFacilityRepository) List(clubID string, limit, offset int) ([]*domain.Facility, error) {
+func (r *PostgresFacilityRepository) List(ctx context.Context, clubID string, limit, offset int) ([]*domain.Facility, error) {
 	var models []FacilityModel
-	result := r.db.Where("club_id = ?", clubID).Limit(limit).Offset(offset).Find(&models)
+	result := r.db.WithContext(ctx).Where("club_id = ?", clubID).Limit(limit).Offset(offset).Find(&models)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -93,7 +94,7 @@ func (r *PostgresFacilityRepository) List(clubID string, limit, offset int) ([]*
 	return facilities, nil
 }
 
-func (r *PostgresFacilityRepository) Update(facility *domain.Facility) error {
+func (r *PostgresFacilityRepository) Update(ctx context.Context, facility *domain.Facility) error {
 	model := FacilityModel{
 		ID:             facility.ID,
 		Name:           facility.Name,
@@ -111,7 +112,7 @@ func (r *PostgresFacilityRepository) Update(facility *domain.Facility) error {
 		UpdatedAt:      time.Now(), // Update timestamp
 	}
 	// Save updates all fields (including zero values) which is what we want for struct replacement
-	return r.db.Save(&model).Error
+	return r.db.WithContext(ctx).Save(&model).Error
 }
 
 func (r *PostgresFacilityRepository) toDomain(m FacilityModel) *domain.Facility {
@@ -218,9 +219,9 @@ func (r *PostgresFacilityRepository) GetMaintenanceByID(id string) (*domain.Main
 	}, nil
 }
 
-func (r *PostgresFacilityRepository) ListMaintenanceByFacility(facilityID string) ([]*domain.MaintenanceTask, error) {
+func (r *PostgresFacilityRepository) ListMaintenanceByFacility(ctx context.Context, facilityID string) ([]*domain.MaintenanceTask, error) {
 	var models []MaintenanceTaskModel
-	if err := r.db.Where("facility_id = ?", facilityID).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("facility_id = ?", facilityID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	tasks := make([]*domain.MaintenanceTask, len(models))
@@ -243,14 +244,14 @@ func (r *PostgresFacilityRepository) ListMaintenanceByFacility(facilityID string
 	return tasks, nil
 }
 
-func (r *PostgresFacilityRepository) HasConflict(clubID, facilityID string, startTime, endTime time.Time) (bool, error) {
+func (r *PostgresFacilityRepository) HasConflict(ctx context.Context, clubID, facilityID string, startTime, endTime time.Time) (bool, error) {
 	var count int64
 	// Check for any maintenance task that overlaps and is active.
 	// Tasks are linked to facility. We trust facilityID matches clubID via previous lookups or join if strictly necessary.
 	// But maintenance tasks don't have ClubID on them explicitly, they rely on FacilityID.
 	// So just filtering by FacilityID is technically enough if we trust the facilityID belongs to the club.
 	// However, for strictness, we could join or check facility. But keeping it simple as Facility ownership is verified by ID.
-	err := r.db.Model(&MaintenanceTaskModel{}).
+	err := r.db.WithContext(ctx).Model(&MaintenanceTaskModel{}).
 		Where("facility_id = ?", facilityID).
 		Where("status IN ?", []string{string(domain.MaintenanceStatusScheduled), string(domain.MaintenanceStatusInProgress)}).
 		Where("start_time < ? AND end_time > ?", endTime, startTime).
@@ -264,7 +265,7 @@ func (r *PostgresFacilityRepository) HasConflict(clubID, facilityID string, star
 
 // Implement EquipmentRepository
 
-func (r *PostgresFacilityRepository) CreateEquipment(equipment *domain.Equipment) error {
+func (r *PostgresFacilityRepository) CreateEquipment(ctx context.Context, equipment *domain.Equipment) error {
 	model := EquipmentModel{
 		ID:           equipment.ID,
 		FacilityID:   equipment.FacilityID,
@@ -276,12 +277,12 @@ func (r *PostgresFacilityRepository) CreateEquipment(equipment *domain.Equipment
 		CreatedAt:    equipment.CreatedAt,
 		UpdatedAt:    equipment.UpdatedAt,
 	}
-	return r.db.Create(&model).Error
+	return r.db.WithContext(ctx).Create(&model).Error
 }
 
-func (r *PostgresFacilityRepository) GetEquipmentByID(id string) (*domain.Equipment, error) {
+func (r *PostgresFacilityRepository) GetEquipmentByID(ctx context.Context, id string) (*domain.Equipment, error) {
 	var model EquipmentModel
-	if err := r.db.First(&model, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -290,9 +291,9 @@ func (r *PostgresFacilityRepository) GetEquipmentByID(id string) (*domain.Equipm
 	return r.toDomainEquipment(model), nil
 }
 
-func (r *PostgresFacilityRepository) ListEquipmentByFacility(facilityID string) ([]*domain.Equipment, error) {
+func (r *PostgresFacilityRepository) ListEquipmentByFacility(ctx context.Context, facilityID string) ([]*domain.Equipment, error) {
 	var models []EquipmentModel
-	if err := r.db.Where("facility_id = ?", facilityID).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("facility_id = ?", facilityID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	equipments := make([]*domain.Equipment, len(models))
@@ -302,7 +303,7 @@ func (r *PostgresFacilityRepository) ListEquipmentByFacility(facilityID string) 
 	return equipments, nil
 }
 
-func (r *PostgresFacilityRepository) UpdateEquipment(equipment *domain.Equipment) error {
+func (r *PostgresFacilityRepository) UpdateEquipment(ctx context.Context, equipment *domain.Equipment) error {
 	model := EquipmentModel{
 		ID:           equipment.ID,
 		FacilityID:   equipment.FacilityID,
@@ -314,11 +315,11 @@ func (r *PostgresFacilityRepository) UpdateEquipment(equipment *domain.Equipment
 		CreatedAt:    equipment.CreatedAt,
 		UpdatedAt:    time.Now(),
 	}
-	return r.db.Save(&model).Error
+	return r.db.WithContext(ctx).Save(&model).Error
 }
 
-func (r *PostgresFacilityRepository) LoanEquipmentAtomic(loan *domain.EquipmentLoan, equipmentID string) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
+func (r *PostgresFacilityRepository) LoanEquipmentAtomic(ctx context.Context, loan *domain.EquipmentLoan, equipmentID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. Check and Update Equipment Status
 		result := tx.Model(&EquipmentModel{}).
 			Where("id = ? AND status = ?", equipmentID, "available").
@@ -366,7 +367,7 @@ func (r *PostgresFacilityRepository) toDomainEquipment(m EquipmentModel) *domain
 }
 
 // SemanticSearch performs vector similarity search using pgvector
-func (r *PostgresFacilityRepository) SemanticSearch(clubID string, embedding []float32, limit int) ([]*domain.FacilityWithSimilarity, error) {
+func (r *PostgresFacilityRepository) SemanticSearch(ctx context.Context, clubID string, embedding []float32, limit int) ([]*domain.FacilityWithSimilarity, error) {
 	// Convert embedding to PostgreSQL vector format
 	vectorStr := float32SliceToVectorString(embedding)
 
@@ -382,7 +383,7 @@ func (r *PostgresFacilityRepository) SemanticSearch(clubID string, embedding []f
 		LIMIT $2
 	`
 
-	rows, err := r.db.Raw(query, vectorStr, limit, clubID).Rows()
+	rows, err := r.db.WithContext(ctx).Raw(query, vectorStr, limit, clubID).Rows()
 	if err != nil {
 		return nil, err
 	}
@@ -411,10 +412,10 @@ func (r *PostgresFacilityRepository) SemanticSearch(clubID string, embedding []f
 }
 
 // UpdateEmbedding stores the embedding vector for a facility
-func (r *PostgresFacilityRepository) UpdateEmbedding(facilityID string, embedding []float32) error {
+func (r *PostgresFacilityRepository) UpdateEmbedding(ctx context.Context, facilityID string, embedding []float32) error {
 	vectorStr := float32SliceToVectorString(embedding)
 
-	return r.db.Exec(
+	return r.db.WithContext(ctx).Exec(
 		"UPDATE facilities SET embedding = $1::vector WHERE id = $2",
 		vectorStr, facilityID,
 	).Error

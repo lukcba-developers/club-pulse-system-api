@@ -13,11 +13,11 @@ import (
 
 type ChampionshipHandler struct {
 	useCases         *application.ChampionshipUseCases
-	volunteerService *application.VolunteerService
+	volunteerService application.VolunteerServiceInterface
 	clubUseCases     *clubApp.ClubUseCases
 }
 
-func NewChampionshipHandler(useCases *application.ChampionshipUseCases, volunteerService *application.VolunteerService, clubUseCases *clubApp.ClubUseCases) *ChampionshipHandler {
+func NewChampionshipHandler(useCases *application.ChampionshipUseCases, volunteerService application.VolunteerServiceInterface, clubUseCases *clubApp.ClubUseCases) *ChampionshipHandler {
 	return &ChampionshipHandler{
 		useCases:         useCases,
 		volunteerService: volunteerService,
@@ -59,13 +59,13 @@ func (h *ChampionshipHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware 
 
 func (h *ChampionshipHandler) GetPublicTournaments(c *gin.Context) {
 	slug := c.Param("slug")
-	club, err := h.clubUseCases.GetClubBySlug(slug)
+	club, err := h.clubUseCases.GetClubBySlug(c.Request.Context(), slug)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
 		return
 	}
 
-	tournaments, err := h.useCases.ListTournaments(club.ID)
+	tournaments, err := h.useCases.ListTournaments(c.Request.Context(), club.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -86,13 +86,13 @@ func (h *ChampionshipHandler) GetPublicTournament(c *gin.Context) {
 
 	// So we can get slug.
 	slug := c.Param("slug")
-	club, err := h.clubUseCases.GetClubBySlug(slug)
+	club, err := h.clubUseCases.GetClubBySlug(c.Request.Context(), slug)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
 		return
 	}
 
-	tournament, err := h.useCases.GetTournament(club.ID, id)
+	tournament, err := h.useCases.GetTournament(c.Request.Context(), club.ID, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Tournament not found"})
 		return
@@ -195,7 +195,7 @@ func (h *ChampionshipHandler) RemoveVolunteer(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "volunteer removed"})
+	c.Status(http.StatusNoContent)
 }
 
 func (h *ChampionshipHandler) ListTournaments(c *gin.Context) {
@@ -215,7 +215,7 @@ func (h *ChampionshipHandler) ListTournaments(c *gin.Context) {
 		return
 	}
 
-	tournaments, err := h.useCases.ListTournaments(clubID)
+	tournaments, err := h.useCases.ListTournaments(c.Request.Context(), clubID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -226,7 +226,7 @@ func (h *ChampionshipHandler) ListTournaments(c *gin.Context) {
 func (h *ChampionshipHandler) GetStandings(c *gin.Context) {
 	clubID := c.GetString("clubID")
 	groupID := c.Param("id")
-	standings, err := h.useCases.GetStandings(clubID, groupID)
+	standings, err := h.useCases.GetStandings(c.Request.Context(), clubID, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -237,7 +237,7 @@ func (h *ChampionshipHandler) GetStandings(c *gin.Context) {
 func (h *ChampionshipHandler) GetMatchesByGroup(c *gin.Context) {
 	clubID := c.GetString("clubID")
 	groupID := c.Param("id")
-	matches, err := h.useCases.GetMatchesByGroup(clubID, groupID)
+	matches, err := h.useCases.GetMatchesByGroup(c.Request.Context(), clubID, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -258,8 +258,9 @@ func (h *ChampionshipHandler) ScheduleMatch(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	input.ClubID = c.GetString("clubID")
 
-	if err := h.useCases.ScheduleMatch(input); err != nil {
+	if err := h.useCases.ScheduleMatch(c.Request.Context(), input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -280,8 +281,9 @@ func (h *ChampionshipHandler) UpdateMatchResult(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	input.ClubID = c.GetString("clubID")
 
-	if err := h.useCases.UpdateMatchResult(input); err != nil {
+	if err := h.useCases.UpdateMatchResult(c.Request.Context(), input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -302,8 +304,9 @@ func (h *ChampionshipHandler) CreateTournament(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	input.ClubID = c.GetString("clubID")
 
-	tournament, err := h.useCases.CreateTournament(input)
+	tournament, err := h.useCases.CreateTournament(c.Request.Context(), input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -331,7 +334,7 @@ func (h *ChampionshipHandler) AddStage(c *gin.Context) {
 		input.ClubID = c.GetString("clubID")
 	}
 
-	stage, err := h.useCases.AddStage(input.TournamentID, input)
+	stage, err := h.useCases.AddStage(c.Request.Context(), input.TournamentID, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -359,7 +362,7 @@ func (h *ChampionshipHandler) AddGroup(c *gin.Context) {
 		input.ClubID = c.GetString("clubID")
 	}
 
-	group, err := h.useCases.AddGroup(input.StageID, input)
+	group, err := h.useCases.AddGroup(c.Request.Context(), input.StageID, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -383,7 +386,7 @@ func (h *ChampionshipHandler) RegisterTeam(c *gin.Context) {
 		return
 	}
 	groupID := c.Param("id")
-	standing, err := h.useCases.RegisterTeam(clubID, groupID, input)
+	standing, err := h.useCases.RegisterTeam(c.Request.Context(), clubID, groupID, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -402,7 +405,7 @@ func (h *ChampionshipHandler) GenerateFixture(c *gin.Context) {
 
 	clubID := c.GetString("clubID")
 	groupID := c.Param("id")
-	matches, err := h.useCases.GenerateGroupFixture(clubID, groupID)
+	matches, err := h.useCases.GenerateGroupFixture(c.Request.Context(), clubID, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -443,7 +446,7 @@ func (h *ChampionshipHandler) GenerateKnockoutBracket(c *gin.Context) {
 		input.ClubID = c.GetString("clubID")
 	}
 
-	matches, err := h.useCases.GenerateKnockoutBracket(input)
+	matches, err := h.useCases.GenerateKnockoutBracket(c.Request.Context(), input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

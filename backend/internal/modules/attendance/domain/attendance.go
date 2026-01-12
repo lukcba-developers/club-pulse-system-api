@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,13 +42,13 @@ type AttendanceRecord struct {
 }
 
 type AttendanceRepository interface {
-	CreateList(list *AttendanceList) error
-	GetListByID(clubID string, id uuid.UUID) (*AttendanceList, error)
-	GetListByGroupAndDate(clubID string, group string, date time.Time) (*AttendanceList, error)
-	GetListByTrainingGroupAndDate(clubID string, groupID uuid.UUID, date time.Time) (*AttendanceList, error)
-	UpdateRecord(record *AttendanceRecord) error
+	CreateList(ctx context.Context, list *AttendanceList) error
+	GetListByID(ctx context.Context, clubID string, id uuid.UUID) (*AttendanceList, error)
+	GetListByGroupAndDate(ctx context.Context, clubID string, group string, date time.Time) (*AttendanceList, error)
+	GetListByTrainingGroupAndDate(ctx context.Context, clubID string, groupID uuid.UUID, date time.Time) (*AttendanceList, error)
+	UpdateRecord(ctx context.Context, record *AttendanceRecord) error
 	// UpsertRecord updates or creates a record if it doesn't exist within a list
-	UpsertRecord(record *AttendanceRecord) error
+	UpsertRecord(ctx context.Context, record *AttendanceRecord) error
 	// GetAttendanceStats returns the count of present sessions and total sessions for a user in a date range
-	GetAttendanceStats(clubID, userID string, from, to time.Time) (present, total int, err error)
+	GetAttendanceStats(ctx context.Context, clubID, userID string, from, to time.Time) (present, total int, err error)
 }

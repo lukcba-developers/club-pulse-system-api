@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -72,7 +73,7 @@ func TestBookingPricing(t *testing.T) {
 		MedicalCertStatus: &validCert,
 		MedicalCertExpiry: &expiry,
 	}
-	err := uRepo.Create(user)
+	err := uRepo.Create(context.Background(), user)
 	assert.NoError(t, err)
 
 	// 2. Create Facility with Rate and Guest Fee
@@ -87,7 +88,7 @@ func TestBookingPricing(t *testing.T) {
 		OpeningHour: 8,
 		ClosingHour: 22,
 	}
-	err = fRepo.Create(facility)
+	err = fRepo.Create(context.Background(), facility)
 	assert.NoError(t, err)
 
 	t.Run("Create Booking with Guests and Verify Price", func(t *testing.T) {

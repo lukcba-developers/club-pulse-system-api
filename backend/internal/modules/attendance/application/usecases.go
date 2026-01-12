@@ -33,8 +33,8 @@ func NewAttendanceUseCases(repo domain.AttendanceRepository, userRepo userDomain
 // Let's implement: Get List. If not found, return a new transient list (not persisted until saved) or persist it immediately?
 // Let's persist immediately for simplicity of "Starting a class".
 // GetOrCreateList returns the attendance list for a group and date.
-func (uc *AttendanceUseCases) GetOrCreateList(clubID, group string, date time.Time, coachID string) (*domain.AttendanceList, error) {
-	list, err := uc.repo.GetListByGroupAndDate(clubID, group, date)
+func (uc *AttendanceUseCases) GetOrCreateList(ctx context.Context, clubID, group string, date time.Time, coachID string) (*domain.AttendanceList, error) {
+	list, err := uc.repo.GetListByGroupAndDate(ctx, clubID, group, date)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (uc *AttendanceUseCases) GetOrCreateList(clubID, group string, date time.Ti
 	// For MVP, lets just create the header. The frontend can fetch users separately or we populate here.
 	// Populating here is better for "Digital Attendance List".
 
-	users, err := uc.userRepo.List(clubID, 100, 0, map[string]interface{}{"category": group}) // Assuming group matches category year
+	users, err := uc.userRepo.List(ctx, clubID, 100, 0, map[string]interface{}{"category": group}) // Assuming group matches category year
 	if err == nil && len(users) > 0 {
 		records := make([]domain.AttendanceRecord, len(users))
 		for i, u := range users {
@@ -73,13 +73,13 @@ func (uc *AttendanceUseCases) GetOrCreateList(clubID, group string, date time.Ti
 		newList.Records = records
 	}
 
-	if err := uc.repo.CreateList(newList); err != nil {
+	if err := uc.repo.CreateList(ctx, newList); err != nil {
 		return nil, err
 	}
 
 	// Create records if any
 	for _, rec := range newList.Records {
-		if err := uc.repo.UpsertRecord(&rec); err != nil {
+		if err := uc.repo.UpsertRecord(ctx, &rec); err != nil {
 			return nil, err
 		}
 	}
@@ -87,13 +87,13 @@ func (uc *AttendanceUseCases) GetOrCreateList(clubID, group string, date time.Ti
 	return newList, nil
 }
 
-func (uc *AttendanceUseCases) GetOrCreateListByTrainingGroup(clubID string, groupID uuid.UUID, groupName string, category string, date time.Time, coachID string) (*domain.AttendanceList, error) {
-	list, err := uc.repo.GetListByTrainingGroupAndDate(clubID, groupID, date)
+func (uc *AttendanceUseCases) GetOrCreateListByTrainingGroup(ctx context.Context, clubID string, groupID uuid.UUID, groupName string, category string, date time.Time, coachID string) (*domain.AttendanceList, error) {
+	list, err := uc.repo.GetListByTrainingGroupAndDate(ctx, clubID, groupID, date)
 	if err != nil {
 		return nil, err
 	}
 	if list != nil {
-		uc.populateRecords(clubID, list)
+		uc.populateRecords(ctx, clubID, list)
 		return list, nil
 	}
 
@@ -109,7 +109,7 @@ func (uc *AttendanceUseCases) GetOrCreateListByTrainingGroup(clubID string, grou
 	}
 
 	// UserRepo call
-	users, err := uc.userRepo.List(clubID, 100, 0, map[string]interface{}{"category": category})
+	users, err := uc.userRepo.List(ctx, clubID, 100, 0, map[string]interface{}{"category": category})
 	if err == nil && len(users) > 0 {
 		records := make([]domain.AttendanceRecord, len(users))
 		for i, u := range users {
@@ -123,21 +123,21 @@ func (uc *AttendanceUseCases) GetOrCreateListByTrainingGroup(clubID string, grou
 		newList.Records = records
 	}
 
-	if err := uc.repo.CreateList(newList); err != nil {
+	if err := uc.repo.CreateList(ctx, newList); err != nil {
 		return nil, err
 	}
 
 	for _, rec := range newList.Records {
-		if err := uc.repo.UpsertRecord(&rec); err != nil {
+		if err := uc.repo.UpsertRecord(ctx, &rec); err != nil {
 			return nil, err
 		}
 	}
 
-	uc.populateRecords(clubID, newList)
+	uc.populateRecords(ctx, clubID, newList)
 	return newList, nil
 }
 
-func (uc *AttendanceUseCases) populateRecords(clubID string, list *domain.AttendanceList) {
+func (uc *AttendanceUseCases) populateRecords(ctx context.Context, clubID string, list *domain.AttendanceList) {
 	if len(list.Records) == 0 {
 		return
 	}
@@ -155,7 +155,7 @@ func (uc *AttendanceUseCases) populateRecords(clubID string, list *domain.Attend
 
 	// 2. Batch Fetch Users
 	// Note: We need a map for O(1) assignment
-	users, err := uc.userRepo.ListByIDs(clubID, userIDs)
+	users, err := uc.userRepo.ListByIDs(ctx, clubID, userIDs)
 	if err == nil {
 		userMap := make(map[string]*userDomain.User)
 		for i := range users {
@@ -176,7 +176,7 @@ func (uc *AttendanceUseCases) populateRecords(clubID string, list *domain.Attend
 		uuids = append(uuids, uid)
 	}
 
-	memberships, err := uc.membershipRepo.GetByUserIDs(context.Background(), clubID, uuids)
+	memberships, err := uc.membershipRepo.GetByUserIDs(ctx, clubID, uuids)
 	if err == nil {
 		// Map UserID -> []Membership
 		memMap := make(map[uuid.UUID][]membershipDomain.Membership)
@@ -206,8 +206,8 @@ type MarkAttendanceDTO struct {
 	Notes  string                  `json:"notes"`
 }
 
-func (uc *AttendanceUseCases) MarkAttendance(clubID string, listID uuid.UUID, dto MarkAttendanceDTO) error {
-	list, err := uc.repo.GetListByID(clubID, listID)
+func (uc *AttendanceUseCases) MarkAttendance(ctx context.Context, clubID string, listID uuid.UUID, dto MarkAttendanceDTO) error {
+	list, err := uc.repo.GetListByID(ctx, clubID, listID)
 	if err != nil {
 		return err
 	}
@@ -236,5 +236,5 @@ func (uc *AttendanceUseCases) MarkAttendance(clubID string, listID uuid.UUID, dt
 	}
 	// If record.ID is new, Upsert (GORM Save) will Insert.
 
-	return uc.repo.UpsertRecord(record)
+	return uc.repo.UpsertRecord(ctx, record)
 }

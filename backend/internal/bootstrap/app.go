@@ -115,7 +115,7 @@ func NewApp() (*App, error) {
 	// Apply CSRF globally to v1 group - it will auto-skip safe methods
 	v1.Use(csrfMiddleware)
 
-	registerModules(v1, infra, tenantMiddleware, csrfMiddleware)
+	registerModules(v1, infra, tenantMiddleware)
 
 	return &App{
 		Infrastructure: infra,
@@ -145,7 +145,7 @@ func (app *App) Run() {
 	logger.Info("Server exited properly")
 }
 
-func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddleware gin.HandlerFunc, csrfMiddleware gin.HandlerFunc) {
+func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddleware gin.HandlerFunc) {
 	db := infra.DB
 
 	// --- Module: Auth ---

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -32,8 +33,8 @@ type EligibilityResult struct {
 // Un usuario es elegible si tiene:
 // 1. DNI (Frente y/o Dorso) válido
 // 2. Apto Médico (EMMAC) válido y no vencido
-func (s *EligibilityService) CheckEligibility(clubID, userID string) (*EligibilityResult, error) {
-	docs, err := s.docRepo.GetByUserID(clubID, userID)
+func (s *EligibilityService) CheckEligibility(ctx context.Context, clubID, userID string) (*EligibilityResult, error) {
+	docs, err := s.docRepo.GetByUserID(ctx, clubID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo documentos: %w", err)
 	}
@@ -95,8 +96,8 @@ func (s *EligibilityService) CheckEligibility(clubID, userID string) (*Eligibili
 }
 
 // GetDocumentSummary obtiene un resumen del estado de los documentos de un usuario
-func (s *EligibilityService) GetDocumentSummary(clubID, userID string) (map[domain.DocumentType]domain.DocumentStatus, error) {
-	docs, err := s.docRepo.GetByUserID(clubID, userID)
+func (s *EligibilityService) GetDocumentSummary(ctx context.Context, clubID, userID string) (map[domain.DocumentType]domain.DocumentStatus, error) {
+	docs, err := s.docRepo.GetByUserID(ctx, clubID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo documentos: %w", err)
 	}
@@ -120,13 +121,13 @@ func (s *EligibilityService) GetDocumentSummary(clubID, userID string) (map[doma
 }
 
 // ValidateDocument valida o rechaza un documento
-func (s *EligibilityService) ValidateDocument(clubID string, docID string, validatorID string, approve bool, notes string) error {
+func (s *EligibilityService) ValidateDocument(ctx context.Context, clubID string, docID string, validatorID string, approve bool, notes string) error {
 	docUUID, err := parseUUID(docID)
 	if err != nil {
 		return fmt.Errorf("ID de documento inválido: %w", err)
 	}
 
-	doc, err := s.docRepo.GetByID(clubID, docUUID)
+	doc, err := s.docRepo.GetByID(ctx, clubID, docUUID)
 	if err != nil {
 		return fmt.Errorf("documento no encontrado: %w", err)
 	}
@@ -149,7 +150,7 @@ func (s *EligibilityService) ValidateDocument(clubID string, docID string, valid
 		doc.RejectionNotes = notes
 	}
 
-	return s.docRepo.Update(doc)
+	return s.docRepo.Update(ctx, doc)
 }
 
 // Helper function para parsear UUID

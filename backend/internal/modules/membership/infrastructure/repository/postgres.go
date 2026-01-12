@@ -144,6 +144,23 @@ func (r *PostgresMembershipRepository) UpdateBalancesBatch(ctx context.Context, 
 	var args []interface{}
 	var valueParamPlaceholders string
 
+	// Fallback for non-postgres (like SQLite in tests)
+	if r.db.Dialector.Name() != "postgres" {
+		return r.db.Transaction(func(tx *gorm.DB) error {
+			for id, update := range updates {
+				err := tx.Model(&domain.Membership{}).Where("id = ?", id).Updates(map[string]interface{}{
+					"outstanding_balance": update.Balance,
+					"next_billing_date":   update.NextBilling,
+					"updated_at":          time.Now(),
+				}).Error
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+
 	// Iterate and build values
 	i := 0
 	for id, update := range updates {

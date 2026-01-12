@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,10 +45,10 @@ type VolunteerSummary struct {
 
 // VolunteerRepository define las operaciones de persistencia para voluntarios
 type VolunteerRepository interface {
-	Create(assignment *VolunteerAssignment) error
-	GetByMatchID(clubID string, matchID uuid.UUID) ([]VolunteerAssignment, error)
-	GetByUserID(clubID, userID string) ([]VolunteerAssignment, error)
-	GetByRoleAndMatch(clubID string, matchID uuid.UUID, role VolunteerRole) ([]VolunteerAssignment, error)
-	Update(assignment *VolunteerAssignment) error
-	Delete(clubID string, id uuid.UUID) error
+	Create(ctx context.Context, assignment *VolunteerAssignment) error
+	GetByMatchID(ctx context.Context, clubID string, matchID uuid.UUID) ([]VolunteerAssignment, error)
+	GetByUserID(ctx context.Context, clubID, userID string) ([]VolunteerAssignment, error)
+	GetByRoleAndMatch(ctx context.Context, clubID string, matchID uuid.UUID, role VolunteerRole) ([]VolunteerAssignment, error)
+	Update(ctx context.Context, assignment *VolunteerAssignment) error
+	Delete(ctx context.Context, clubID string, id uuid.UUID) error
 }

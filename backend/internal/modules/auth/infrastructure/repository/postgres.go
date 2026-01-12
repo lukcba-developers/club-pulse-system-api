@@ -77,7 +77,7 @@ func (UserModel) TableName() string {
 	return "users"
 }
 
-func (r *PostgresAuthRepository) SaveUser(user *domain.User) error {
+func (r *PostgresAuthRepository) SaveUser(ctx context.Context, user *domain.User) error {
 	userModel := UserModel{
 		ID:          user.ID,
 		Name:        user.Name,
@@ -93,7 +93,7 @@ func (r *PostgresAuthRepository) SaveUser(user *domain.User) error {
 		AvatarURL:   user.AvatarURL,
 	}
 
-	result := r.db.Create(&userModel)
+	result := r.db.WithContext(ctx).Create(&userModel)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -152,7 +152,7 @@ func (r *PostgresAuthRepository) FindUserByID(ctx context.Context, id, clubID st
 	}, nil
 }
 
-func (r *PostgresAuthRepository) SaveRefreshToken(token *domain.RefreshToken) error {
+func (r *PostgresAuthRepository) SaveRefreshToken(ctx context.Context, token *domain.RefreshToken) error {
 	tokenModel := RefreshTokenModel{
 		ID:        token.ID,
 		UserID:    token.UserID,
@@ -165,7 +165,7 @@ func (r *PostgresAuthRepository) SaveRefreshToken(token *domain.RefreshToken) er
 		UpdatedAt: token.UpdatedAt,
 	}
 
-	result := r.db.Create(&tokenModel)
+	result := r.db.WithContext(ctx).Create(&tokenModel)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -221,7 +221,7 @@ func (r *PostgresAuthRepository) RevokeRefreshToken(ctx context.Context, tokenID
 	return nil
 }
 
-func (r *PostgresAuthRepository) RevokeAllUserTokens(userID string) error {
+func (r *PostgresAuthRepository) RevokeAllUserTokens(ctx context.Context, userID string) error {
 	now := time.Now()
 	updates := map[string]interface{}{
 		"is_revoked": true,
@@ -229,15 +229,15 @@ func (r *PostgresAuthRepository) RevokeAllUserTokens(userID string) error {
 		"updated_at": now,
 	}
 	// Revoke all non-revoked tokens for the user
-	return r.db.Model(&RefreshTokenModel{}).Where("user_id = ? AND is_revoked = ?", userID, false).Updates(updates).Error
+	return r.db.WithContext(ctx).Model(&RefreshTokenModel{}).Where("user_id = ? AND is_revoked = ?", userID, false).Updates(updates).Error
 }
 
-func (r *PostgresAuthRepository) ListUserSessions(userID string) ([]domain.RefreshToken, error) {
+func (r *PostgresAuthRepository) ListUserSessions(ctx context.Context, userID string) ([]domain.RefreshToken, error) {
 	var models []RefreshTokenModel
 	// Only return active (non-revoked) sessions for MVP view
 	// In production, might want 'all' sessions with status.
 	// Let's return all but order by created_at desc
-	result := r.db.Where("user_id = ? AND is_revoked = ?", userID, false).Order("created_at desc").Find(&models)
+	result := r.db.WithContext(ctx).Where("user_id = ? AND is_revoked = ?", userID, false).Order("created_at desc").Find(&models)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -259,7 +259,7 @@ func (r *PostgresAuthRepository) ListUserSessions(userID string) ([]domain.Refre
 	return tokens, nil
 }
 
-func (r *PostgresAuthRepository) LogAuthentication(log *domain.AuthenticationLog) error {
+func (r *PostgresAuthRepository) LogAuthentication(ctx context.Context, log *domain.AuthenticationLog) error {
 	model := AuthenticationLogModel{
 		ID:            log.ID,
 		UserID:        log.UserID,
@@ -270,5 +270,5 @@ func (r *PostgresAuthRepository) LogAuthentication(log *domain.AuthenticationLog
 		FailureReason: log.FailureReason,
 		CreatedAt:     log.CreatedAt,
 	}
-	return r.db.Create(&model).Error
+	return r.db.WithContext(ctx).Create(&model).Error
 }

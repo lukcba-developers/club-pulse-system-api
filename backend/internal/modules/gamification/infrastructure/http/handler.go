@@ -52,7 +52,7 @@ func (h *GamificationHandler) RegisterRoutes(r *gin.RouterGroup) {
 func (h *GamificationHandler) ListBadges(c *gin.Context) {
 	clubID := c.GetString("clubID")
 
-	badges, err := h.badgeService.GetAllBadges(clubID)
+	badges, err := h.badgeService.GetAllBadges(c.Request.Context(), clubID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -70,7 +70,7 @@ func (h *GamificationHandler) ListBadges(c *gin.Context) {
 func (h *GamificationHandler) GetMyBadges(c *gin.Context) {
 	userID := c.GetString("userID")
 
-	badges, err := h.badgeService.GetUserBadges(userID)
+	badges, err := h.badgeService.GetUserBadges(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -89,7 +89,7 @@ func (h *GamificationHandler) GetMyBadges(c *gin.Context) {
 func (h *GamificationHandler) GetFeaturedBadges(c *gin.Context) {
 	userID := c.Param("user_id")
 
-	badges, err := h.badgeService.GetFeaturedBadges(userID)
+	badges, err := h.badgeService.GetFeaturedBadges(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -128,7 +128,7 @@ func (h *GamificationHandler) SetFeaturedBadge(c *gin.Context) {
 		return
 	}
 
-	if err := h.badgeService.SetFeaturedBadge(userID, badgeID, req.Featured); err != nil {
+	if err := h.badgeService.SetFeaturedBadge(c.Request.Context(), userID, badgeID, req.Featured); err != nil {
 		if err == application.ErrMaxFeaturedBadges {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -160,7 +160,7 @@ func (h *GamificationHandler) GetLeaderboard(c *gin.Context) {
 		limit = 20 // Simplified
 	}
 
-	leaderboard, err := h.leaderboardService.GetGlobalLeaderboard(clubID, period, limit, offset)
+	leaderboard, err := h.leaderboardService.GetGlobalLeaderboard(c.Request.Context(), clubID, period, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -181,7 +181,7 @@ func (h *GamificationHandler) GetMyLeaderboardContext(c *gin.Context) {
 	userID := c.GetString("userID")
 	period := domain.LeaderboardPeriod(c.DefaultQuery("period", "MONTHLY"))
 
-	context, err := h.leaderboardService.GetUserContext(clubID, userID, period)
+	context, err := h.leaderboardService.GetUserContext(c.Request.Context(), clubID, userID, period)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -207,7 +207,7 @@ func (h *GamificationHandler) GetMyRank(c *gin.Context) {
 	userID := c.GetString("userID")
 	period := domain.LeaderboardPeriod(c.DefaultQuery("period", "MONTHLY"))
 
-	rank, err := h.leaderboardService.GetUserRank(clubID, userID, domain.LeaderboardTypeGlobal, period)
+	rank, err := h.leaderboardService.GetUserRank(c.Request.Context(), clubID, userID, domain.LeaderboardTypeGlobal, period)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

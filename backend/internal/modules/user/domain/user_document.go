@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -84,18 +85,18 @@ func (d *UserDocument) CanBeValidated() bool {
 
 // UserDocumentRepository define las operaciones de persistencia para documentos de usuario
 type UserDocumentRepository interface {
-	Create(doc *UserDocument) error
-	GetByID(clubID string, id uuid.UUID) (*UserDocument, error)
-	GetByUserID(clubID, userID string) ([]UserDocument, error)
-	GetByUserAndType(clubID, userID string, docType DocumentType) (*UserDocument, error)
-	Update(doc *UserDocument) error
-	Delete(clubID string, id uuid.UUID) error
+	Create(ctx context.Context, doc *UserDocument) error
+	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*UserDocument, error)
+	GetByUserID(ctx context.Context, clubID, userID string) ([]UserDocument, error)
+	GetByUserAndType(ctx context.Context, clubID, userID string, docType DocumentType) (*UserDocument, error)
+	Update(ctx context.Context, doc *UserDocument) error
+	Delete(ctx context.Context, clubID string, id uuid.UUID) error
 
 	// Para el Cron Job de vencimientos
-	GetExpiringDocuments(clubID string, daysUntilExpiration int) ([]UserDocument, error)
-	GetExpiredDocuments(clubID string) ([]UserDocument, error)
+	GetExpiringDocuments(ctx context.Context, clubID string, daysUntilExpiration int) ([]UserDocument, error)
+	GetExpiredDocuments(ctx context.Context, clubID string) ([]UserDocument, error)
 
 	// Operaciones masivas
-	GetAllByType(clubID string, docType DocumentType) ([]UserDocument, error)
-	GetPendingValidation(clubID string) ([]UserDocument, error)
+	GetAllByType(ctx context.Context, clubID string, docType DocumentType) ([]UserDocument, error)
+	GetPendingValidation(ctx context.Context, clubID string) ([]UserDocument, error)
 }

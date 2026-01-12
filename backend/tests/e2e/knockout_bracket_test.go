@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -94,7 +95,7 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 	handler.RegisterRoutes(r.Group("/api/v1"), authMiddleware, tenantMiddleware)
 
 	// 3. Create Tournament
-	tournament, err := champUC.CreateTournament(champApp.CreateTournamentInput{
+	tournament, err := champUC.CreateTournament(context.TODO(), champApp.CreateTournamentInput{
 		ClubID:    clubID,
 		Name:      "Knockout Cup",
 		Sport:     "FUTBOL",
@@ -104,7 +105,7 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 	require.NoError(t, err)
 
 	// 4. Create KNOCKOUT Stage
-	stage, err := champUC.AddStage(tournament.ID.String(), champApp.AddStageInput{
+	stage, err := champUC.AddStage(context.TODO(), tournament.ID.String(), champApp.AddStageInput{
 		ClubID: clubID,
 		Name:   "Playoffs",
 		Type:   "KNOCKOUT",
@@ -162,7 +163,7 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 	// 7. Test: Invalid team count (not power of 2)
 	t.Run("Reject Non-Power-of-2 Teams", func(t *testing.T) {
 		// Create another stage
-		stage2, _ := champUC.AddStage(tournament.ID.String(), champApp.AddStageInput{
+		stage2, _ := champUC.AddStage(context.TODO(), tournament.ID.String(), champApp.AddStageInput{
 			ClubID: clubID,
 			Name:   "Playoffs 2",
 			Type:   "KNOCKOUT",
@@ -193,7 +194,7 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 	// 8. Test: GROUP stage should be rejected
 	t.Run("Reject GROUP Stage for Knockout", func(t *testing.T) {
 		// Create GROUP stage
-		groupStage, _ := champUC.AddStage(tournament.ID.String(), champApp.AddStageInput{
+		groupStage, _ := champUC.AddStage(context.TODO(), tournament.ID.String(), champApp.AddStageInput{
 			ClubID: clubID,
 			Name:   "Group Phase",
 			Type:   "GROUP",

@@ -32,7 +32,7 @@ func TestGamificationFlow(t *testing.T) {
 	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 
 	// Clear PostgreSQL cached prepared statements after schema change
-	db.Exec("DISCARD ALL")
+	// Repos
 
 	// Dependencies
 	authR := authRepo.NewPostgresAuthRepository(db)

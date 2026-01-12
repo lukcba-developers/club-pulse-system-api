@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -29,9 +30,7 @@ func TestUserProfileCategory(t *testing.T) {
 	_ = db.AutoMigrate(&domain.UserStats{}, &domain.Wallet{})
 	_ = db.AutoMigrate(&repository.UserModel{})
 
-	// Clear PostgreSQL cached prepared statements after schema change
-	// This fixes "cached plan must not change result type" error
-	db.Exec("DISCARD ALL")
+	// 2. Execute
 
 	repo := repository.NewPostgresUserRepository(db)
 	useCase := application.NewUserUseCases(repo, nil) // nil FamilyGroupRepo for this test
@@ -54,7 +53,7 @@ func TestUserProfileCategory(t *testing.T) {
 		// Clean up before creating just in case (Hard Delete to allow re-insert of same ID)
 		db.Unscoped().Where("id = ?", user.ID).Delete(&repository.UserModel{})
 
-		if err := repo.Update(user); err != nil {
+		if err := repo.Update(context.Background(), user); err != nil {
 			// Handle error or just ignore for test setup of mock
 			_ = err
 		}

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,12 +18,12 @@ type FamilyGroup struct {
 }
 
 type FamilyGroupRepository interface {
-	Create(group *FamilyGroup) error
-	GetByID(clubID string, id uuid.UUID) (*FamilyGroup, error)
-	GetByHeadUserID(clubID, headUserID string) (*FamilyGroup, error)
-	GetByMemberID(clubID, userID string) (*FamilyGroup, error)
-	AddMember(clubID string, groupID uuid.UUID, userID string) error
-	RemoveMember(clubID string, groupID uuid.UUID, userID string) error
+	Create(ctx context.Context, group *FamilyGroup) error
+	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*FamilyGroup, error)
+	GetByHeadUserID(ctx context.Context, clubID, headUserID string) (*FamilyGroup, error)
+	GetByMemberID(ctx context.Context, clubID, userID string) (*FamilyGroup, error)
+	AddMember(ctx context.Context, clubID string, groupID uuid.UUID, userID string) error
+	RemoveMember(ctx context.Context, clubID string, groupID uuid.UUID, userID string) error
 }
 
 type User struct {
@@ -83,18 +84,18 @@ func (u *User) CalculateCategory() string {
 }
 
 type UserRepository interface {
-	GetByID(clubID, id string) (*User, error)
+	GetByID(ctx context.Context, clubID, id string) (*User, error)
 	// Update updates the non-auth fields of the user
-	Update(user *User) error
-	Delete(clubID, id string) error
-	List(clubID string, limit, offset int, filters map[string]interface{}) ([]User, error)
-	ListByIDs(clubID string, ids []string) ([]User, error)
-	FindChildren(clubID, parentID string) ([]User, error)
-	Create(user *User) error
-	CreateIncident(incident *IncidentLog) error
-	GetByEmail(email string) (*User, error)
+	Update(ctx context.Context, user *User) error
+	Delete(ctx context.Context, clubID, id string) error
+	List(ctx context.Context, clubID string, limit, offset int, filters map[string]interface{}) ([]User, error)
+	ListByIDs(ctx context.Context, clubID string, ids []string) ([]User, error)
+	FindChildren(ctx context.Context, clubID, parentID string) ([]User, error)
+	Create(ctx context.Context, user *User) error
+	CreateIncident(ctx context.Context, incident *IncidentLog) error
+	GetByEmail(ctx context.Context, email string) (*User, error)
 	// GDPR Article 17 - Right to erasure
-	AnonymizeForGDPR(clubID, id string) error
+	AnonymizeForGDPR(ctx context.Context, clubID, id string) error
 }
 
 type IncidentLog struct {

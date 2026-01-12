@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,10 +19,10 @@ type News struct {
 }
 
 type NewsRepository interface {
-	CreateNews(news *News) error
-	GetNewsByClub(clubID string, limit, offset int) ([]News, error)
-	GetPublicNewsByClub(clubID string, limit, offset int) ([]News, error)
-	GetNewsByID(id uuid.UUID) (*News, error)
-	UpdateNews(news *News) error
-	DeleteNews(id uuid.UUID) error
+	CreateNews(ctx context.Context, news *News) error
+	GetNewsByClub(ctx context.Context, clubID string, limit, offset int) ([]News, error)
+	GetPublicNewsByClub(ctx context.Context, clubID string, limit, offset int) ([]News, error)
+	GetNewsByID(ctx context.Context, id uuid.UUID) (*News, error)
+	UpdateNews(ctx context.Context, news *News) error
+	DeleteNews(ctx context.Context, id uuid.UUID) error
 }

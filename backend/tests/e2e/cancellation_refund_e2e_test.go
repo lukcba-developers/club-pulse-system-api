@@ -144,7 +144,7 @@ func TestCancellationRefundFlow(t *testing.T) {
 
 	// Update booking to CONFIRMED (simulating what ProcessWebhook does)
 	bookingCreated.Status = bookingDomain.BookingStatusConfirmed
-	err = bRepo.Update(&bookingCreated)
+	err = bRepo.Update(context.Background(), &bookingCreated)
 	require.NoError(t, err)
 
 	// 4. Cancel booking

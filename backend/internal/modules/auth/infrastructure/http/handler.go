@@ -174,7 +174,7 @@ func (h *AuthHandler) ListSessions(c *gin.Context) {
 		return
 	}
 
-	sessions, err := h.useCase.ListUserSessions(userID.(string))
+	sessions, err := h.useCase.ListUserSessions(c.Request.Context(), userID.(string))
 	if err != nil {
 		handleError(c, err)
 		return
@@ -204,7 +204,7 @@ func (h *AuthHandler) RevokeSession(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCase.RevokeSession(sessionID, userID.(string)); err != nil {
+	if err := h.useCase.RevokeSession(c.Request.Context(), sessionID, userID.(string)); err != nil {
 		handleError(c, err)
 		return
 	}

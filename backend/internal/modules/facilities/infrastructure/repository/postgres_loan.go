@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -37,7 +38,7 @@ func (EquipmentLoanModel) TableName() string {
 	return "equipment_loans"
 }
 
-func (r *PostgresLoanRepository) Create(loan *domain.EquipmentLoan) error {
+func (r *PostgresLoanRepository) Create(ctx context.Context, loan *domain.EquipmentLoan) error {
 	model := EquipmentLoanModel{
 		ID:               loan.ID,
 		EquipmentID:      loan.EquipmentID,
@@ -48,12 +49,12 @@ func (r *PostgresLoanRepository) Create(loan *domain.EquipmentLoan) error {
 		CreatedAt:        loan.CreatedAt,
 		UpdatedAt:        loan.UpdatedAt,
 	}
-	return r.db.Create(&model).Error
+	return r.db.WithContext(ctx).Create(&model).Error
 }
 
-func (r *PostgresLoanRepository) GetByID(id string) (*domain.EquipmentLoan, error) {
+func (r *PostgresLoanRepository) GetByID(ctx context.Context, id string) (*domain.EquipmentLoan, error) {
 	var model EquipmentLoanModel
-	if err := r.db.First(&model, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -62,9 +63,9 @@ func (r *PostgresLoanRepository) GetByID(id string) (*domain.EquipmentLoan, erro
 	return r.toDomain(model), nil
 }
 
-func (r *PostgresLoanRepository) ListByUser(userID string) ([]*domain.EquipmentLoan, error) {
+func (r *PostgresLoanRepository) ListByUser(ctx context.Context, userID string) ([]*domain.EquipmentLoan, error) {
 	var models []EquipmentLoanModel
-	if err := r.db.Where("user_id = ?", userID).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	loans := make([]*domain.EquipmentLoan, len(models))
@@ -74,9 +75,9 @@ func (r *PostgresLoanRepository) ListByUser(userID string) ([]*domain.EquipmentL
 	return loans, nil
 }
 
-func (r *PostgresLoanRepository) ListByStatus(status domain.LoanStatus) ([]*domain.EquipmentLoan, error) {
+func (r *PostgresLoanRepository) ListByStatus(ctx context.Context, status domain.LoanStatus) ([]*domain.EquipmentLoan, error) {
 	var models []EquipmentLoanModel
-	if err := r.db.Where("status = ?", string(status)).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("status = ?", string(status)).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	loans := make([]*domain.EquipmentLoan, len(models))
@@ -86,7 +87,7 @@ func (r *PostgresLoanRepository) ListByStatus(status domain.LoanStatus) ([]*doma
 	return loans, nil
 }
 
-func (r *PostgresLoanRepository) Update(loan *domain.EquipmentLoan) error {
+func (r *PostgresLoanRepository) Update(ctx context.Context, loan *domain.EquipmentLoan) error {
 	model := EquipmentLoanModel{
 		ID:                loan.ID,
 		EquipmentID:       loan.EquipmentID,
@@ -99,7 +100,7 @@ func (r *PostgresLoanRepository) Update(loan *domain.EquipmentLoan) error {
 		CreatedAt:         loan.CreatedAt,
 		UpdatedAt:         time.Now(),
 	}
-	return r.db.Save(&model).Error
+	return r.db.WithContext(ctx).Save(&model).Error
 }
 
 func (r *PostgresLoanRepository) toDomain(m EquipmentLoanModel) *domain.EquipmentLoan {

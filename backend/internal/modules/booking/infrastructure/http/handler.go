@@ -74,7 +74,7 @@ func (h *BookingHandler) Create(c *gin.Context) {
 	dto.UserID = userID.(string)
 
 	clubID := c.GetString("clubID")
-	booking, err := h.useCases.CreateBooking(clubID, dto)
+	booking, err := h.useCases.CreateBooking(c.Request.Context(), clubID, dto)
 	if err != nil {
 		status, resp := mapErrorToResponse(err)
 		c.JSON(status, resp)
@@ -109,7 +109,7 @@ func (h *BookingHandler) List(c *gin.Context) {
 	// By default list own bookings
 	// Admin logic could be added here later
 	clubID := c.GetString("clubID")
-	bookings, err := h.useCases.ListBookings(clubID, userID.(string))
+	bookings, err := h.useCases.ListBookings(c.Request.Context(), clubID, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -153,7 +153,7 @@ func (h *BookingHandler) ListAll(c *gin.Context) {
 		}
 	}
 
-	bookings, err := h.useCases.ListClubBookings(clubID, facilityID, from, to)
+	bookings, err := h.useCases.ListClubBookings(c.Request.Context(), clubID, facilityID, from, to)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -185,7 +185,7 @@ func (h *BookingHandler) Cancel(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	if err := h.useCases.CancelBooking(clubID, bookingID, userID.(string)); err != nil {
+	if err := h.useCases.CancelBooking(c.Request.Context(), clubID, bookingID, userID.(string)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -233,7 +233,7 @@ func (h *BookingHandler) GetAvailability(c *gin.Context) {
 	}
 
 	// 3. Call UseCase
-	availability, err := h.useCases.GetAvailability(clubID, facilityID, date)
+	availability, err := h.useCases.GetAvailability(c.Request.Context(), clubID, facilityID, date)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -273,7 +273,7 @@ func (h *BookingHandler) CreateRecurringRule(c *gin.Context) {
 	}
 
 	clubID := c.GetString("clubID")
-	rule, err := h.useCases.CreateRecurringRule(clubID, dto)
+	rule, err := h.useCases.CreateRecurringRule(c.Request.Context(), clubID, dto)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -331,7 +331,7 @@ func (h *BookingHandler) JoinWaitlist(c *gin.Context) {
 		dto.UserID = userID.(string)
 	}
 
-	entry, err := h.useCases.JoinWaitlist(clubID, dto)
+	entry, err := h.useCases.JoinWaitlist(c.Request.Context(), clubID, dto)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

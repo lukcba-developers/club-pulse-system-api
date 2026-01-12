@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -51,15 +52,15 @@ type Leaderboard struct {
 // LeaderboardService defines the interface for leaderboard operations.
 type LeaderboardService interface {
 	// Get leaderboards
-	GetGlobalLeaderboard(clubID string, period LeaderboardPeriod, limit, offset int) (*Leaderboard, error)
-	GetDisciplineLeaderboard(clubID, disciplineID string, period LeaderboardPeriod, limit int) (*Leaderboard, error)
-	GetCategoryLeaderboard(clubID, category string, period LeaderboardPeriod, limit int) (*Leaderboard, error)
-	GetFriendsLeaderboard(clubID, userID string, period LeaderboardPeriod) (*Leaderboard, error)
-	GetBookingsLeaderboard(clubID string, period LeaderboardPeriod, limit int) (*Leaderboard, error)
+	GetGlobalLeaderboard(ctx context.Context, clubID string, period LeaderboardPeriod, limit, offset int) (*Leaderboard, error)
+	GetDisciplineLeaderboard(ctx context.Context, clubID, disciplineID string, period LeaderboardPeriod, limit int) (*Leaderboard, error)
+	GetCategoryLeaderboard(ctx context.Context, clubID, category string, period LeaderboardPeriod, limit int) (*Leaderboard, error)
+	GetFriendsLeaderboard(ctx context.Context, clubID, userID string, period LeaderboardPeriod) (*Leaderboard, error)
+	GetBookingsLeaderboard(ctx context.Context, clubID string, period LeaderboardPeriod, limit int) (*Leaderboard, error)
 
 	// User-specific
-	GetUserRank(clubID, userID string, lbType LeaderboardType, period LeaderboardPeriod) (int, error)
-	GetUserContext(clubID, userID string, period LeaderboardPeriod) (*LeaderboardContext, error)
+	GetUserRank(ctx context.Context, clubID, userID string, lbType LeaderboardType, period LeaderboardPeriod) (int, error)
+	GetUserContext(ctx context.Context, clubID, userID string, period LeaderboardPeriod) (*LeaderboardContext, error)
 }
 
 // LeaderboardContext provides surrounding context for a user's position.

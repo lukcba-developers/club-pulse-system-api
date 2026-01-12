@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -21,9 +22,9 @@ func NewLeaderboardService(userRepo userDomain.UserRepository) *LeaderboardServi
 }
 
 // GetGlobalLeaderboard returns the global XP leaderboard for a club.
-func (s *LeaderboardServiceImpl) GetGlobalLeaderboard(clubID string, period domain.LeaderboardPeriod, limit, offset int) (*domain.Leaderboard, error) {
+func (s *LeaderboardServiceImpl) GetGlobalLeaderboard(ctx context.Context, clubID string, period domain.LeaderboardPeriod, limit, offset int) (*domain.Leaderboard, error) {
 	// Get all users with stats
-	users, err := s.userRepo.List(clubID, 1000, 0, nil) // TODO: Add pagination/filtering in repo
+	users, err := s.userRepo.List(ctx, clubID, 1000, 0, nil) // TODO: Add pagination/filtering in repo
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +68,8 @@ func (s *LeaderboardServiceImpl) GetGlobalLeaderboard(clubID string, period doma
 }
 
 // GetUserRank returns a user's rank in the specified leaderboard.
-func (s *LeaderboardServiceImpl) GetUserRank(clubID, userID string, lbType domain.LeaderboardType, period domain.LeaderboardPeriod) (int, error) {
-	leaderboard, err := s.GetGlobalLeaderboard(clubID, period, 1000, 0)
+func (s *LeaderboardServiceImpl) GetUserRank(ctx context.Context, clubID, userID string, lbType domain.LeaderboardType, period domain.LeaderboardPeriod) (int, error) {
+	leaderboard, err := s.GetGlobalLeaderboard(ctx, clubID, period, 1000, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -83,8 +84,8 @@ func (s *LeaderboardServiceImpl) GetUserRank(clubID, userID string, lbType domai
 }
 
 // GetUserContext returns the user's position with surrounding entries.
-func (s *LeaderboardServiceImpl) GetUserContext(clubID, userID string, period domain.LeaderboardPeriod) (*domain.LeaderboardContext, error) {
-	leaderboard, err := s.GetGlobalLeaderboard(clubID, period, 1000, 0)
+func (s *LeaderboardServiceImpl) GetUserContext(ctx context.Context, clubID, userID string, period domain.LeaderboardPeriod) (*domain.LeaderboardContext, error) {
+	leaderboard, err := s.GetGlobalLeaderboard(ctx, clubID, period, 1000, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +129,8 @@ func (s *LeaderboardServiceImpl) GetUserContext(clubID, userID string, period do
 }
 
 // GetBookingsLeaderboard returns leaderboard based on total bookings.
-func (s *LeaderboardServiceImpl) GetBookingsLeaderboard(clubID string, period domain.LeaderboardPeriod, limit int) (*domain.Leaderboard, error) {
-	users, err := s.userRepo.List(clubID, 1000, 0, nil)
+func (s *LeaderboardServiceImpl) GetBookingsLeaderboard(ctx context.Context, clubID string, period domain.LeaderboardPeriod, limit int) (*domain.Leaderboard, error) {
+	users, err := s.userRepo.List(ctx, clubID, 1000, 0, nil)
 	if err != nil {
 		return nil, err
 	}

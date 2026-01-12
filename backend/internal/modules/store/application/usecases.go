@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -18,8 +19,8 @@ func NewStoreUseCases(repo domain.StoreRepository) *StoreUseCases {
 	return &StoreUseCases{repo: repo}
 }
 
-func (uc *StoreUseCases) GetCatalog(clubID string, category string) ([]domain.Product, error) {
-	return uc.repo.ListProducts(clubID, category)
+func (uc *StoreUseCases) GetCatalog(ctx context.Context, clubID string, category string) ([]domain.Product, error) {
+	return uc.repo.ListProducts(ctx, clubID, category)
 }
 
 type PurchaseRequest struct {
@@ -30,7 +31,7 @@ type PurchaseRequest struct {
 	Items      []domain.OrderItem `json:"items"`
 }
 
-func (uc *StoreUseCases) PurchaseItems(req PurchaseRequest) (*domain.Order, error) {
+func (uc *StoreUseCases) PurchaseItems(ctx context.Context, req PurchaseRequest) (*domain.Order, error) {
 	if len(req.Items) == 0 {
 		return nil, errors.New("cannot purchase empty cart")
 	}
@@ -46,7 +47,7 @@ func (uc *StoreUseCases) PurchaseItems(req PurchaseRequest) (*domain.Order, erro
 	// Validate stock and calculate total (Optimistic check, real deduction happens in repo transaction)
 	// In a high concurrence scenario, repo should handle "UPDATE ... WHERE stock > qty"
 	for _, item := range req.Items {
-		product, err := uc.repo.GetProduct(item.ProductID.String())
+		product, err := uc.repo.GetProduct(ctx, item.ProductID.String())
 		if err != nil {
 			return nil, errors.New("product not found: " + item.ProductID.String())
 		}
@@ -81,7 +82,7 @@ func (uc *StoreUseCases) PurchaseItems(req PurchaseRequest) (*domain.Order, erro
 	}
 
 	// Atomic Purchase
-	if err := uc.repo.CreateOrderWithStockUpdate(order, orderItems); err != nil {
+	if err := uc.repo.CreateOrderWithStockUpdate(ctx, order, orderItems); err != nil {
 		return nil, err
 	}
 

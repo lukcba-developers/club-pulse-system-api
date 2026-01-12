@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -112,17 +113,17 @@ func (e *TravelEvent) IsFull(currentCount int) bool {
 
 // TravelEventRepository define las operaciones de persistencia para eventos
 type TravelEventRepository interface {
-	Create(event *TravelEvent) error
-	GetByID(clubID string, id uuid.UUID) (*TravelEvent, error)
-	GetByTeamID(clubID string, teamID uuid.UUID) ([]TravelEvent, error)
-	GetUpcoming(clubID string, teamID uuid.UUID) ([]TravelEvent, error)
-	Update(event *TravelEvent) error
-	Delete(clubID string, id uuid.UUID) error
+	Create(ctx context.Context, event *TravelEvent) error
+	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*TravelEvent, error)
+	GetByTeamID(ctx context.Context, clubID string, teamID uuid.UUID) ([]TravelEvent, error)
+	GetUpcoming(ctx context.Context, clubID string, teamID uuid.UUID) ([]TravelEvent, error)
+	Update(ctx context.Context, event *TravelEvent) error
+	Delete(ctx context.Context, clubID string, id uuid.UUID) error
 
 	// RSVP operations
-	CreateRSVP(rsvp *EventRSVP) error
-	GetRSVPsByEventID(eventID uuid.UUID) ([]EventRSVP, error)
-	GetRSVPByUserAndEvent(eventID uuid.UUID, userID string) (*EventRSVP, error)
-	UpdateRSVP(rsvp *EventRSVP) error
-	DeleteRSVP(id uuid.UUID) error
+	CreateRSVP(ctx context.Context, rsvp *EventRSVP) error
+	GetRSVPsByEventID(ctx context.Context, eventID uuid.UUID) ([]EventRSVP, error)
+	GetRSVPByUserAndEvent(ctx context.Context, eventID uuid.UUID, userID string) (*EventRSVP, error)
+	UpdateRSVP(ctx context.Context, rsvp *EventRSVP) error
+	DeleteRSVP(ctx context.Context, id uuid.UUID) error
 }

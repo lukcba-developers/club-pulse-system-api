@@ -39,7 +39,8 @@ func (h *StoreHandler) PurchaseItems(c *gin.Context) {
 	req.ClubID = clubID
 	req.UserID = &userID // Auth User
 
-	order, err := h.useCases.PurchaseItems(req)
+	ctx := c.Request.Context()
+	order, err := h.useCases.PurchaseItems(ctx, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -56,7 +57,8 @@ func (h *StoreHandler) PublicPurchase(c *gin.Context) {
 	}
 
 	slug := c.Param("slug")
-	club, err := h.clubUseCases.GetClubBySlug(slug)
+	ctx := c.Request.Context()
+	club, err := h.clubUseCases.GetClubBySlug(ctx, slug)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
 		return
@@ -65,7 +67,7 @@ func (h *StoreHandler) PublicPurchase(c *gin.Context) {
 	req.ClubID = club.ID
 	req.UserID = nil // Guest
 
-	order, err := h.useCases.PurchaseItems(req)
+	order, err := h.useCases.PurchaseItems(ctx, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -78,7 +80,8 @@ func (h *StoreHandler) GetCatalog(c *gin.Context) {
 	clubID := c.GetString("clubID")
 	category := c.Query("category")
 
-	products, err := h.useCases.GetCatalog(clubID, category)
+	ctx := c.Request.Context()
+	products, err := h.useCases.GetCatalog(ctx, clubID, category)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -89,15 +92,16 @@ func (h *StoreHandler) GetCatalog(c *gin.Context) {
 
 func (h *StoreHandler) GetPublicCatalog(c *gin.Context) {
 	slug := c.Param("slug")
+	ctx := c.Request.Context()
 	category := c.Query("category")
 
-	club, err := h.clubUseCases.GetClubBySlug(slug)
+	club, err := h.clubUseCases.GetClubBySlug(ctx, slug)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
 		return
 	}
 
-	products, err := h.useCases.GetCatalog(club.ID, category)
+	products, err := h.useCases.GetCatalog(ctx, club.ID, category)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

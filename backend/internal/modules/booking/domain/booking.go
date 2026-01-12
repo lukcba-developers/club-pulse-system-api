@@ -51,11 +51,20 @@ func (g GuestDetails) Value() (driver.Value, error) {
 }
 
 func (g *GuestDetails) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
+	if value == nil {
+		*g = nil
+		return nil
 	}
-	return json.Unmarshal(b, g)
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return errors.New("type assertion to []byte or string failed")
+	}
+	return json.Unmarshal(bytes, g)
 }
 
 type Booking struct {
@@ -74,13 +83,13 @@ type Booking struct {
 }
 
 type BookingRepository interface {
-	Create(booking *Booking) error
-	GetByID(clubID string, id uuid.UUID) (*Booking, error)
-	List(clubID string, filter map[string]interface{}) ([]Booking, error)
-	Update(booking *Booking) error
-	HasTimeConflict(clubID string, facilityID uuid.UUID, start, end time.Time) (bool, error)
-	ListByFacilityAndDate(clubID string, facilityID uuid.UUID, date time.Time) ([]Booking, error)
-	ListAll(clubID string, filter map[string]interface{}, from, to *time.Time) ([]Booking, error)
+	Create(ctx context.Context, booking *Booking) error
+	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*Booking, error)
+	List(ctx context.Context, clubID string, filter map[string]interface{}) ([]Booking, error)
+	Update(ctx context.Context, booking *Booking) error
+	HasTimeConflict(ctx context.Context, clubID string, facilityID uuid.UUID, start, end time.Time) (bool, error)
+	ListByFacilityAndDate(ctx context.Context, clubID string, facilityID uuid.UUID, date time.Time) ([]Booking, error)
+	ListAll(ctx context.Context, clubID string, filter map[string]interface{}, from, to *time.Time) ([]Booking, error)
 	AddToWaitlist(ctx context.Context, entry *Waitlist) error
 	GetNextInLine(ctx context.Context, clubID string, resourceID uuid.UUID, date time.Time) (*Waitlist, error)
 }

@@ -16,6 +16,26 @@ var (
 	once   sync.Once
 )
 
+// Client defines the interface for Redis operations to allow mocking
+type Client interface {
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	Get(ctx context.Context, key string) (string, error)
+	Del(ctx context.Context, keys ...string) error
+	Exists(ctx context.Context, key string) (bool, error)
+	Incr(ctx context.Context, key string) (int64, error)
+	Expire(ctx context.Context, key string, ttl time.Duration) error
+	SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error)
+	Scan(ctx context.Context, pattern string) ([]string, error)
+	Publish(ctx context.Context, channel string, message interface{}) error
+	Subscribe(ctx context.Context, channel string) *redis.PubSub
+	Eval(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd
+	LPush(ctx context.Context, key string, values ...interface{}) error
+	LRange(ctx context.Context, key string, start, stop int64) ([]string, error)
+	LTrim(ctx context.Context, key string, start, stop int64) error
+	Ping(ctx context.Context) error
+	Close() error
+}
+
 // RedisClient wraps the go-redis client with helper methods
 type RedisClient struct {
 	rdb *redis.Client

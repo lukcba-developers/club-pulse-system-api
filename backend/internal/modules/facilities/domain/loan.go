@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -37,9 +38,9 @@ type LoanDisplay struct {
 }
 
 type LoanRepository interface {
-	Create(loan *EquipmentLoan) error
-	GetByID(id string) (*EquipmentLoan, error)
-	ListByUser(userID string) ([]*EquipmentLoan, error)
-	ListByStatus(status LoanStatus) ([]*EquipmentLoan, error)
-	Update(loan *EquipmentLoan) error
+	Create(ctx context.Context, loan *EquipmentLoan) error
+	GetByID(ctx context.Context, id string) (*EquipmentLoan, error)
+	ListByUser(ctx context.Context, userID string) ([]*EquipmentLoan, error)
+	ListByStatus(ctx context.Context, status LoanStatus) ([]*EquipmentLoan, error)
+	Update(ctx context.Context, loan *EquipmentLoan) error
 }

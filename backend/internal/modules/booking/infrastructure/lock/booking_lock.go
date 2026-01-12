@@ -11,7 +11,7 @@ import (
 // BookingLock provides distributed locking for booking slots
 // Prevents race conditions when multiple users try to book the same slot
 type BookingLock struct {
-	redis *platformRedis.RedisClient
+	redis platformRedis.Client
 }
 
 // NewBookingLock creates a new booking lock service

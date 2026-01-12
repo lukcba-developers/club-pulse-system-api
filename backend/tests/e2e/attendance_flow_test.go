@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/domain"
 	attendanceHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/http"
 	attendanceRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/repository"
+	membershipDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/domain"
 	membershipRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/infrastructure/repository"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
@@ -27,15 +29,12 @@ func TestAttendanceFlow(t *testing.T) {
 	db := database.GetDB()
 
 	// Ensure clean state (Legacy schema conflict prevention)
-	_ = db.Migrator().DropTable(&attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &userRepo.UserModel{})
+	_ = db.Migrator().DropTable(&attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &userRepo.UserModel{}, &membershipDomain.Membership{}, &membershipDomain.MembershipTier{})
 
 	// 2. Setup DB & Migrations
 	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
 	err := db.AutoMigrate(&userRepo.UserModel{}, &attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{})
 	assert.NoError(t, err)
-
-	// Clear PostgreSQL cached prepared statements after schema change
-	db.Exec("DISCARD ALL")
 
 	// Repos
 	uRepo := userRepo.NewPostgresUserRepository(db)
@@ -118,7 +117,7 @@ func TestAttendanceFlow(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w2.Code)
 
 	// 5. Verify Persistence (use the SAME clubID as middleware)
-	updatedList, err := aUseCase.GetOrCreateList(testClubID, "2012", list.Date, "coach-uuid-123")
+	updatedList, err := aUseCase.GetOrCreateList(context.Background(), testClubID, "2012", list.Date, "coach-uuid-123")
 	assert.NoError(t, err)
 	assert.NotNil(t, updatedList)
 
