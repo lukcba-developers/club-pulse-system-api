@@ -32,7 +32,7 @@ type SeederUser struct {
 	ID                string `gorm:"primaryKey"`
 	Name              string
 	Email             string `gorm:"uniqueIndex"`
-	Password          string
+	Password          string `gorm:"column:password_hash;not null"`
 	Role              string
 	DateOfBirth       *time.Time
 	SportsPreferences map[string]interface{} `gorm:"serializer:json"`
@@ -44,6 +44,10 @@ type SeederUser struct {
 	MedicalCertStatus string `gorm:"default:'PENDING'"`
 	MedicalCertExpiry *time.Time
 	FamilyGroupID     *string `gorm:"type:uuid"`
+	// GDPR/Legal Compliance
+	TermsAcceptedAt      *time.Time
+	PrivacyPolicyVersion string
+	DataRetentionUntil   *time.Time
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -88,6 +92,13 @@ func main() {
 
 	database.InitDB()
 	db := database.GetDB()
+
+	sqlDB, _ := db.DB()
+	var currentDBName string
+	if err := sqlDB.QueryRow("SELECT current_database()").Scan(&currentDBName); err != nil {
+		log.Printf("Failed to get current database name: %v", err)
+	}
+	log.Printf("Connected to Database: %s", currentDBName)
 
 	log.Println("--- Starting Seeder ---")
 
@@ -163,6 +174,7 @@ func main() {
 	defaultClub := clubDom.Club{
 		ID:        "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
 		Name:      "Club Alpha",
+		Slug:      "club-alpha", // Used for URL resolution and X-Club-ID header
 		Domain:    "club-alpha.com",
 		Status:    clubDom.ClubStatusActive,
 		CreatedAt: time.Now(),
@@ -176,12 +188,14 @@ func main() {
 
 	// 1. Seed Users
 	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-	admin := domain.User{
+
+	// Explicitly using SeederUser to ensure table match
+	admin := SeederUser{
 		ID:        uuid.New().String(),
 		Email:     "admin@clubpulse.com",
 		Password:  string(hashedPwd),
 		Name:      "System Admin",
-		Role:      domain.RoleAdmin,
+		Role:      "ADMIN",
 		ClubID:    defaultClub.ID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -190,7 +204,7 @@ func main() {
 	if err := db.Where("email = ?", admin.Email).FirstOrCreate(&admin).Error; err != nil {
 		log.Printf("Error seeding admin: %v", err)
 	} else {
-		log.Println("Seeded Admin User")
+		log.Println("Seeded Admin User (using SeederUser struct)")
 	}
 
 	// 1.2 Seed Super Admin
@@ -531,4 +545,7 @@ func main() {
 
 	log.Println("--- Seeding Completed Successfully ---")
 
+	var userCount int64
+	db.Model(&SeederUser{}).Count(&userCount)
+	log.Printf("Final Verification: Found %d users in database", userCount)
 }
