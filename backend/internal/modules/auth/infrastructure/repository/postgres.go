@@ -26,7 +26,7 @@ type UserModel struct {
 	ID          string `gorm:"primaryKey"`
 	Name        string `gorm:"not null"`
 	Email       string `gorm:"uniqueIndex;not null"`
-	Password    string `gorm:"not null"`
+	Password    string `gorm:"column:password_hash;not null"`
 	Role        string `gorm:"default:'USER'"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -36,6 +36,11 @@ type UserModel struct {
 	GoogleID    string  `gorm:"index"`
 	AvatarURL   string
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
+
+	// GDPR Compliance Fields
+	TermsAcceptedAt      *time.Time
+	PrivacyPolicyVersion string
+	DataRetentionUntil   *time.Time
 }
 
 // RefreshTokenModel represents the refresh token in DB
@@ -79,18 +84,21 @@ func (UserModel) TableName() string {
 
 func (r *PostgresAuthRepository) SaveUser(ctx context.Context, user *domain.User) error {
 	userModel := UserModel{
-		ID:          user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		Password:    user.Password,
-		Role:        user.Role,
-		CreatedAt:   user.CreatedAt,
-		UpdatedAt:   user.UpdatedAt,
-		DateOfBirth: user.DateOfBirth,
-		ParentID:    user.ParentID,
-		ClubID:      user.ClubID,
-		GoogleID:    user.GoogleID,
-		AvatarURL:   user.AvatarURL,
+		ID:                   user.ID,
+		Name:                 user.Name,
+		Email:                user.Email,
+		Password:             user.Password,
+		Role:                 user.Role,
+		CreatedAt:            user.CreatedAt,
+		UpdatedAt:            user.UpdatedAt,
+		DateOfBirth:          user.DateOfBirth,
+		ParentID:             user.ParentID,
+		ClubID:               user.ClubID,
+		GoogleID:             user.GoogleID,
+		AvatarURL:            user.AvatarURL,
+		TermsAcceptedAt:      user.TermsAcceptedAt,
+		PrivacyPolicyVersion: user.PrivacyPolicyVersion,
+		DataRetentionUntil:   user.DataRetentionUntil,
 	}
 
 	result := r.db.WithContext(ctx).Create(&userModel)
@@ -112,18 +120,21 @@ func (r *PostgresAuthRepository) FindUserByEmail(ctx context.Context, email, clu
 	}
 
 	return &domain.User{
-		ID:          userModel.ID,
-		Name:        userModel.Name,
-		Email:       userModel.Email,
-		Password:    userModel.Password,
-		Role:        userModel.Role,
-		CreatedAt:   userModel.CreatedAt,
-		UpdatedAt:   userModel.UpdatedAt,
-		DateOfBirth: userModel.DateOfBirth,
-		ParentID:    userModel.ParentID,
-		ClubID:      userModel.ClubID,
-		GoogleID:    userModel.GoogleID,
-		AvatarURL:   userModel.AvatarURL,
+		ID:                   userModel.ID,
+		Name:                 userModel.Name,
+		Email:                userModel.Email,
+		Password:             userModel.Password,
+		Role:                 userModel.Role,
+		CreatedAt:            userModel.CreatedAt,
+		UpdatedAt:            userModel.UpdatedAt,
+		DateOfBirth:          userModel.DateOfBirth,
+		ParentID:             userModel.ParentID,
+		ClubID:               userModel.ClubID,
+		GoogleID:             userModel.GoogleID,
+		AvatarURL:            userModel.AvatarURL,
+		TermsAcceptedAt:      userModel.TermsAcceptedAt,
+		PrivacyPolicyVersion: userModel.PrivacyPolicyVersion,
+		DataRetentionUntil:   userModel.DataRetentionUntil,
 	}, nil
 }
 
@@ -139,16 +150,19 @@ func (r *PostgresAuthRepository) FindUserByID(ctx context.Context, id, clubID st
 	}
 
 	return &domain.User{
-		ID:          userModel.ID,
-		Name:        userModel.Name,
-		Email:       userModel.Email,
-		Password:    userModel.Password,
-		Role:        userModel.Role,
-		CreatedAt:   userModel.CreatedAt,
-		UpdatedAt:   userModel.UpdatedAt,
-		DateOfBirth: userModel.DateOfBirth,
-		ParentID:    userModel.ParentID,
-		ClubID:      userModel.ClubID,
+		ID:                   userModel.ID,
+		Name:                 userModel.Name,
+		Email:                userModel.Email,
+		Password:             userModel.Password,
+		Role:                 userModel.Role,
+		CreatedAt:            userModel.CreatedAt,
+		UpdatedAt:            userModel.UpdatedAt,
+		DateOfBirth:          userModel.DateOfBirth,
+		ParentID:             userModel.ParentID,
+		ClubID:               userModel.ClubID,
+		TermsAcceptedAt:      userModel.TermsAcceptedAt,
+		PrivacyPolicyVersion: userModel.PrivacyPolicyVersion,
+		DataRetentionUntil:   userModel.DataRetentionUntil,
 	}, nil
 }
 
