@@ -44,7 +44,7 @@ test.describe('Authentication Flow', () => {
                     body: JSON.stringify({
                         name: 'System Admin',
                         email: email,
-                        password: 'admin123',
+                        password: 'Admin123',
                         accept_terms: true,
                         privacy_policy_version: '2026-01'
                     })
@@ -66,7 +66,7 @@ test.describe('Authentication Flow', () => {
 
         // 3. Fill Credentials
         await page.fill('input[name="email"]', uniqueEmail);
-        await page.fill('input[name="password"]', 'admin123');
+        await page.fill('input[name="password"]', 'Admin123');
 
         // 4. Submit
         await page.click('button[type="submit"]');
