@@ -78,10 +78,11 @@ func (s *RecurringRepositoryTestSuite) TestCreateAndGet() {
 func (s *RecurringRepositoryTestSuite) TestGetAllActive() {
 	clubID := "active-club"
 
-	s.repo.Create(context.Background(), &domain.RecurringRule{
+	err := s.repo.Create(context.Background(), &domain.RecurringRule{
 		ID: uuid.New(), ClubID: clubID, FacilityID: uuid.New(),
 		EndDate: time.Now().AddDate(0, 0, 1),
 	})
+	s.NoError(err)
 
 	list, err := s.repo.GetAllActive(context.Background(), clubID)
 	s.NoError(err)
@@ -98,10 +99,11 @@ func (s *RecurringRepositoryTestSuite) TestGetAllActiveExpired() {
 	clubID := "expired-club"
 
 	// Rule that ended yesterday
-	s.repo.Create(context.Background(), &domain.RecurringRule{
+	err := s.repo.Create(context.Background(), &domain.RecurringRule{
 		ID: uuid.New(), ClubID: clubID, FacilityID: uuid.New(),
 		EndDate: time.Now().AddDate(0, 0, -1),
 	})
+	s.NoError(err)
 
 	list, err := s.repo.GetAllActive(context.Background(), clubID)
 	s.NoError(err)

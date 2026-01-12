@@ -123,10 +123,11 @@ func (s *BookingRepositoryTestSuite) TestUpdate() {
 		FacilityID: uuid.New(),
 		Status:     domain.BookingStatusConfirmed,
 	}
-	s.repo.Create(context.Background(), booking)
+	err := s.repo.Create(context.Background(), booking)
+	s.NoError(err)
 
 	booking.Status = domain.BookingStatusCancelled
-	err := s.repo.Update(context.Background(), booking)
+	err = s.repo.Update(context.Background(), booking)
 	s.NoError(err)
 
 	updated, _ := s.repo.GetByID(context.Background(), "club-1", booking.ID)
