@@ -278,5 +278,6 @@ func handleError(c *gin.Context, err error) {
 		c.JSON(e.Code, gin.H{"error": e.Message, "type": e.Type})
 		return
 	}
+	// Exposse internal error details for debugging (TODO: Use proper logger and hide in prod)
 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 }

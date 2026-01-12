@@ -32,7 +32,7 @@ type SeederUser struct {
 	ID                string `gorm:"primaryKey"`
 	Name              string
 	Email             string `gorm:"uniqueIndex"`
-	Password          string `gorm:"column:password_hash;not null"`
+	Password          string `gorm:"column:password;not null"`
 	Role              string
 	DateOfBirth       *time.Time
 	SportsPreferences map[string]interface{} `gorm:"serializer:json"`

@@ -26,7 +26,7 @@ type UserModel struct {
 	ID          string `gorm:"primaryKey"`
 	Name        string `gorm:"not null"`
 	Email       string `gorm:"uniqueIndex;not null"`
-	Password    string `gorm:"column:password_hash;not null"`
+	Password    string `gorm:"column:password;not null"`
 	Role        string `gorm:"default:'USER'"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
