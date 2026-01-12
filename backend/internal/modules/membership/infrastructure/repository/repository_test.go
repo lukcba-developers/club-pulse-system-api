@@ -82,7 +82,10 @@ func setupDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("failed to connect: %v", err)
 	}
-	db.AutoMigrate(&TestMembershipTier{}, &TestMembership{}, &TestScholarship{}, &TestSubscription{})
+	err = db.AutoMigrate(&TestMembershipTier{}, &TestMembership{}, &TestScholarship{}, &TestSubscription{})
+	if err != nil {
+		t.Fatalf("failed to migrate: %v", err)
+	}
 	return db
 }
 
@@ -203,12 +206,12 @@ func TestPostgresMembershipRepositories(t *testing.T) {
 		assert.Nil(t, tErr)
 
 		// 2. List Tiers
-		tiers, err := repo.ListTiers(context.Background(), clubID)
-		assert.NoError(t, err)
+		// 2. List Tiers
 		// Assuming setupDB doesn't seed, but Full Lifecycle might have added one
 		// We can add one here to be sure
 		db.Create(&TestMembershipTier{ID: uuid.New(), ClubID: clubID, Name: "Gold", MonthlyFee: decimal.NewFromInt(100), IsActive: true})
-		tiers, _ = repo.ListTiers(context.Background(), clubID)
+		tiers, err := repo.ListTiers(context.Background(), clubID)
+		assert.NoError(t, err)
 		assert.NotEmpty(t, tiers)
 
 		// 3. List All
