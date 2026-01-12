@@ -67,7 +67,7 @@ func TestMembershipFlow(t *testing.T) {
 	_, err := authUC.Register(context.Background(), authApp.RegisterDTO{
 		Name:                 "Mem User",
 		Email:                email,
-		Password:             "password",
+		Password:             "Password123!",
 		AcceptTerms:          true,
 		PrivacyPolicyVersion: "2026-01",
 	}, "test-club-membership")

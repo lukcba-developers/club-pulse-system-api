@@ -56,7 +56,7 @@ func TestAuthDataLeak(t *testing.T) {
 	_, err := authUC.Register(context.Background(), authApp.RegisterDTO{
 		Name:                 "Leaker User",
 		Email:                email,
-		Password:             "password",
+		Password:             "Password123!",
 		AcceptTerms:          true,
 		PrivacyPolicyVersion: "2026-01",
 	}, clubA)
@@ -70,7 +70,7 @@ func TestAuthDataLeak(t *testing.T) {
 	t.Run("Login in Correct Club", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{
 			"email":    email,
-			"password": "password",
+			"password": "Password123!",
 		})
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(body))
@@ -84,7 +84,7 @@ func TestAuthDataLeak(t *testing.T) {
 	t.Run("Login in Wrong Club", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{
 			"email":    email,
-			"password": "password",
+			"password": "Password123!",
 		})
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(body))

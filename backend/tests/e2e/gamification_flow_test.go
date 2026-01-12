@@ -51,7 +51,7 @@ func TestGamificationFlow(t *testing.T) {
 	registerDTO := authApp.RegisterDTO{
 		Name:                 "Gamer One",
 		Email:                email,
-		Password:             "password",
+		Password:             "Password123!",
 		AcceptTerms:          true,
 		PrivacyPolicyVersion: "2026-01",
 	}

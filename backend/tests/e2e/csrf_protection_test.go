@@ -41,7 +41,7 @@ func TestCSRFProtection(t *testing.T) {
 	_, err := authUC.Register(context.Background(), authApp.RegisterDTO{
 		Name:                 "CSRF Test",
 		Email:                testEmail,
-		Password:             "password123",
+		Password:             "Password123!",
 		AcceptTerms:          true,
 		PrivacyPolicyVersion: "2026-01",
 	}, clubID)
@@ -70,7 +70,7 @@ func TestCSRFProtection(t *testing.T) {
 	t.Run("Login Without CSRF Token Succeeds", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{
 			"email":    testEmail,
-			"password": "password123",
+			"password": "Password123!",
 		})
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(body))
@@ -119,7 +119,7 @@ func TestCSRFProtection(t *testing.T) {
 		// First, login to get the CSRF token
 		loginBody, _ := json.Marshal(map[string]string{
 			"email":    testEmail,
-			"password": "password123",
+			"password": "Password123!",
 		})
 		loginW := httptest.NewRecorder()
 		loginReq, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(loginBody))
