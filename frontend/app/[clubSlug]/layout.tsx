@@ -7,7 +7,7 @@ import { SponsorCarousel } from "@/components/club/SponsorCarousel"
 // Función para obtener datos del club
 async function getClub(slug: string) {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'}/public/clubs/${slug}`, {
+        const res = await fetch(`${process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'}/public/clubs/${slug}`, {
             next: { revalidate: 3600 } // Cache por 1 hora
         })
 

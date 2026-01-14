@@ -17,6 +17,9 @@ A continuación, se presenta la lista de módulos documentados. Haz clic en cual
 *   [**Disciplinas (Disciplines)**](./disciplines/README.md) - Gestión de deportes y grupos de entrenamiento.
 *   [**Equipos (Team)**](./team/README.md) - Gestión de equipos para campeonatos.
 *   [**Instalaciones (Facilities)**](./facilities/README.md) - Gestión de las instalaciones deportivas.
+*   [**Incidentes (Incidents)**](./incidents.md) - Registro de incidentes y accidentes.
+*   [**Gamificación (Gamification)**](./gamification.md) - Sistema de insignias, XP y tablas de clasificación.
+*   [**GDPR (GDPR)**](./gdpr.md) - Derechos de portabilidad y eliminación de datos.
 *   [**Grupos Familiares (Family)**](./family/README.md) - Vinculación de socios y facturación unificada.
 *   [**Membresías (Membership)**](./membership/README.md) - Administración de tipos de membresía, socios y planes.
 *   [**Notificaciones (Notification)**](./notification/README.md) - Sistema de envío de notificaciones a los usuarios.

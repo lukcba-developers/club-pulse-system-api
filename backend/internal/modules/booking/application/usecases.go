@@ -11,6 +11,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	paymentDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
+	"github.com/shopspring/decimal"
 )
 
 // DTOs
@@ -88,15 +89,15 @@ func (uc *BookingUseCases) CreateBooking(ctx context.Context, clubID string, dto
 
 	// 2.2 Calculate Price (Using already fetched facility)
 	dtoDuration := dto.EndTime.Sub(dto.StartTime).Hours()
-	basePrice := dtoDuration * facility.HourlyRate
-	guestPrice := float64(len(dto.GuestDetails)) * facility.GuestFee
-	totalPrice := basePrice + guestPrice
+	basePrice := decimal.NewFromFloat(facility.HourlyRate).Mul(decimal.NewFromFloat(dtoDuration))
+	guestPrice := decimal.NewFromFloat(facility.GuestFee).Mul(decimal.NewFromFloat(float64(len(dto.GuestDetails))))
+	totalPrice := basePrice.Add(guestPrice)
 
 	// 3. Entity Construction
 	// Determine initial status based on whether payment is required
 	initialStatus := bookingDomain.BookingStatusConfirmed
 	var paymentExpiry *time.Time
-	if totalPrice > 0 {
+	if totalPrice.GreaterThan(decimal.Zero) {
 		initialStatus = bookingDomain.BookingStatusPendingPayment
 		// SECURITY FIX (VUL-001): Set payment expiry to 15 minutes
 		expiry := time.Now().Add(15 * time.Minute)
@@ -488,6 +489,11 @@ func (uc *BookingUseCases) GenerateBookingsFromRules(ctx context.Context, clubID
 		}
 	}
 	return nil
+}
+
+// ListRecurringRules retrieves all active recurring rules for the club.
+func (uc *BookingUseCases) ListRecurringRules(ctx context.Context, clubID string) ([]bookingDomain.RecurringRule, error) {
+	return uc.recurringRepo.GetAllActive(ctx, clubID)
 }
 
 // --- Private Helpers (The "Clean Code" Section) ---

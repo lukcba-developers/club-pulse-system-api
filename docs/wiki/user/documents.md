@@ -87,6 +87,7 @@ Las siguientes rutas están disponibles para interactuar con el módulo. Todas r
 
 -   **Acción:** Obtiene los detalles de un documento específico por su ID.
 -   **Permisos:** Similar a la lista de documentos.
+-   **Nota de Seguridad (GDPR):** Para documentos de tipo `EMMAC_MEDICAL`, el acceso está restringido. Solo el propietario del documento, usuarios con el rol `MEDICAL_STAFF` o un `SUPER_ADMIN` pueden acceder a estos datos. Esta medida cumple con el Artículo 9 del GDPR sobre categorías especiales de datos personales.
 -   **Respuesta Exitosa (200 OK):** El objeto del documento solicitado.
 
 ---

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Trophy, Users } from "lucide-react"
+import { Trophy, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button"
 
 interface Tournament {

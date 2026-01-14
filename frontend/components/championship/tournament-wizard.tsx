@@ -43,7 +43,7 @@ export function TournamentWizard({ clubId }: { clubId: string }) {
                 description: "El torneo se ha guardado como borrador.",
             });
             setStep(2);
-        } catch (_) {
+        } catch {
             toast({
                 variant: "destructive",
                 title: "Error",
@@ -78,7 +78,7 @@ export function TournamentWizard({ clubId }: { clubId: string }) {
             // Finished for MVP Wizard
             // router.push(`/championships/${createdTournamentId}`); // Future route
             router.refresh();
-        } catch (_) {
+        } catch {
             toast({
                 variant: "destructive",
                 title: "Error",

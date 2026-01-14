@@ -61,7 +61,7 @@ export default function PaymentDashboardPage() {
 
     // Form state
     const [formData, setFormData] = useState<OfflinePaymentRequest>({
-        amount: 0,
+        amount: '',
         method: 'CASH',
         payer_id: '',
         notes: '',
@@ -95,12 +95,12 @@ export default function PaymentDashboardPage() {
     };
 
     const handleSubmitOfflinePayment = async () => {
-        if (!formData.payer_id || formData.amount <= 0) return;
+        if (!formData.payer_id || !formData.amount || parseFloat(formData.amount) <= 0) return;
         setSubmitting(true);
         try {
             await paymentService.createOfflinePayment(formData);
             setIsModalOpen(false);
-            setFormData({ amount: 0, method: 'CASH', payer_id: '', notes: '' });
+            setFormData({ amount: '', method: 'CASH', payer_id: '', notes: '' });
             loadPayments();
         } catch (error) {
             console.error('Failed to create offline payment', error);
@@ -206,8 +206,10 @@ export default function PaymentDashboardPage() {
                                 <Input
                                     id="amount"
                                     type="number"
-                                    value={formData.amount || ''}
-                                    onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.amount}
+                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                                 />
                             </div>
                             {/* Method */}

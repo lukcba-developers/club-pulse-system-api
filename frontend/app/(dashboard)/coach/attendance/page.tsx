@@ -174,10 +174,10 @@ export default function CoachAttendancePage() {
                         <h2 className="font-semibold text-gray-900 dark:text-white">
                             Lista del {new Date(attendanceList.date).toLocaleDateString('es-AR')} - {attendanceList.group}
                         </h2>
-                        <p className="text-sm text-gray-500">{attendanceList.records.length} alumnos registrados</p>
+                        <p className="text-sm text-gray-500">{attendanceList.records?.length || 0} alumnos registrados</p>
                     </div>
 
-                    {attendanceList.records.length === 0 ? (
+                    {(!attendanceList.records || attendanceList.records.length === 0) ? (
                         <div className="p-6 text-center text-gray-500">
                             No hay alumnos en esta categoría.
                         </div>

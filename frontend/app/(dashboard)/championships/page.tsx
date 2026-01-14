@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { TournamentWizard } from '@/components/championship/tournament-wizard';
 import { StandingsTable } from '@/components/championship/standings-table';

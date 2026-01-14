@@ -307,6 +307,32 @@ func (h *BookingHandler) GenerateBookings(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "bookings generated successfully"})
 }
 
+// ListRecurringRules godoc
+// @Summary      List recurring rules
+// @Description  Admin only. Lists all active recurring booking rules.
+// @Tags         bookings
+// @Produce      json
+// @Success      200   {object}  map[string][]domain.RecurringRule
+// @Failure      403   {object}  map[string]string "Requires ADMIN role"
+// @Router       /bookings/recurring [get]
+func (h *BookingHandler) ListRecurringRules(c *gin.Context) {
+	// RBAC: Only ADMIN or SUPER_ADMIN can list recurring rules
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
+	clubID := c.GetString("clubID")
+	rules, err := h.useCases.ListRecurringRules(c.Request.Context(), clubID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": rules})
+}
+
 // JoinWaitlist godoc
 // @Summary      Join a waitlist
 // @Description  Adds the user to the waitlist for a specific resource and date.
@@ -349,6 +375,7 @@ func RegisterRoutes(r *gin.RouterGroup, handler *BookingHandler, authMiddleware,
 		bookings.GET("/all", handler.ListAll)
 		bookings.GET("/availability", handler.GetAvailability)
 		bookings.DELETE("/:id", handler.Cancel)
+		bookings.GET("/recurring", handler.ListRecurringRules)
 		bookings.POST("/recurring", handler.CreateRecurringRule)
 		bookings.POST("/generate", handler.GenerateBookings)
 		bookings.POST("/waitlist", handler.JoinWaitlist)

@@ -20,7 +20,8 @@ type RecurringRule struct {
 	ID         uuid.UUID      `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	ClubID     string         `json:"club_id" gorm:"index;not null"`
 	FacilityID uuid.UUID      `json:"facility_id" gorm:"type:uuid;not null;index"`
-	Type       RecurrenceType `json:"type" gorm:"type:varchar(20);not null"`
+	Type       RecurrenceType `json:"type" gorm:"type:varchar(20);not null;default:'FIXED'"`       // Purpose: CLASS, MAINTENANCE, FIXED
+	Frequency  string         `json:"frequency" gorm:"type:varchar(20);not null;default:'WEEKLY'"` // WEEKLY, MONTHLY
 
 	// DayOfWeek: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 	DayOfWeek int       `json:"day_of_week" gorm:"not null"`

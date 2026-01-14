@@ -217,19 +217,22 @@ func (h *DisciplineHandler) GetStandings(c *gin.Context) {
 }
 
 func RegisterRoutes(r *gin.RouterGroup, handler *DisciplineHandler, authMiddleware, tenantMiddleware gin.HandlerFunc) {
-	r.Use(authMiddleware, tenantMiddleware)
+	// Apply middleware ONLY to these groups, not to 'r'
 	disciplines := r.Group("/disciplines")
+	disciplines.Use(authMiddleware, tenantMiddleware)
 	{
 		disciplines.GET("", handler.ListDisciplines)
 	}
 
 	groups := r.Group("/groups")
+	groups.Use(authMiddleware, tenantMiddleware)
 	{
 		groups.GET("", handler.ListGroups)
 		groups.GET("/:id/students", handler.ListStudentsInGroup)
 	}
 
 	tournaments := r.Group("/tournaments")
+	tournaments.Use(authMiddleware, tenantMiddleware)
 	{
 		tournaments.POST("", handler.CreateTournament)
 		tournaments.GET("", handler.ListTournaments)
@@ -240,6 +243,7 @@ func RegisterRoutes(r *gin.RouterGroup, handler *DisciplineHandler, authMiddlewa
 	}
 
 	matches := r.Group("/matches")
+	matches.Use(authMiddleware, tenantMiddleware)
 	{
 		matches.PUT("/:id/result", handler.UpdateMatchResult)
 	}

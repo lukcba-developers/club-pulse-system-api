@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -63,14 +61,10 @@ export function PlayerStatusTable({ teamId, teamName }: PlayerStatusTableProps) 
     const [filter, setFilter] = useState<"all" | "inhabilitados">("all")
     const { toast } = useToast()
 
-    useEffect(() => {
-        fetchPlayers()
-    }, [teamId])
 
-    const fetchPlayers = async () => {
+    const fetchPlayers = useCallback(async () => {
         setLoading(true)
         try {
-            // TODO: Obtener userIDs del equipo desde el backend
             const response = await fetch(`/api/teams/${teamId}/players`, {
                 headers: {
                     "Authorization": `Bearer ${localStorage.getItem("token")}`
@@ -90,7 +84,13 @@ export function PlayerStatusTable({ teamId, teamName }: PlayerStatusTableProps) 
         } finally {
             setLoading(false)
         }
-    }
+    }, [teamId, toast])
+
+    useEffect(() => {
+        if (teamId) {
+            fetchPlayers()
+        }
+    }, [fetchPlayers, teamId])
 
     const handleExportLeagueFolder = async () => {
         setDownloading(true)
@@ -119,7 +119,7 @@ export function PlayerStatusTable({ teamId, teamName }: PlayerStatusTableProps) 
             } else {
                 throw new Error("Error al descargar")
             }
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "No se pudo descargar la Carpeta de Liga",

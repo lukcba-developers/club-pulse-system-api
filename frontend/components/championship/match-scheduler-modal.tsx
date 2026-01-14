@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,25 +28,25 @@ export function MatchSchedulerModal({ isOpen, onClose, match, clubId, onSuccess 
     const [startTime, setStartTime] = useState<string>('');
     const [duration, setDuration] = useState<string>('60'); // Minutes
 
+    const fetchFacilities = useCallback(async () => {
+        try {
+            const data = await facilityService.list(100);
+            setFacilities(data);
+        } catch (error) {
+            console.error("Error fetching facilities:", error);
+            toast({
+                title: "Error",
+                description: "No se pudieron cargar las canchas",
+                variant: "destructive",
+            });
+        }
+    }, [toast]);
+
     useEffect(() => {
         if (isOpen) {
             fetchFacilities();
         }
-    }, [isOpen]);
-
-    const fetchFacilities = async () => {
-        try {
-            const data = await facilityService.list(100); // Fetch enough
-            setFacilities(data);
-        } catch (error) {
-            console.error(error);
-            toast({
-                title: "Error",
-                description: "No se pudieron cargar las canchas.",
-                variant: "destructive",
-            });
-        }
-    };
+    }, [isOpen, fetchFacilities]);
 
     const handleSchedule = async () => {
         if (!courtId || !date || !startTime) {

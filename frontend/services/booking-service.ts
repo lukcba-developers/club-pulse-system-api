@@ -7,7 +7,7 @@ export interface Booking {
     facility_id: string;
     start_time: string;
     end_time: string;
-    total_price: number;
+    total_price: string;
     status: 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED';
     guest_details?: GuestDetail[];
     payment_expiry?: string;
@@ -18,7 +18,7 @@ export interface Booking {
 export interface GuestDetail {
     name: string;
     dni: string;
-    fee_amount: number;
+    fee_amount: string;
 }
 
 export interface CreateBookingDTO {
@@ -108,7 +108,8 @@ export type RecurrenceType = 'WEEKLY' | 'MONTHLY';
 export interface RecurringRule {
     id: string;
     facility_id: string;
-    type: RecurrenceType;
+    type: string; // 'CLASS' | 'MAINTENANCE' | 'FIXED'
+    frequency: RecurrenceType;
     day_of_week: number; // 0=Sunday, 6=Saturday
     start_time: string;
     end_time: string;
@@ -119,7 +120,8 @@ export interface RecurringRule {
 
 export interface CreateRecurringRuleDTO {
     facility_id: string;
-    type: RecurrenceType;
+    type?: string;
+    frequency: RecurrenceType;
     day_of_week: number;
     start_time: string;
     end_time: string;

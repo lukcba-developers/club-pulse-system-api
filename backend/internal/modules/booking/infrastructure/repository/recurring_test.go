@@ -18,6 +18,7 @@ type TestRecurringRule struct {
 	ClubID     string                `gorm:"index;not null"`
 	FacilityID uuid.UUID             `gorm:"type:text;not null"`
 	Type       domain.RecurrenceType `gorm:"type:text"`
+	Frequency  string                `gorm:"type:text"`
 	DayOfWeek  int                   `gorm:"not null"`
 	StartTime  time.Time             `gorm:"not null"`
 	EndTime    time.Time             `gorm:"not null"`

@@ -22,6 +22,8 @@ function RegisterForm() {
         child_surname: "",
         child_dob: "",
         sport: "TENNIS",
+        password: "", // Added
+        confirm_password: "", // Added
     });
 
     // GDPR Consent checkboxes
@@ -47,6 +49,18 @@ function RegisterForm() {
             return;
         }
 
+        if (formData.password !== formData.confirm_password) {
+            setStatus("error");
+            setErrorMessage("Las contraseñas no coinciden.");
+            return;
+        }
+
+        if (formData.password.length < 8) {
+            setStatus("error");
+            setErrorMessage("La contraseña debe tener al menos 8 caracteres.");
+            return;
+        }
+
         // GDPR: Validate all consents are given
         if (!acceptTerms || !acceptPrivacy || !parentalConsent) {
             setStatus("error");
@@ -65,13 +79,14 @@ function RegisterForm() {
                 sports_preferences: {
                     primary: formData.sport
                 },
+                password: formData.password, // Added
                 // GDPR Consent fields
                 accept_terms: acceptTerms,
                 privacy_policy_version: "2026-01",
                 parental_consent: parentalConsent,
             };
 
-            const res = await fetch(`http://localhost:8080/api/v1/users/public/register-dependent?club_id=${clubID}`, {
+            const res = await fetch(`http://localhost:8081/api/v1/users/public/register-dependent?club_id=${clubID}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -83,6 +98,7 @@ function RegisterForm() {
             }
 
             setStatus("success");
+            // Optional: Auto login logic could go here
         } catch (err: unknown) {
             setStatus("error");
             if (err instanceof Error) {
@@ -117,12 +133,16 @@ function RegisterForm() {
                     <CardTitle className="text-green-600">¡Registro Exitoso!</CardTitle>
                     <CardDescription>
                         Los datos de {formData.child_name} {formData.child_surname} han sido registrados correctamente.
+                        Ya puedes iniciar sesión con tu email y nueva contraseña.
                     </CardDescription>
                 </CardHeader>
-                <CardFooter>
+                <CardFooter className="flex gap-2">
                     <Button onClick={() => window.location.reload()} variant="outline" className="w-full">
                         Registrar otro
                     </Button>
+                    <Link href="/login" className="w-full">
+                        <Button className="w-full">Iniciar Sesión</Button>
+                    </Link>
                 </CardFooter>
             </Card>
         )
@@ -151,6 +171,14 @@ function RegisterForm() {
                             <div>
                                 <Label htmlFor="parent_email">Email</Label>
                                 <Input id="parent_email" name="parent_email" type="email" value={formData.parent_email} onChange={handleChange} required placeholder="tu@email.com" />
+                            </div>
+                            <div>
+                                <Label htmlFor="password">Contraseña</Label>
+                                <Input id="password" name="password" type="password" value={formData.password} onChange={handleChange} required placeholder="********" />
+                            </div>
+                            <div>
+                                <Label htmlFor="confirm_password">Confirmar Contraseña</Label>
+                                <Input id="confirm_password" name="confirm_password" type="password" value={formData.confirm_password} onChange={handleChange} required placeholder="********" />
                             </div>
                             <div>
                                 <Label htmlFor="parent_name">Nombre Completo</Label>

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CalendarClock, CheckCircle, Trophy } from 'lucide-react';
 import { championshipService, Match } from '@/services/championship-service';

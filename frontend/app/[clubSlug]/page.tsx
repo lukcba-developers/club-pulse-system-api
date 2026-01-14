@@ -7,7 +7,7 @@ import Image from "next/image"
 // Función auxiliar para obtener noticias (client o server side fetch)
 async function getNews(slug: string) {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'}/public/clubs/${slug}/news`, { next: { revalidate: 300 } })
+        const res = await fetch(`${process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'}/public/clubs/${slug}/news`, { next: { revalidate: 300 } })
         if (!res.ok) return []
         const data = await res.json()
         return data.data || []
@@ -24,8 +24,9 @@ interface NewsItem {
     created_at: string
 }
 
-export default async function PublicClubHome({ params }: { params: { clubSlug: string } }) {
-    const news = await getNews(params.clubSlug)
+export default async function PublicClubHome({ params }: { params: Promise<{ clubSlug: string }> }) {
+    const { clubSlug } = await params
+    const news = await getNews(clubSlug)
 
     return (
         <div className="space-y-12 pb-12">
@@ -39,7 +40,7 @@ export default async function PublicClubHome({ params }: { params: { clubSlug: s
                         Pasión, deporte y comunidad. Únete a nosotros y forma parte de la historia.
                     </p>
                     <div className="flex justify-center gap-4">
-                        <Link href={`/${params.clubSlug}/store`}>
+                        <Link href={`/${clubSlug}/store`}>
                             <Button size="lg" className="gap-2">
                                 <ShoppingBag className="h-5 w-5" />
                                 Ir a la Tienda
@@ -93,7 +94,7 @@ export default async function PublicClubHome({ params }: { params: { clubSlug: s
                         </CardHeader>
                         <CardContent>
                             <p className="mb-4">Adquiere la camiseta oficial, ropa de entrenamiento y accesorios del club.</p>
-                            <Link href={`/${params.clubSlug}/store`}>
+                            <Link href={`/${clubSlug}/store`}>
                                 <Button variant="link" className="p-0">Visitar Tienda &rarr;</Button>
                             </Link>
                         </CardContent>

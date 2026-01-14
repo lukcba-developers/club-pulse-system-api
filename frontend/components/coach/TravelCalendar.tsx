@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { coachService, TravelEvent } from "@/services/coach-service"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     ChevronLeft,
     ChevronRight,
-    Bus,
     MapPin,
     Clock
 } from "lucide-react"
@@ -24,47 +25,40 @@ import {
 } from "date-fns"
 import { es } from "date-fns/locale"
 
-interface TravelEvent {
-    id: string
-    title: string
-    destination: string
-    departure_date: string
-    meeting_time: string
-    type: "TRAVEL" | "MATCH" | "TOURNAMENT" | "TRAINING"
-}
+
 
 interface TravelCalendarProps {
-    teamId: string
+    teamId?: string // Made optional as per new usage
+    title?: string // Added title prop
 }
 
-export function TravelCalendar({ teamId }: TravelCalendarProps) {
+export function TravelCalendar({ }: TravelCalendarProps) {
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [events, setEvents] = useState<TravelEvent[]>([])
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-    const [loading, setLoading] = useState(true)
+    const [, setLoading] = useState(true)
+    const { toast } = useToast();
 
-    useEffect(() => {
-        fetchEvents()
-    }, [teamId, currentMonth])
-
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         setLoading(true)
         try {
-            const response = await fetch(`/api/teams/${teamId}/events`, {
-                headers: {
-                    "Authorization": `Bearer ${localStorage.getItem("token")}`
-                }
-            })
-            if (response.ok) {
-                const data = await response.json()
-                setEvents(data || [])
-            }
+            // Changed to use coachService and removed Authorization header
+            const data = await coachService.getTravelEvents(); // Assuming this fetches events for the current user/team
+            setEvents(data || [])
         } catch (error) {
             console.error("Error fetching events:", error)
+            toast({ // Added toast
+                title: "Error",
+                description: "No se pudieron cargar los eventos de viaje",
+                variant: "destructive"
+            });
         } finally {
             setLoading(false)
         }
-    }
+    }, [toast]) // Added toast dependency
+    useEffect(() => {
+        fetchEvents()
+    }, [fetchEvents])
 
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)

@@ -21,7 +21,28 @@ export function LoginForm() {
         setError('');
 
         try {
-            await api.post('/auth/login', { email, password });
+            const response = await api.post('/auth/login', { email, password });
+            if (response.data.access_token) {
+                const token = response.data.access_token;
+                // Security: Do NOT store token in localStorage. It is handled via HttpOnly cookies.
+                // localStorage.setItem('token', token);
+
+                // Decode JWT Payload to get Club ID
+                try {
+                    const base64Url = token.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+
+                    const payload = JSON.parse(jsonPayload);
+                    if (payload.club_id) {
+                        localStorage.setItem('clubID', payload.club_id);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse token claims", e);
+                }
+            }
             await login();
             router.push('/'); // SPA navigation for better performance
         } catch (err: unknown) {

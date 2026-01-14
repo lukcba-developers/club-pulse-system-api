@@ -207,6 +207,9 @@ func (uc *UserUseCases) GetStats(ctx context.Context, clubID, userID string) (*d
 	if user == nil {
 		return nil, errors.New("user not found")
 	}
+	if user.Stats != nil {
+		user.Stats.NextLevelXP = user.Stats.CalculateNextLevelXP()
+	}
 	return user.Stats, nil
 }
 

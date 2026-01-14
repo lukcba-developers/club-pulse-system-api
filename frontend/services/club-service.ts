@@ -23,7 +23,7 @@ export const clubService = {
         return response.data.data;
     },
 
-    listClubs: async (limit?: number): Promise<Club[]> => {
+    listClubs: async (): Promise<Club[]> => {
         const response = await api.get("/clubs");
         // Super Admin endpoint returns array directly or inside data?
         // Let's assume standard response envelope: { data: [...] } or direct array?

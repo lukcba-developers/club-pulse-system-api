@@ -9,10 +9,6 @@ interface Toast {
     variant?: "default" | "destructive"
 }
 
-interface ToastState {
-    toasts: Toast[]
-}
-
 // Simple toast hook without provider (stores state locally per component tree)
 // For a full implementation, you'd want a global state manager or context
 

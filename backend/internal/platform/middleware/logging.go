@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -17,27 +16,6 @@ func StructuredLogger() gin.HandlerFunc {
 		raw := c.Request.URL.RawQuery
 		method := c.Request.Method
 
-		// Get Trace ID and Span ID from OTel if available
-		span := trace.SpanFromContext(c.Request.Context())
-		var traceID, spanID string
-		if span.SpanContext().IsValid() {
-			traceID = span.SpanContext().TraceID().String()
-			spanID = span.SpanContext().SpanID().String()
-		} else {
-			// Fallback: Check for incoming headers from Frontend/Gateway
-			traceID = c.GetHeader("X-Request-ID")
-			if traceID == "" {
-				traceID = c.GetHeader("X-Trace-ID")
-			}
-			// If still empty, generate a new one to correlate logs downstream
-			if traceID == "" {
-				traceID = uuid.New().String()
-			}
-		}
-
-		// Propagate Trace ID downstream via Response Header
-		c.Header("X-Trace-ID", traceID)
-
 		// Process Request
 		c.Next()
 
@@ -46,6 +24,20 @@ func StructuredLogger() gin.HandlerFunc {
 		statusCode := c.Writer.Status()
 		clientIP := c.ClientIP()
 		errorMessage := c.Errors.ByType(gin.ErrorTypePrivate).String()
+
+		// Get Trace ID and Span ID from OTel Context (injected by otelgin middleware)
+		span := trace.SpanFromContext(c.Request.Context())
+		var traceID, spanID string
+		if span.SpanContext().IsValid() {
+			traceID = span.SpanContext().TraceID().String()
+			spanID = span.SpanContext().SpanID().String()
+		} else {
+			// Fallback: Check headers if OTel middleware didn't run or failed
+			traceID = c.GetHeader("traceparent") // W3C
+			if traceID == "" {
+				traceID = c.GetHeader("X-Request-ID")
+			}
+		}
 
 		// Log Level based on status
 		level := slog.LevelInfo
@@ -59,12 +51,11 @@ func StructuredLogger() gin.HandlerFunc {
 		attrs := []any{
 			slog.String("trace_id", traceID),
 			slog.String("span_id", spanID),
-			slog.String("user_id", ""), // Placeholder, overwritten below if present
-			slog.String("club_id", ""), // Placeholder, overwritten below if present
 			slog.String("method", method),
 			slog.String("path", path),
 			slog.Int("status_code", statusCode),
-			slog.Int64("latency_ms", latency.Milliseconds()),
+			slog.String("latency", latency.String()), // Human readable "120ms"
+			slog.Int64("latency_ns", latency.Nanoseconds()),
 			slog.String("ip", clientIP),
 		}
 
@@ -77,22 +68,13 @@ func StructuredLogger() gin.HandlerFunc {
 
 		// Add User Metadata if extracted by auth middleware
 		if userID, exists := c.Get("userID"); exists {
-			// Ensure userID is a string or compatible
-			if uidStr, ok := userID.(string); ok {
-				attrs = append(attrs, slog.String("user_id", uidStr))
-			} else {
-				attrs = append(attrs, slog.Any("user_id", userID))
-			}
+			attrs = append(attrs, slog.Any("user_id", userID))
 		}
 		if clubID, exists := c.Get("userClubID"); exists {
-			if cidStr, ok := clubID.(string); ok {
-				attrs = append(attrs, slog.String("club_id", cidStr))
-			} else {
-				attrs = append(attrs, slog.Any("club_id", clubID))
-			}
+			attrs = append(attrs, slog.Any("club_id", clubID))
 		}
 
-		// Context is crucial here for correlation if the logger handler supports it
+		// Log using standard slog
 		slog.Log(c.Request.Context(), level, "HTTP Request", attrs...)
 	}
 }

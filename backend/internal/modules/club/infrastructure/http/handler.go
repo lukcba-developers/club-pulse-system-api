@@ -209,13 +209,19 @@ func RegisterRoutes(r *gin.RouterGroup, handler *ClubHandler, authMiddleware, te
 		clubs.GET("", handler.ListClubs)
 	}
 
-	// Club Routes (Sponsors & News) - Requires ADMIN or SUPER_ADMIN
-	clubGroup := r.Group("/club")
-	clubGroup.Use(authMiddleware, tenantMiddleware, middleware.RequireRole(userDomain.RoleAdmin, userDomain.RoleSuperAdmin))
+	// Club Admin Routes (Sponsors & News Management)
+	adminClubGroup := r.Group("/club")
+	adminClubGroup.Use(authMiddleware, tenantMiddleware, middleware.RequireRole(userDomain.RoleAdmin, userDomain.RoleSuperAdmin))
 	{
-		clubGroup.POST("/sponsors", handler.RegisterSponsor)
-		clubGroup.POST("/ads", handler.CreateAdPlacement)
-		clubGroup.GET("/ads", handler.GetActiveAds)
-		clubGroup.POST("/news", handler.PublishNews)
+		adminClubGroup.POST("/sponsors", handler.RegisterSponsor)
+		adminClubGroup.POST("/ads", handler.CreateAdPlacement)
+		adminClubGroup.POST("/news", handler.PublishNews)
+	}
+
+	// Club Member Routes (View Access)
+	memberClubGroup := r.Group("/club")
+	memberClubGroup.Use(authMiddleware, tenantMiddleware)
+	{
+		memberClubGroup.GET("/ads", handler.GetActiveAds)
 	}
 }

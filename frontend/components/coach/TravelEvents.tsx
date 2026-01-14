@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -80,11 +78,8 @@ export function TravelEvents({ teamId }: TravelEventsProps) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
     const { toast } = useToast()
 
-    useEffect(() => {
-        fetchEvents()
-    }, [teamId])
 
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         setLoading(true)
         try {
             const response = await fetch(`/api/teams/${teamId}/events`, {
@@ -101,9 +96,13 @@ export function TravelEvents({ teamId }: TravelEventsProps) {
         } finally {
             setLoading(false)
         }
-    }
+    }, [teamId])
 
-    const fetchEventSummary = async (eventId: string) => {
+    useEffect(() => {
+        fetchEvents()
+    }, [fetchEvents])
+
+    const fetchEventSummary = useCallback(async (eventId: string) => {
         try {
             const response = await fetch(`/api/events/${eventId}/summary`, {
                 headers: {
@@ -117,7 +116,7 @@ export function TravelEvents({ teamId }: TravelEventsProps) {
         } catch (error) {
             console.error("Error fetching summary:", error)
         }
-    }
+    }, [])
 
     const handleRSVP = async (eventId: string, status: "CONFIRMED" | "DECLINED") => {
         try {
@@ -142,7 +141,7 @@ export function TravelEvents({ teamId }: TravelEventsProps) {
                     fetchEventSummary(eventId)
                 }
             }
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "No se pudo registrar tu respuesta",
@@ -151,15 +150,6 @@ export function TravelEvents({ teamId }: TravelEventsProps) {
         }
     }
 
-    const getEventTypeLabel = (type: string) => {
-        switch (type) {
-            case "TRAVEL": return "Viaje"
-            case "MATCH": return "Partido"
-            case "TOURNAMENT": return "Torneo"
-            case "TRAINING": return "Entrenamiento"
-            default: return type
-        }
-    }
 
     const getEventTypeBadge = (type: string) => {
         switch (type) {
@@ -404,7 +394,7 @@ function CreateEventForm({ teamId, onSuccess }: { teamId: string; onSuccess: () 
             } else {
                 throw new Error("Error al crear evento")
             }
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "No se pudo crear el evento",

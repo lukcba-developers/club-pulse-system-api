@@ -1,23 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-
-interface ActiveAd {
-    id: string
-    sponsor_id: string
-    location_type: string
-    location_detail: string
-    amount_paid: number
-    contract_end: string
-    is_active: boolean
-    // Join result usually implies we might need Sponsor Name/Logo which is in Sponsor table
-    // But GetActiveAds returns AdPlacement struct.
-    // The repo: `Joins("JOIN sponsors ON ...")`.
-    // Wait, `Find(&ads)` maps to `AdPlacement` struct.
-    // The `AdPlacement` struct does NOT have `SponsorLogo`.
-    // Only `SponsorID`.
-    // I need to update the repo to Preload or Select fields into a struct that has Logo.
-}
+// import { Ad } from '@/services/club-service'; // Unused
+// import { Card, CardContent } from "@/components/ui/card" // Unused
 
 // Defining a type that matches what the backend SHOULD return for display
 interface AdDisplay {

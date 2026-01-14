@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, MapPin } from "lucide-react"
+import { Calendar, Clock } from "lucide-react"
 
 interface Match {
     id: string

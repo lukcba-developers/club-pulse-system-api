@@ -11,6 +11,7 @@ export interface Payment {
     currency: string;
     status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
     method: 'CASH' | 'MERCADOPAGO' | 'STRIPE' | 'TRANSFER' | 'LABOR_EXCHANGE';
+    external_id?: string;
     payer_id: string;
     reference_id?: string;
     reference_type?: string;
@@ -25,7 +26,7 @@ export interface PaymentListResponse {
 }
 
 export interface OfflinePaymentRequest {
-    amount: number;
+    amount: string;
     method: 'CASH' | 'TRANSFER' | 'LABOR_EXCHANGE';
     payer_id: string;
     reference_id?: string;
@@ -35,7 +36,7 @@ export interface OfflinePaymentRequest {
 
 export const paymentService = {
     // Initiate payment via Backend -> MercadoPago
-    initiatePayment: async (amount: number, currency: string, description: string = "Club Payment") => {
+    initiatePayment: async (amount: string, currency: string, description: string = "Club Payment") => {
         const response = await api.post<PaymentInitiation>('/payments/checkout', {
             amount,
             currency,

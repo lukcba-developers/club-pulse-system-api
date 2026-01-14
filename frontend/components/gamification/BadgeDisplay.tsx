@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import NextImage from "next/image";
 
 interface BadgeRarity {
     COMMON: string;
@@ -92,11 +93,14 @@ export function BadgeDisplay({
                 )}
             >
                 {badge.iconUrl ? (
-                    <img
-                        src={badge.iconUrl}
-                        alt={badge.name}
-                        className="w-full h-full object-cover rounded-full"
-                    />
+                    <div className="relative w-full h-full">
+                        <NextImage
+                            src={badge.iconUrl}
+                            alt={badge.name}
+                            fill
+                            className="object-cover rounded-full"
+                        />
+                    </div>
                 ) : (
                     <span>{icon}</span>
                 )}

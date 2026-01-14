@@ -29,7 +29,6 @@ export function MemberDashboardView({ user }: { user: User }) {
         showLevelUpModal,
         newLevel,
         closeLevelUpModal,
-        calculateProgress,
         getNextLevelXP
     } = useGamification(user.id);
 

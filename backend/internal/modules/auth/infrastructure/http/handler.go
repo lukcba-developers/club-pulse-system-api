@@ -92,7 +92,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Set CSRF token cookie for Double Submit Cookie protection
 	_ = middleware.SetCSRFCookie(c)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "Login successful",
+		"access_token": token.AccessToken,
+	})
 }
 
 // RefreshToken godoc

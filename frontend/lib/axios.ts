@@ -24,6 +24,11 @@ api.interceptors.request.use(
     (config) => {
         // Client-side only
         if (typeof window !== 'undefined') {
+            // Inject Auth Header from LocalStorage (if available)
+            const token = localStorage.getItem('token');
+            if (token) {
+                config.headers['Authorization'] = `Bearer ${token}`;
+            }
             // Inject Club ID (Priority: LocalStorage > Env > Default)
             const clubID = localStorage.getItem('clubID') || process.env.NEXT_PUBLIC_DEFAULT_CLUB_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
             config.headers['X-Club-ID'] = clubID;
@@ -33,6 +38,14 @@ api.interceptors.request.use(
             config.headers['X-Request-ID'] = requestID;
             // Also useful for simple logs
             config.headers['X-Correlation-ID'] = requestID;
+
+            // W3C Trace Context - traceparent
+            // Version (2 hex) - TraceID (32 hex) - SpanID (16 hex) - TraceFlags (2 hex)
+            const traceId = requestID.replace(/-/g, ''); // UUID to 32 hex
+            const spanId = uuidv4().replace(/-/g, '').substring(0, 16); // Random 16 hex
+            const traceFlags = '01'; // Sampled
+            const traceparent = `00-${traceId}-${spanId}-${traceFlags}`;
+            config.headers['traceparent'] = traceparent;
 
             // Inject CSRF Token for state-changing methods
             const method = config.method?.toUpperCase();
@@ -61,7 +74,9 @@ api.interceptors.request.use(
 // Response Interceptor
 api.interceptors.response.use(
     (response) => {
-        console.groupCollapsed(`[API Response] ${response.status} ${response.config.url}`);
+        // Check for traceparent in response to continue tracing if needed
+        const traceId = response.config.headers['traceparent'] || response.config.headers['X-Request-ID'];
+        console.groupCollapsed(`[API Response] ${response.status} ${response.config.url} [Trace: ${traceId ? traceId.toString().substring(0, 8) : 'N/A'}]`);
         console.log('Data:', response.data);
         console.groupEnd();
         return response;

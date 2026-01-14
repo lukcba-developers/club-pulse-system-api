@@ -43,7 +43,7 @@ export default function SuperAdminDashboard() {
 
                 const fetchClubs = async () => {
                     try {
-                        const data = await clubService.listClubs(100);
+                        const data = await clubService.listClubs();
                         setClubs(data);
                         setStats(prev => ({ ...prev, activeClubs: data.length }));
                     } catch (error) {

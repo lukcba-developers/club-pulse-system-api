@@ -120,6 +120,6 @@ func TestBookingPricing(t *testing.T) {
 
 		// Need to fetch from DB to verify TotalPrice as response might not return it if struct tags/json didn't have it (we added it)
 		// But we did add json tag "total_price"
-		assert.Contains(t, w.Body.String(), `"total_price":300`)
+		assert.Contains(t, w.Body.String(), `"total_price":"300"`)
 	})
 }

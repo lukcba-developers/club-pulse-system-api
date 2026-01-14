@@ -25,11 +25,11 @@ test.describe('Authentication Flow', () => {
         await page.waitForSelector('input[name="email"]', { timeout: 10000 });
 
         // 2. Setup: Register via Browser Context (to bypass Node network issues)
-        const apiUrl = process.env.TEST_API_URL || 'http://localhost:8080/api/v1';
+        const apiUrl = process.env.TEST_API_URL || 'http://localhost:8081/api/v1';
         const uniqueEmail = `admin-${Date.now()}@clubpulse.com`;
 
         const registrationResult = await page.evaluate(async ({ url, email }) => {
-            const CLUB_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+            const CLUB_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'; // Deterministic ID from Seeder
 
             // Force ClubID in localStorage to ensure axios uses it
             localStorage.setItem('clubID', CLUB_ID);

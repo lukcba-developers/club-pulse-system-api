@@ -15,6 +15,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/middleware"
 	platformRedis "github.com/lukcba/club-pulse-system-api/backend/internal/platform/redis"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/tracing"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel/sdk/trace"
 
@@ -60,6 +61,12 @@ func NewServer() *Server {
 
 	// OpenTelemetry Middleware (Must be first to capture everything)
 	router.Use(otelgin.Middleware("club-pulse-backend"))
+
+	// Metrics Middleware (RED Method)
+	router.Use(middleware.MetricsMiddleware())
+
+	// Metrics Endpoint
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	router.Use(middlewares.SecurityHeadersMiddleware())
 

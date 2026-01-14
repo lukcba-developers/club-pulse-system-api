@@ -7,6 +7,7 @@ export interface Session {
     token: string;
     expires_at: string;
     is_revoked: boolean;
+    revoked_at?: string;
     created_at: string;
     updated_at: string;
 }

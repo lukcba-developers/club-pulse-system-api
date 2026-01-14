@@ -11,6 +11,7 @@ interface UserStats {
     matchesPlayed: number;
     matchesWon: number;
     rankingPoints: number;
+    nextLevelXP: number;
 }
 
 interface GamificationState {
@@ -29,10 +30,8 @@ interface UseGamificationReturn extends GamificationState {
     getNextLevelXP: () => number;
 }
 
-// Exponential XP formula matching backend
-function calculateRequiredXP(level: number): number {
-    return Math.floor(500 * Math.pow(1.15, level));
-}
+
+
 
 export function useGamification(userId?: string): UseGamificationReturn {
     const [state, setState] = useState<GamificationState>({
@@ -70,6 +69,7 @@ export function useGamification(userId?: string): UseGamificationReturn {
                     matchesPlayed: data.matches_played || 0,
                     matchesWon: data.matches_won || 0,
                     rankingPoints: data.ranking_points || 0,
+                    nextLevelXP: data.next_level_xp || 0,
                 };
 
                 // Check for level up
@@ -100,13 +100,13 @@ export function useGamification(userId?: string): UseGamificationReturn {
 
     const calculateProgress = useCallback((): number => {
         if (!state.stats) return 0;
-        const required = calculateRequiredXP(state.stats.level);
+        const required = state.stats.nextLevelXP;
         return Math.min((state.stats.experience / required) * 100, 100);
     }, [state.stats]);
 
     const getNextLevelXP = useCallback((): number => {
         if (!state.stats) return 575; // Default level 1 requirement
-        return calculateRequiredXP(state.stats.level);
+        return state.stats.nextLevelXP;
     }, [state.stats]);
 
     // Initial fetch

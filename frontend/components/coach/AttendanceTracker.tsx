@@ -85,12 +85,12 @@ export function AttendanceTracker({ teamId, teamName }: AttendanceTrackerProps) 
             } else {
                 throw new Error("Error al guardar")
             }
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
-                description: "No se pudo guardar la asistencia",
-                variant: "destructive"
-            })
+                description: "No se pudo actualizar la asistencia",
+                variant: "destructive",
+            });
         } finally {
             setLoading(false)
         }

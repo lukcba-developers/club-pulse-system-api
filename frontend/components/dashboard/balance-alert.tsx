@@ -14,7 +14,7 @@ export function BalanceAlert({ membership, onPaymentSuccess }: BalanceAlertProps
     const handlePay = async () => {
         const confirmed = window.confirm(`¿Pagar $${membership.outstanding_balance ?? 0} ahora con MercadoPago (Simulado)?`);
         if (confirmed) {
-            await paymentService.initiatePayment(membership.outstanding_balance ?? 0, 'ARS');
+            await paymentService.initiatePayment((membership.outstanding_balance ?? 0).toString(), 'ARS');
             alert('¡Pago procesado correctamente!');
             onPaymentSuccess();
         }

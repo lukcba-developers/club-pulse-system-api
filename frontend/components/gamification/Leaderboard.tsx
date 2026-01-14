@@ -4,23 +4,18 @@ import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuthContext as useAuth } from "@/context/auth-context";
 
 interface LeaderboardEntry {
     rank: number;
-    userId: string;
-    userName: string;
-    avatarUrl?: string;
-    score: number;
-    level: number;
+    user_id: string;
+    first_name: string;
+    last_name: string;
+    avatar_url?: string;
+    points: number;
     change?: number;
     isCurrentUser?: boolean;
-}
-
-interface LeaderboardProps {
-    clubId: string;
-    currentUserId?: string;
-    className?: string;
 }
 
 interface ApiLeaderboardEntry {
@@ -33,19 +28,18 @@ interface ApiLeaderboardEntry {
     change?: number;
 }
 
-export function Leaderboard({ clubId, currentUserId, className }: LeaderboardProps) {
+export function Leaderboard() {
+    const { user } = useAuth();
     const [period, setPeriod] = useState<"WEEKLY" | "MONTHLY" | "ALL_TIME">("MONTHLY");
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [userContext, setUserContext] = useState<{
-        rank: number;
-        above: LeaderboardEntry[];
-        below: LeaderboardEntry[];
-    } | null>(null);
+    // Removed unused setter, kept variable as it is used in the JSX
+    const [userContext] = useState<{ rank: number } | null>(null);
 
     const fetchLeaderboard = useCallback(async () => {
         setLoading(true);
         try {
+            const currentUserId = user?.id; // Define currentUserId here
             const res = await fetch(`/api/v1/gamification/leaderboard?period=${period}&limit=20`, {
                 credentials: "include",
             });
@@ -54,11 +48,11 @@ export function Leaderboard({ clubId, currentUserId, className }: LeaderboardPro
                 setEntries(
                     data.entries?.map((e: ApiLeaderboardEntry) => ({
                         rank: e.rank,
-                        userId: e.user_id,
-                        userName: e.user_name,
-                        avatarUrl: e.avatar_url,
-                        score: e.score,
-                        level: e.level,
+                        user_id: e.user_id,
+                        first_name: e.user_name.split(' ')[0] || '', // Fallback splitting name
+                        last_name: e.user_name.split(' ').slice(1).join(' ') || '',
+                        avatar_url: e.avatar_url,
+                        points: e.score,
                         change: e.change,
                         isCurrentUser: e.user_id === currentUserId,
                     })) || []
@@ -68,7 +62,7 @@ export function Leaderboard({ clubId, currentUserId, className }: LeaderboardPro
             console.error("Failed to fetch leaderboard:", error);
         }
         setLoading(false);
-    }, [period, currentUserId]);
+    }, [period, user]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -102,7 +96,7 @@ export function Leaderboard({ clubId, currentUserId, className }: LeaderboardPro
     };
 
     return (
-        <Card className={cn("w-full max-w-md", className)}>
+        <Card className="w-full">
             <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2">
                     <span>🏆</span> Tabla de Posiciones
@@ -136,7 +130,7 @@ export function Leaderboard({ clubId, currentUserId, className }: LeaderboardPro
                     ) : (
                         entries.map((entry) => (
                             <LeaderboardRow
-                                key={entry.userId}
+                                key={entry.user_id}
                                 entry={entry}
                                 rankStyle={getRankStyle(entry.rank)}
                                 rankEmoji={getRankEmoji(entry.rank)}
@@ -146,16 +140,16 @@ export function Leaderboard({ clubId, currentUserId, className }: LeaderboardPro
                 </div>
 
                 {/* User's Position (if not in top 20) */}
-                {currentUserId && userContext && !entries.some((e) => e.isCurrentUser) && (
+                {user?.id && userContext && !entries.some((e) => e.isCurrentUser) && (
                     <div className="mt-4 pt-4 border-t">
                         <p className="text-xs text-muted-foreground mb-2">Tu posición:</p>
                         <LeaderboardRow
                             entry={{
                                 rank: userContext.rank,
-                                userId: currentUserId,
-                                userName: "Tú",
-                                score: 0,
-                                level: 0,
+                                user_id: user.id,
+                                first_name: "Tú",
+                                last_name: "",
+                                points: 0,
                                 isCurrentUser: true,
                             }}
                             rankStyle="bg-primary/10 border-2 border-primary"
@@ -197,20 +191,20 @@ function LeaderboardRow({
 
             {/* Avatar & Name */}
             <Avatar className="w-8 h-8">
-                <AvatarImage src={entry.avatarUrl} />
-                <AvatarFallback>{entry.userName.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={entry.avatar_url} />
+                <AvatarFallback>{entry.first_name.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
 
             <div className="flex-1 min-w-0">
                 <p className={cn("font-medium truncate", entry.isCurrentUser && "text-primary")}>
-                    {entry.userName}
+                    {entry.first_name} {entry.last_name}
                 </p>
-                <p className="text-xs text-muted-foreground">Nivel {entry.level}</p>
+                {/* Removed missing 'level' property as it is not in the interface */}
             </div>
 
             {/* Score */}
             <div className="text-right">
-                <p className="font-bold">{entry.score.toLocaleString()}</p>
+                <p className="font-bold">{entry.points.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">XP</p>
             </div>
 

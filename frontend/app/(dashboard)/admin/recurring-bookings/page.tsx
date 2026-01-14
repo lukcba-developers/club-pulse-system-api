@@ -53,7 +53,7 @@ const DAYS_OF_WEEK = [
 // Form schema
 const ruleSchema = z.object({
     facility_id: z.string().min(1, 'Selecciona una instalación'),
-    type: z.enum(['WEEKLY', 'MONTHLY']),
+    frequency: z.enum(['WEEKLY', 'MONTHLY']),
     day_of_week: z.coerce.number().min(0).max(6),
     start_time: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:MM'),
     end_time: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:MM'),
@@ -72,10 +72,10 @@ export default function RecurringBookingsPage() {
     const [generating, setGenerating] = useState(false);
     const { toast } = useToast();
 
-    const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<RuleFormValues>({
+    const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<RuleFormValues>({
         resolver: zodResolver(ruleSchema),
         defaultValues: {
-            type: 'WEEKLY',
+            frequency: 'WEEKLY',
             day_of_week: 1,
             start_time: '09:00',
             end_time: '10:00',
@@ -108,6 +108,7 @@ export default function RecurringBookingsPage() {
         try {
             const dto: CreateRecurringRuleDTO = {
                 ...data,
+                type: 'FIXED', // Default purpose
                 start_time: data.start_time + ':00', // Add seconds
                 end_time: data.end_time + ':00',
             };
@@ -207,6 +208,24 @@ export default function RecurringBookingsPage() {
                                         </SelectContent>
                                     </Select>
                                     {errors.facility_id && <p className="text-xs text-red-500">{errors.facility_id.message}</p>}
+                                </div>
+
+                                {/* Frequency */}
+                                <div className="space-y-2">
+                                    <Label>Frecuencia</Label>
+                                    <Select
+                                        onValueChange={(v) => setValue('frequency', v as 'WEEKLY' | 'MONTHLY')}
+                                        defaultValue="WEEKLY"
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="WEEKLY">Semanal</SelectItem>
+                                            <SelectItem value="MONTHLY">Mensual</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {errors.frequency && <p className="text-xs text-red-500">{errors.frequency.message}</p>}
                                 </div>
 
                                 {/* Day of Week */}

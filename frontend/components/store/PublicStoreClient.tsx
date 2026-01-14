@@ -217,6 +217,7 @@ export default function PublicStoreClient({ products, clubSlug }: { products: Pr
                         <Card key={product.id} className="overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
                             <div className="aspect-square bg-muted relative">
                                 {product.image_url ? (
+                                    /* eslint-disable @next/next/no-img-element */
                                     <img src={product.image_url} alt={product.name} className="object-cover w-full h-full" />
                                 ) : (
                                     <div className="flex items-center justify-center h-full text-muted-foreground bg-slate-100">

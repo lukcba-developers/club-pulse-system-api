@@ -60,10 +60,14 @@ func TenantMiddleware(clubRepo clubDomain.ClubRepository) gin.HandlerFunc {
 			return
 		}
 
-		if clubID != "" && clubID != userClubID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this club"})
-			c.Abort()
-			return
+		// Fix: Resolve header clubID if it is a slug before comparing
+		if clubID != "" {
+			resolvedHeaderID := resolveClubID(c.Request.Context(), clubRepo, clubID)
+			if resolvedHeaderID != userClubID {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this club"})
+				c.Abort()
+				return
+			}
 		}
 
 		// Force Context to be the verified User Club ID

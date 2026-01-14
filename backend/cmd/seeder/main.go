@@ -187,7 +187,7 @@ func main() {
 	}
 
 	// 1. Seed Users
-	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte("Admin123!"), bcrypt.DefaultCost)
 
 	// Explicitly using SeederUser to ensure table match
 	admin := SeederUser{
@@ -248,6 +248,64 @@ func main() {
 		log.Printf("Error seeding test user: %v", err)
 	} else {
 		log.Println("Seeded Test User (With Valid Med Cert)")
+	}
+
+	// 1.5.1 Seed Coach User
+	hashedPwdCoach, _ := bcrypt.GenerateFromPassword([]byte("Coach123!"), bcrypt.DefaultCost)
+	coach := domain.User{
+		ID:        uuid.New().String(),
+		Email:     "coach@clubpulse.com",
+		Password:  string(hashedPwdCoach),
+		Name:      "Head Coach",
+		Role:      "COACH", // Hardcoded to match enum string usually, or use domain.RoleCoach if valid
+		ClubID:    defaultClub.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := db.Where("email = ?", coach.Email).FirstOrCreate(&coach).Error; err != nil {
+		log.Printf("Error seeding coach user: %v", err)
+	} else {
+		log.Println("Seeded Coach User")
+	}
+
+	// 1.5.2 Seed Students for Training Groups
+	// Helper to get date from year
+	getDateFromYear := func(year int) *time.Time {
+		t := time.Date(year, time.January, 15, 0, 0, 0, 0, time.UTC)
+		return &t
+	}
+
+	studentConfigs := []struct {
+		CategoryYear int
+		Count        int
+		GroupPrefix  string
+	}{
+		{2012, 5, "Futbol2012"},
+		{2015, 5, "Futbol2015"},
+		{2014, 5, "Tenis2014"},
+	}
+
+	for _, config := range studentConfigs {
+		for i := 1; i <= config.Count; i++ {
+			dob := getDateFromYear(config.CategoryYear)
+			student := domain.User{
+				ID:                uuid.New().String(),
+				Email:             config.GroupPrefix + "_student_" + uuid.New().String()[:4] + "@example.com",
+				Password:          string(hashedPwdTest), // Reuse Member password
+				Name:              config.GroupPrefix + " Player " + uuid.New().String()[:4],
+				Role:              domain.RoleMember,
+				ClubID:            defaultClub.ID,
+				DateOfBirth:       dob,
+				MedicalCertStatus: &validStatus,
+				MedicalCertExpiry: &validExpiry,
+				CreatedAt:         time.Now(),
+				UpdatedAt:         time.Now(),
+			}
+			if err := db.Create(&student).Error; err != nil {
+				log.Printf("Error seeding student %s: %v", student.Name, err)
+			}
+		}
+		log.Printf("Seeded %d students for category %d", config.Count, config.CategoryYear)
 	}
 
 	// 1.6 Seed Family Group
