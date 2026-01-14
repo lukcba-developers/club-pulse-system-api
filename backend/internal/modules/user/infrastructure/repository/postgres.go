@@ -25,7 +25,7 @@ type UserModel struct {
 	ID                string `gorm:"primaryKey"`
 	Name              string
 	Email             string
-	Password          string `gorm:"column:password_hash;not null"` // Added to support creation via User module, though mainly Auth managed.
+	Password          string `gorm:"column:password;not null"` // Added to support creation via User module, though mainly Auth managed.
 	Role              string
 	DateOfBirth       *time.Time             `gorm:"type:date"`
 	SportsPreferences map[string]interface{} `gorm:"serializer:json"`
