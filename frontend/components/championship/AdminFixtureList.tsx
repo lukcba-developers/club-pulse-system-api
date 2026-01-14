@@ -12,7 +12,7 @@ interface FixtureListProps {
     clubId: string;
 }
 
-export function FixtureList({ groupId, clubId }: FixtureListProps) {
+export function AdminFixtureList({ groupId, clubId }: FixtureListProps) {
     const [matches, setMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);

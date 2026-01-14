@@ -21,7 +21,7 @@ interface FixtureListProps {
     loading?: boolean
 }
 
-export function FixtureList({ matches, loading }: FixtureListProps) {
+export function PublicFixtureList({ matches, loading }: FixtureListProps) {
     if (loading) {
         return <div className="p-8 text-center text-muted-foreground">Cargando partidos...</div>
     }

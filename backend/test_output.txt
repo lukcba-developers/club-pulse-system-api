@@ -1,0 +1,93 @@
+?   	github.com/lukcba/club-pulse-system-api/backend/cmd/api	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/cmd/migrate	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/cmd/scheduler	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/cmd/seeder	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/docs	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/bootstrap	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/core/errors	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/application	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/domain	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/infrastructure/http	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/infrastructure/repository	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/application	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/domain	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/http	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/attendance/infrastructure/repository	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/application	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/domain	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/infrastructure/http	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/infrastructure/repository	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/infrastructure/service	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/infrastructure/session	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/infrastructure/token	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/cache	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/lock	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/application	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/domain	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/infrastructure/http	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/infrastructure/repository	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/infrastructure/service	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/application	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/http	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/application	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/domain	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/infrastructure/http	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/disciplines/infrastructure/repository	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/application	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/http	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/gamification/application	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/gamification/domain	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/gamification/infrastructure/http	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/application	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/domain	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/infrastructure/http	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/infrastructure/repository	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/infrastructure/providers	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/application	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/gateways	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/http	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/infrastructure/repository	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/application	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/domain	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/infrastructure/http	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/infrastructure/repository	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/application	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/domain	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/infrastructure/http	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/infrastructure/repository	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/application	(cached)
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain	(cached)
+--- FAIL: TestUserHandler_Public (0.00s)
+    --- FAIL: TestUserHandler_Public/Register_Dependent_Public (0.00s)
+        handler_test.go:334: 
+            	Error Trace:	/Users/lukcba-macbook-pro/go/src/club-pulse-system-api/backend/internal/modules/user/infrastructure/http/handler_test.go:334
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 400
+            	Test:       	TestUserHandler_Public/Register_Dependent_Public
+FAIL
+FAIL	github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/http	0.715s
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/postgres	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository	(cached)
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/jobs	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/audit	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/database	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/embedding	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/http/middlewares	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/logger	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/middleware	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/redis	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/tracing	[no test files]
+?   	github.com/lukcba/club-pulse-system-api/backend/internal/platform/websocket	[no test files]
+ok  	github.com/lukcba/club-pulse-system-api/backend/tests/e2e	(cached)
+FAIL

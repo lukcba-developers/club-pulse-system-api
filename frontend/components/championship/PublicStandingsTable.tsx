@@ -28,7 +28,7 @@ interface StandingsTableProps {
     loading?: boolean
 }
 
-export function StandingsTable({ standings, loading }: StandingsTableProps) {
+export function PublicStandingsTable({ standings, loading }: StandingsTableProps) {
     if (loading) {
         return <div className="p-8 text-center text-muted-foreground">Cargando posiciones...</div>
     }

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { TournamentWizard } from '@/components/championship/tournament-wizard';
-import { StandingsTable } from '@/components/championship/standings-table';
-import { FixtureList } from '@/components/championship/fixture-list';
+import { AdminStandingsTable as StandingsTable } from '@/components/championship/AdminStandingsTable';
+import { AdminFixtureList as FixtureList } from '@/components/championship/AdminFixtureList';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, LayoutList, PlusCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';

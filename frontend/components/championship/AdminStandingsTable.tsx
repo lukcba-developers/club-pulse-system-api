@@ -13,7 +13,7 @@ interface StandingsTableProps {
     standings: Standing[];
 }
 
-export function StandingsTable({ standings }: StandingsTableProps) {
+export function AdminStandingsTable({ standings }: StandingsTableProps) {
     if (!standings || standings.length === 0) {
         return <p className="text-gray-500 text-sm text-center py-4">No hay datos disponibles en esta tabla.</p>;
     }

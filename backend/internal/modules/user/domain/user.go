@@ -30,6 +30,7 @@ type User struct {
 	ID                string                 `json:"id"`
 	Name              string                 `json:"name"`
 	Email             string                 `json:"email"`
+	Password          string                 `json:"-"` // Hash
 	Role              string                 `json:"role"`
 	CreatedAt         time.Time              `json:"created_at"`
 	UpdatedAt         time.Time              `json:"updated_at"`
@@ -53,6 +54,7 @@ type User struct {
 	TermsAcceptedAt      *time.Time `json:"terms_accepted_at,omitempty"`
 	PrivacyPolicyVersion string     `json:"privacy_policy_version,omitempty"`
 	DataRetentionUntil   *time.Time `json:"data_retention_until,omitempty"`
+	ParentalConsentAt    *time.Time `json:"parental_consent_at,omitempty"`
 
 	// Relations (Fetched on demand or preloaded)
 	Stats  *UserStats `json:"stats,omitempty" gorm:"-"`
