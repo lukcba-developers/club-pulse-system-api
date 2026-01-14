@@ -136,3 +136,15 @@ func (r *PostgresBookingRepository) GetNextInLine(ctx context.Context, clubID st
 	}
 	return &entry, nil
 }
+
+func (r *PostgresBookingRepository) ListExpired(ctx context.Context) ([]domain.Booking, error) {
+	var bookings []domain.Booking
+	err := r.db.WithContext(ctx).Model(&domain.Booking{}).
+		Where("status = ?", domain.BookingStatusPendingPayment).
+		Where("payment_expiry < ?", time.Now()).
+		Find(&bookings).Error
+	if err != nil {
+		return nil, err
+	}
+	return bookings, nil
+}

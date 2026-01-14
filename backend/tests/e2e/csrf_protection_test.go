@@ -28,6 +28,7 @@ func TestCSRFProtection(t *testing.T) {
 
 	// Repos & Services
 	authR := authRepo.NewPostgresAuthRepository(db)
+	_ = authR.Migrate()
 	tokenService := authToken.NewJWTService("secret")
 	authUC := authApp.NewAuthUseCases(authR, tokenService, nil)
 	authH := authHttp.NewAuthHandler(authUC)

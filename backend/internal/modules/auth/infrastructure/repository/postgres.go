@@ -14,11 +14,12 @@ type PostgresAuthRepository struct {
 }
 
 func NewPostgresAuthRepository(db *gorm.DB) *PostgresAuthRepository {
-	// AutoMigrate should ideally be done in a separate migration step,
-	// but for MVP/Development it's acceptable here or in main.
-	// We'll trust the main setup or do safe migration here.
-	_ = db.AutoMigrate(&UserModel{}, &RefreshTokenModel{}, &AuthenticationLogModel{})
 	return &PostgresAuthRepository{db: db}
+}
+
+// Migrate performs the database migration for the auth module models
+func (r *PostgresAuthRepository) Migrate() error {
+	return r.db.AutoMigrate(&UserModel{}, &RefreshTokenModel{}, &AuthenticationLogModel{})
 }
 
 // UserModel is the Infrastructure representation of the User

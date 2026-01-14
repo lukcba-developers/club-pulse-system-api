@@ -30,6 +30,9 @@ const (
 	BookingStatusPendingPayment BookingStatus = "PENDING_PAYMENT"
 	BookingStatusConfirmed      BookingStatus = "CONFIRMED"
 	BookingStatusCancelled      BookingStatus = "CANCELLED"
+	BookingStatusExpired        BookingStatus = "EXPIRED"
+	BookingStatusCompleted      BookingStatus = "COMPLETED"
+	BookingStatusNoShow         BookingStatus = "NO_SHOW"
 )
 
 type GuestDetail struct {
@@ -93,6 +96,7 @@ type BookingRepository interface {
 	ListAll(ctx context.Context, clubID string, filter map[string]interface{}, from, to *time.Time) ([]Booking, error)
 	AddToWaitlist(ctx context.Context, entry *Waitlist) error
 	GetNextInLine(ctx context.Context, clubID string, resourceID uuid.UUID, date time.Time) (*Waitlist, error)
+	ListExpired(ctx context.Context) ([]Booking, error)
 }
 
 type RefundService interface {

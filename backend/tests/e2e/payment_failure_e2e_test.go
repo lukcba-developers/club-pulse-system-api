@@ -111,6 +111,7 @@ func TestPaymentFailureFlow(t *testing.T) {
 		Amount:        decimal.NewFromFloat(100.0),
 		PayerID:       uuid.New(),
 		Method:        paymentDomain.PaymentMethodMercadoPago,
+		ExternalID:    "12345",
 	})
 
 	t.Run("Webhook Rejected Update Payment Status", func(t *testing.T) {
@@ -139,7 +140,7 @@ func TestPaymentFailureFlow(t *testing.T) {
 		mockGateway.StatusToReturn = "approved"
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/api/v1/payments/webhook?type=payment&data.id=67890", nil)
+		req, _ := http.NewRequest("POST", "/api/v1/payments/webhook?type=payment&data.id=12345", nil)
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)

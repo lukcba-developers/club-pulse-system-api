@@ -150,6 +150,11 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	// --- Module: Auth ---
 	authRepo := repository.NewPostgresAuthRepository(db)
+	if err := authRepo.Migrate(); err != nil {
+		logger.Error("Failed to migrate auth tables: " + err.Error())
+		// Don't panic, just log error as it might be a transient issue or non-fatal in dev?
+		// Better to fail if schema is wrong, but let's be safe.
+	}
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		if os.Getenv("GIN_MODE") == "release" {

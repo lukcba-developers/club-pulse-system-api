@@ -94,6 +94,8 @@ func (uc *PaymentUseCases) ValidateWebhook(req *http.Request) error {
 
 // ProcessWebhook handles webhook notifications from payment providers.
 // This contains the business logic previously in the handler.
+// SECURITY FIX (VUL-001): Now uses GetByExternalID to extract club_id from existing payment,
+// preventing cross-tenant contamination.
 func (uc *PaymentUseCases) ProcessWebhook(ctx context.Context, webhookReq ProcessWebhookRequest) (*WebhookResult, error) {
 	result := &WebhookResult{}
 
@@ -106,7 +108,7 @@ func (uc *PaymentUseCases) ProcessWebhook(ctx context.Context, webhookReq Proces
 		return result, nil
 	}
 
-	// 1. Get payment info from gateway
+	// 1. Get payment info from gateway (this returns external_id and updated status)
 	updatedPayment, err := uc.gateway.ProcessWebhook(ctx, webhookReq.DataID)
 	if err != nil {
 		log.Printf("Webhook processing failed (gateway): %v", err)
@@ -117,29 +119,53 @@ func (uc *PaymentUseCases) ProcessWebhook(ctx context.Context, webhookReq Proces
 		return result, nil
 	}
 
-	// 2. Find existing payment in our DB
-	existing, err := uc.repo.GetByID(ctx, updatedPayment.ID)
+	// 2. SECURITY FIX: Find existing payment by external_id (from gateway)
+	// This ensures we get the club_id from our DB, not from an untrusted source
+	existing, err := uc.repo.GetByExternalID(ctx, updatedPayment.ExternalID)
 	if err != nil {
-		log.Printf("Payment not found for update: %s", updatedPayment.ID)
+		log.Printf("Payment lookup failed for external_id %s: %v", updatedPayment.ExternalID, err)
+		return nil, errors.New("database lookup failed")
+	}
+
+	if existing == nil {
+		log.Printf("Payment not found for external_id: %s", updatedPayment.ExternalID)
 		result.NotFound = true
 		return result, nil // Return nil error to stop retries
 	}
 
-	// 3. Update payment status
+	// 3. Validate that the payment_id from gateway matches our record
+	// This prevents an attacker from using external_id of one club to update payment of another
+	if updatedPayment.ID != uuid.Nil && updatedPayment.ID != existing.ID {
+		log.Printf("[SECURITY] Payment ID mismatch for external_id %s: expected %s, got %s",
+			updatedPayment.ExternalID, existing.ID, updatedPayment.ID)
+		return nil, errors.New("payment ID mismatch - possible security issue")
+	}
+
+	// 4. Extract club_id from existing payment (now validated)
+	clubID := existing.ClubID
+	if clubID == "" {
+		log.Printf("[SECURITY] Payment %s has no club_id - data integrity issue", existing.ID)
+		return nil, errors.New("payment missing club_id")
+	}
+
+	// 5. Update payment status with validated data
 	existing.Status = updatedPayment.Status
 	existing.PaidAt = updatedPayment.PaidAt
-	existing.ExternalID = updatedPayment.ExternalID
+	// ExternalID should already be set, but update if gateway provides it
+	if updatedPayment.ExternalID != "" {
+		existing.ExternalID = updatedPayment.ExternalID
+	}
 
 	if err := uc.repo.Update(ctx, existing); err != nil {
 		log.Printf("Failed to update payment status (db): %v", err)
 		return nil, errors.New("database update failed")
 	}
 
-	log.Printf("Payment %s updated to %s", existing.ID, existing.Status)
+	log.Printf("Payment %s (club: %s) updated to %s", existing.ID, clubID, existing.Status)
 
-	// 4. Notify Responder if any
+	// 6. Notify Responder with validated club_id
 	if responder, ok := uc.responders[existing.ReferenceType]; ok {
-		if err := responder.OnPaymentStatusChanged(ctx, existing.ClubID, existing.ReferenceID, existing.Status); err != nil {
+		if err := responder.OnPaymentStatusChanged(ctx, clubID, existing.ReferenceID, existing.Status); err != nil {
 			log.Printf("Responder failed for %s: %v", existing.ReferenceType, err)
 			// We don't fail the webhook processing itself if responder fails,
 			// though in a mission-critical app we might want to retry or use a queue.

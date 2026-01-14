@@ -21,8 +21,29 @@ func (r *PostgresPaymentRepository) Create(ctx context.Context, payment *domain.
 	return r.db.WithContext(ctx).Create(payment).Error
 }
 
+// Update updates a payment record.
+// SECURITY FIX (VUL-003): Now validates that the payment belongs to the club before updating.
 func (r *PostgresPaymentRepository) Update(ctx context.Context, payment *domain.Payment) error {
-	return r.db.WithContext(ctx).Save(payment).Error
+	// Validate that the payment exists and belongs to the club
+	result := r.db.WithContext(ctx).
+		Model(&domain.Payment{}).
+		Where("id = ? AND club_id = ?", payment.ID, payment.ClubID).
+		Updates(map[string]interface{}{
+			"status":      payment.Status,
+			"paid_at":     payment.PaidAt,
+			"external_id": payment.ExternalID,
+			"updated_at":  payment.UpdatedAt,
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("payment not found or does not belong to this club")
+	}
+
+	return nil
 }
 
 func (r *PostgresPaymentRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Payment, error) {

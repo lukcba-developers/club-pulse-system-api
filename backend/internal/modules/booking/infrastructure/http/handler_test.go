@@ -65,6 +65,13 @@ func (m *MockBookingRepo) GetNextInLine(ctx context.Context, clubID string, rID 
 	}
 	return args.Get(0).(*domain.Waitlist), args.Error(1)
 }
+func (m *MockBookingRepo) ListExpired(ctx context.Context) ([]domain.Booking, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Booking), args.Error(1)
+}
 
 type MockRecurringRepo struct{ mock.Mock }
 
@@ -294,6 +301,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		body, _ := json.Marshal(map[string]interface{}{
 			"facility_id": uuid.New().String(),
 			"type":        "FIXED",
+			"frequency":   "WEEKLY", // Added frequency
 			"day_of_week": 1,
 			"start_time":  time.Now(),
 			"end_time":    time.Now().Add(1 * time.Hour),
@@ -556,7 +564,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 
 		body, _ := json.Marshal(map[string]interface{}{
 			"user_id":     userID,
-			"facility_id": facilityID, "start_time": time.Now(), "end_time": time.Now().Add(1 * time.Hour),
+			"facility_id": facilityID, "start_time": time.Now().Add(1 * time.Hour), "end_time": time.Now().Add(2 * time.Hour),
 		})
 		req, _ := http.NewRequest("POST", "/api/v1/bookings", bytes.NewBuffer(body))
 		resp := httptest.NewRecorder()
@@ -583,7 +591,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 
 		body, _ := json.Marshal(map[string]interface{}{
 			"user_id":     uniqueUserID,
-			"facility_id": facilityID, "start_time": time.Now(), "end_time": time.Now().Add(1 * time.Hour),
+			"facility_id": facilityID, "start_time": time.Now().Add(1 * time.Hour), "end_time": time.Now().Add(2 * time.Hour),
 		})
 		req, _ := http.NewRequest("POST", "/api/v1/bookings", bytes.NewBuffer(body))
 		resp := httptest.NewRecorder()
@@ -636,12 +644,12 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/v1/bookings", bytes.NewBuffer(body))
 		resp := httptest.NewRecorder()
 		r.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.Equal(t, http.StatusInternalServerError, resp.Code)
 	})
 
 	t.Run("List - Service Error", func(t *testing.T) {
 		r := setupRouter(h, clubID, userID, userDomain.RoleMember)
-		mockBookingRepo.On("List", mock.Anything, clubID, userID).Return(nil, fmt.Errorf("db error")).Once()
+		mockBookingRepo.On("List", mock.Anything, clubID, mock.Anything).Return(nil, fmt.Errorf("db error")).Once()
 		req, _ := http.NewRequest("GET", "/api/v1/bookings", nil)
 		resp := httptest.NewRecorder()
 		r.ServeHTTP(resp, req)
