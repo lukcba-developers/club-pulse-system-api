@@ -14,16 +14,7 @@ export default defineConfig({
     },
     projects: [
         { name: 'setup', testMatch: /.*\.setup\.ts/ },
-        // Auth tests run in a clean context without any pre-set state or setup dependencies
-        {
-            name: 'auth',
-            testMatch: /auth\.spec\.ts/,
-            use: {
-                ...devices['Desktop Chrome'],
-                storageState: { cookies: [], origins: [] },
-            },
-            // NO dependencies: runs fresh without setup
-        },
+
         {
             name: 'chromium',
             use: {
@@ -31,7 +22,7 @@ export default defineConfig({
                 storageState: 'playwright/.auth/user.json',
             },
             dependencies: ['setup'],
-            testIgnore: /auth\.spec\.ts/, // Avoid running auth.spec.ts twice
+
         },
     ],
     webServer: {

@@ -7,6 +7,7 @@ import { Loader2, CalendarX, Clock, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
+import { BookingExpiryTimer } from '@/components/booking-expiry-timer';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -25,12 +26,26 @@ interface Booking {
     start_time: string;
     end_time: string;
     status: string;
+    payment_expiry?: string;
 }
 
 interface Facility {
     id: string;
     name: string;
 }
+
+const getStatusConfig = (status: string) => {
+    const s = status.toUpperCase();
+    switch (s) {
+        case 'CONFIRMED': return { label: 'Confirmada', color: 'text-green-600 bg-green-50 dark:bg-green-900/20' };
+        case 'PENDING_PAYMENT': return { label: 'Pendiente de Pago', color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' };
+        case 'CANCELLED': return { label: 'Cancelada', color: 'text-red-600 bg-red-50 dark:bg-red-900/20' };
+        case 'EXPIRED': return { label: 'Expirada', color: 'text-gray-600 bg-gray-50 dark:bg-gray-800' };
+        case 'COMPLETED': return { label: 'Completada', color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' };
+        case 'NO_SHOW': return { label: 'Ausente', color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' };
+        default: return { label: status, color: 'text-gray-600 bg-gray-50' };
+    }
+};
 
 export default function BookingsPage() {
     const { user, loading: authLoading } = useAuth();
@@ -110,16 +125,25 @@ export default function BookingsPage() {
                         const facility = facilities[booking.facility_id];
                         const startDate = new Date(booking.start_time);
                         const endDate = new Date(booking.end_time);
+                        const statusConfig = getStatusConfig(booking.status);
 
                         return (
-                            <div key={booking.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-5 shadow-sm hover:shadow-md transition-shadow">
+                            <div key={booking.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                {booking.status === 'PENDING_PAYMENT' && (
+                                    <div className="absolute top-0 right-0 p-2">
+                                        <span className="relative flex h-3 w-3">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
                                         <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
                                             {facility ? facility.name : 'Instalación Desconocida'}
                                         </h3>
-                                        <div className="flex items-center gap-1.5 text-xs font-medium text-brand-600 bg-brand-50 dark:bg-brand-900/20 px-2 py-0.5 rounded mt-1 w-fit capitalize">
-                                            {booking.status === 'confirmed' ? 'confirmada' : booking.status}
+                                        <div className={`flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded mt-1 w-fit capitalize ${statusConfig.color}`}>
+                                            {statusConfig.label}
                                         </div>
                                     </div>
                                     <div className="bg-gray-50 dark:bg-zinc-800 p-2 rounded-lg">
@@ -137,6 +161,17 @@ export default function BookingsPage() {
                                             </span>
                                         </span>
                                     </div>
+                                    {booking.status === 'PENDING_PAYMENT' && booking.payment_expiry && (
+                                        <div className="mt-3 bg-amber-50 dark:bg-amber-900/10 p-2 rounded border border-amber-100 dark:border-amber-900/20">
+                                            <BookingExpiryTimer
+                                                expiry={booking.payment_expiry}
+                                                onExpire={() => {
+                                                    // Refresh bookings to show EXPIRED status
+                                                    // For now user can refresh page
+                                                }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800 flex justify-end">

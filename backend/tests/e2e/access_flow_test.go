@@ -52,6 +52,7 @@ func TestAccessFlow(t *testing.T) {
 	// 2. Setup Dependencies
 	// Auth
 	authR := authRepo.NewPostgresAuthRepository(db)
+	_ = authR.Migrate()
 	tokenService := authToken.NewJWTService("secret")
 	authUC := authApp.NewAuthUseCases(authR, tokenService, nil) // Google Auth not needed for this test
 

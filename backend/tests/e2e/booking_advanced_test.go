@@ -50,16 +50,7 @@ func TestBookingAdvancedFlow(t *testing.T) {
 	uc := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, sharedMock, sharedMock)
 	h := bookingHttp.NewBookingHandler(uc)
 
-	r := gin.Default()
-
-	// Middleware Helper
-	mockAuth := func(userID string) gin.HandlerFunc {
-		return func(c *gin.Context) {
-			c.Set("userID", userID)
-			c.Set("clubID", "test-club-adv-booking")
-			c.Next()
-		}
-	}
+	// Middleware Helper (Removed as unused)
 
 	// 2. Data Setup
 	// Facility
@@ -81,29 +72,10 @@ func TestBookingAdvancedFlow(t *testing.T) {
 	startTime := time.Now().Add(24 * time.Hour).Truncate(time.Hour)
 	endTime := startTime.Add(time.Hour)
 
-	t.Run("User 1 Books Successfully", func(t *testing.T) {
-		group := r.Group("/")
-		group.Use(mockAuth(user1ID))
-		bookingHttp.RegisterRoutes(group, h, func(c *gin.Context) { c.Next() }, func(c *gin.Context) { c.Next() })
-
-		body, _ := json.Marshal(map[string]interface{}{
-			"facility_id": facID,
-			"start_time":  startTime,
-			"end_time":    endTime,
-		})
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/bookings", bytes.NewBuffer(body))
-		// Wait, I registered routes to root.
-		// Actually I should register once carefully or use unique paths.
-		// Let's restart Router for clean referencing or use sub-paths with different middleware?
-		// Gin middleware is global if attached to r.Use().
-		// I used generated usage inside the Run.
-		r.ServeHTTP(w, req)
-	})
+	// Duplicate test removed
 
 	// Better Router Setup
-	r = gin.New()
+	r := gin.New()
 	// Dynamic Middleware
 	r.Use(func(c *gin.Context) {
 		uid := c.GetHeader("X-User-ID")
@@ -118,7 +90,6 @@ func TestBookingAdvancedFlow(t *testing.T) {
 
 	t.Run("User 1 Books", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]interface{}{
-			"user_id":     user1ID,
 			"facility_id": facID,
 			"start_time":  startTime,
 			"end_time":    endTime,

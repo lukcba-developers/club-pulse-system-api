@@ -36,6 +36,7 @@ func TestGamificationFlow(t *testing.T) {
 
 	// Dependencies
 	authR := authRepo.NewPostgresAuthRepository(db)
+	_ = authR.Migrate()
 	tokenService := authToken.NewJWTService("secret")
 	authUC := authApp.NewAuthUseCases(authR, tokenService, nil)
 

@@ -47,6 +47,7 @@ func TestChampionshipsFlow(t *testing.T) {
 	// Auth Setup for Helper
 	tokenService := authToken.NewJWTService("secret")
 	authR := authRepo.NewPostgresAuthRepository(db)
+	_ = authR.Migrate()
 	_ = authApp.NewAuthUseCases(authR, tokenService, nil)
 
 	r := gin.New()

@@ -64,14 +64,13 @@ export function BookingModal({ isOpen, onClose, facilityId, facilityName, guestF
             const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1 hour
 
             await api.post('/bookings', {
-                user_id: user.id,
                 facility_id: facilityId,
                 start_time: startDateTime.toISOString(),
                 end_time: endDateTime.toISOString(),
                 guest_details: addGuest && guestName ? [{
                     name: guestName,
                     dni: guestDNI,
-                    fee_amount: guestFee
+                    fee_amount: parseFloat(guestFee.toFixed(2))
                 }] : undefined
             });
 

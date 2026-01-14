@@ -41,6 +41,7 @@ func TestMembershipFlow(t *testing.T) {
 
 	// We need User UseCase / Service to create user or just use Auth helper
 	authR := authRepo.NewPostgresAuthRepository(db)
+	_ = authR.Migrate()
 	tokenService := authToken.NewJWTService("secret")
 	authUC := authApp.NewAuthUseCases(authR, tokenService, nil)
 

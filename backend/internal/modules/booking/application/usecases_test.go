@@ -82,6 +82,14 @@ func (m *MockBookingRepo) GetNextInLine(ctx context.Context, clubID string, reso
 	return args.Get(0).(*bookingDomain.Waitlist), args.Error(1)
 }
 
+func (m *MockBookingRepo) ListExpired(ctx context.Context) ([]bookingDomain.Booking, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]bookingDomain.Booking), args.Error(1)
+}
+
 type MockFacilityRepo struct {
 	mock.Mock
 }
@@ -270,8 +278,10 @@ func (m *MockUserRepo) AnonymizeForGDPR(ctx context.Context, clubID, id string) 
 func TestCreateBooking(t *testing.T) {
 	userID := uuid.New().String()
 	facilityID := uuid.New().String()
-	startTime := time.Now().Add(1 * time.Hour)
-	endTime := startTime.Add(1 * time.Hour)
+	// Use a static future time to avoid 'booking in past' errors and flakiness
+	baseTime := time.Date(2030, 1, 15, 10, 0, 0, 0, time.UTC)
+	startTime := baseTime
+	endTime := baseTime.Add(1 * time.Hour)
 
 	tests := []struct {
 		name          string

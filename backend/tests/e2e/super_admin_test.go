@@ -58,6 +58,7 @@ func TestSuperAdminAccess(t *testing.T) {
 	cHandler := clubHttp.NewClubHandler(cUC)
 
 	aRepo := authRepo.NewPostgresAuthRepository(db)
+	_ = aRepo.Migrate()
 
 	// Create Super Admin User
 	saEmail := "super@admin.com"

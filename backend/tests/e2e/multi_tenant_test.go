@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	authRepository "github.com/lukcba/club-pulse-system-api/backend/internal/modules/auth/infrastructure/repository"
 	bookingApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
@@ -35,6 +37,10 @@ func TestMultiTenantIsolation(t *testing.T) {
 	recRepo := bookingRepo.NewPostgresRecurringRepository(db)
 	facRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
 	usRepo := userRepo.NewPostgresUserRepository(db)
+
+	// Add proper Auth migration (Fixes missing google_id column)
+	authRepo := authRepository.NewPostgresAuthRepository(db)
+	_ = authRepo.Migrate()
 
 	sharedMock := &SharedMockNotifier{}
 	bookUC := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, sharedMock, sharedMock)
@@ -106,7 +112,9 @@ func TestMultiTenantIsolation(t *testing.T) {
 	db.Create(testFacility)
 
 	// 2. Scenario: Create in Club A, should NOT see in Club B
-	body := `{"user_id": "` + userIDClubA + `", "facility_id": "` + facID.String() + `", "start_time": "2025-01-01T10:00:00Z", "end_time": "2025-01-01T11:00:00Z"}`
+	startTime := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+	endTime := time.Now().Add(25 * time.Hour).Format(time.RFC3339)
+	body := fmt.Sprintf(`{"facility_id": "%s", "start_time": "%s", "end_time": "%s"}`, facID.String(), startTime, endTime)
 
 	w1 := httptest.NewRecorder()
 	req1, _ := http.NewRequest("POST", "/a/bookings", strings.NewReader(body))

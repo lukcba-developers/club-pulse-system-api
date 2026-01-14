@@ -16,7 +16,7 @@ import (
 
 // DTOs
 type CreateBookingDTO struct {
-	UserID       string                      `json:"user_id" binding:"required"`
+	UserID       string                      `json:"user_id"` // Auth override
 	FacilityID   string                      `json:"facility_id" binding:"required"`
 	StartTime    time.Time                   `json:"start_time" binding:"required"`
 	EndTime      time.Time                   `json:"end_time" binding:"required"`
@@ -26,6 +26,7 @@ type CreateBookingDTO struct {
 type CreateRecurringRuleDTO struct {
 	FacilityID string                       `json:"facility_id" binding:"required"`
 	Type       bookingDomain.RecurrenceType `json:"type" binding:"required"`
+	Frequency  string                       `json:"frequency" binding:"required,oneof=WEEKLY MONTHLY"`
 	DayOfWeek  int                          `json:"day_of_week" binding:"gte=0,lte=6"`
 	StartTime  time.Time                    `json:"start_time" binding:"required"`
 	EndTime    time.Time                    `json:"end_time" binding:"required"`
@@ -74,6 +75,25 @@ func (uc *BookingUseCases) CreateBooking(ctx context.Context, clubID string, dto
 
 	if dto.StartTime.After(dto.EndTime) {
 		return nil, errors.New("start time must be before end time")
+	}
+
+	// Timezone Normalization: Force UTC if offset is present to avoid "Timezone Hell"
+	if dto.StartTime.Location() != time.UTC {
+		dto.StartTime = dto.StartTime.UTC()
+	}
+	if dto.EndTime.Location() != time.UTC {
+		dto.EndTime = dto.EndTime.UTC()
+	}
+
+	if dto.StartTime.Before(time.Now()) {
+		return nil, errors.New("cannot book in the past")
+	}
+
+	// Validate Guest Details Integrity
+	for _, guest := range dto.GuestDetails {
+		if guest.Name == "" || guest.DNI == "" {
+			return nil, errors.New("guest details must include name and DNI")
+		}
 	}
 
 	// 2. Business Rule Validation (Facility Status & Conflicts)
@@ -451,6 +471,7 @@ func (uc *BookingUseCases) CreateRecurringRule(ctx context.Context, clubID strin
 		FacilityID: facID,
 		ClubID:     clubID,
 		Type:       dto.Type,
+		Frequency:  dto.Frequency, // Map new field
 		DayOfWeek:  dto.DayOfWeek,
 		StartTime:  dto.StartTime,
 		EndTime:    dto.EndTime,
@@ -494,6 +515,26 @@ func (uc *BookingUseCases) GenerateBookingsFromRules(ctx context.Context, clubID
 // ListRecurringRules retrieves all active recurring rules for the club.
 func (uc *BookingUseCases) ListRecurringRules(ctx context.Context, clubID string) ([]bookingDomain.RecurringRule, error) {
 	return uc.recurringRepo.GetAllActive(ctx, clubID)
+}
+
+// ExpirePayments finds pending bookings with expired payment timers and marks them as EXPIRED.
+// This should be called by a background cron job.
+func (uc *BookingUseCases) ExpirePayments(ctx context.Context) error {
+	expiredBookings, err := uc.repo.ListExpired(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, b := range expiredBookings {
+		b.Status = bookingDomain.BookingStatusExpired
+		b.UpdatedAt = time.Now()
+		// We could assume partial failure is acceptable here, or log errors.
+		// For now, we try to update all and return last error if any.
+		if updateErr := uc.repo.Update(ctx, &b); updateErr != nil {
+			err = updateErr
+		}
+	}
+	return err
 }
 
 // --- Private Helpers (The "Clean Code" Section) ---
