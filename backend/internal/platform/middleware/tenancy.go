@@ -27,8 +27,29 @@ func TenantMiddleware(clubRepo clubDomain.ClubRepository) gin.HandlerFunc {
 			"/api/v1/auth/google":   true,
 		}
 		if publicPaths[c.Request.URL.Path] {
-			if clubID != "" {
+			// Routes that require ClubID even when public
+			requiresClubID := map[string]bool{
+				"/api/v1/auth/login":    true,
+				"/api/v1/auth/register": true,
+				"/api/v1/auth/google":   true,
+			}
+
+			if requiresClubID[c.Request.URL.Path] {
+				if clubID == "" {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "X-Club-ID header is required"})
+					c.Abort()
+					return
+				}
 				// Resolve slug/domain to UUID if needed (for non-UUID values)
+				resolvedID := resolveClubID(c.Request.Context(), clubRepo, clubID)
+				if resolvedID == "" {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid club identifier"})
+					c.Abort()
+					return
+				}
+				c.Set(ContextClubID, resolvedID)
+			} else if clubID != "" {
+				// For routes that don't require it, set it if provided
 				resolvedID := resolveClubID(c.Request.Context(), clubRepo, clubID)
 				c.Set(ContextClubID, resolvedID)
 			}
