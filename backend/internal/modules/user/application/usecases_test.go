@@ -220,14 +220,83 @@ func TestUserUseCases_ChildrenAndDep(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("RegisterDependent", func(t *testing.T) {
-		mockRepo.On("GetByEmail", ctx, "dad@test.com").Return(nil, nil).Once()
-		mockRepo.On("Create", ctx, mock.Anything).Return(nil).Twice()
-		res, err := uc.RegisterDependent(ctx, "c1", application.RegisterDependentDTO{
-			ParentEmail: "dad@test.com", ParentName: "Dad", ChildName: "Junior",
+	t.Run("RegisterDependent Comprehensive", func(t *testing.T) {
+		// 1. Success: New Parent and Child
+		mockRepo.On("GetByEmail", mock.Anything, "new@test.com").Return(nil, nil).Once()
+		mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil).Twice() // Parent and Child
+
+		res, err := uc.RegisterDependent(ctx, "club-1", application.RegisterDependentDTO{
+			ParentEmail:     "new@test.com",
+			ParentName:      "New Dad",
+			ParentPhone:     "555-000",
+			ChildName:       "Junior",
+			ChildSurname:    "Newson",
+			Password:        "Secure123",
+			AcceptTerms:     true,
+			ParentalConsent: true,
 		})
 		assert.NoError(t, err)
+		assert.NotNil(t, res)
 		assert.Contains(t, res.Name, "Junior")
+
+		// 2. Failure: Weak Password
+		// We need to mock GetByEmail even for failure cases that reach that point
+		mockRepo.On("GetByEmail", mock.Anything, "weak@test.com").Return(nil, nil).Once()
+		_, err = uc.RegisterDependent(ctx, "club-1", application.RegisterDependentDTO{
+			ParentEmail:     "weak@test.com",
+			ParentName:      "Weak Dad",
+			ChildName:       "Kid",
+			Password:        "weak", // Too short
+			AcceptTerms:     true,
+			ParentalConsent: true,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "password must be at least 8 characters")
+
+		// 3. Failure: Missing GDPR Consent (This one fails before GetByEmail if I validate DTO first, but current impl calls GetByEmail first)
+		// Wait, let's re-check usecases.go order.
+		mockRepo.On("GetByEmail", mock.Anything, "noconsent@test.com").Return(nil, nil).Once()
+		_, err = uc.RegisterDependent(ctx, "club-1", application.RegisterDependentDTO{
+			ParentEmail: "noconsent@test.com",
+			ParentName:  "NoDad",
+			ChildName:   "Kid",
+			Password:    "Secure123",
+			AcceptTerms: false,
+		})
+		assert.Error(t, err)
+
+		// 4. Success: Existing Parent (Same Club)
+		existingParent := &domain.User{ID: "p1", Email: "old@test.com", ClubID: "club-1"}
+		mockRepo.On("GetByEmail", mock.Anything, "old@test.com").Return(existingParent, nil).Once()
+		mockRepo.On("Update", mock.Anything, mock.Anything).Return(nil).Once()
+		mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil).Once()
+
+		res, err = uc.RegisterDependent(ctx, "club-1", application.RegisterDependentDTO{
+			ParentEmail:     "old@test.com",
+			ParentName:      "Old Dad",
+			ChildName:       "Junior2",
+			ChildSurname:    "Oldson",
+			Password:        "Secure123", // Ignored if parent exists but required by binding
+			AcceptTerms:     true,
+			ParentalConsent: true,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+
+		// 5. Failure: Tenant Isolation (Parent in different club)
+		otherClubParent := &domain.User{ID: "p2", Email: "other@test.com", ClubID: "club-2"}
+		mockRepo.On("GetByEmail", mock.Anything, "other@test.com").Return(otherClubParent, nil).Once()
+
+		_, err = uc.RegisterDependent(ctx, "club-1", application.RegisterDependentDTO{
+			ParentEmail:     "other@test.com",
+			ParentName:      "Other Dad",
+			ChildName:       "Junior3",
+			Password:        "Secure123",
+			AcceptTerms:     true,
+			ParentalConsent: true,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "different club")
 	})
 }
 

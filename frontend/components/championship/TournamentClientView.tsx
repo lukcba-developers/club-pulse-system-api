@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { StandingsTable } from "./StandingsTable"
-import { FixtureList } from "./FixtureList"
+import { PublicStandingsTable as StandingsTable } from "./PublicStandingsTable"
+import { PublicFixtureList as FixtureList } from "./PublicFixtureList"
 import { Calendar, Trophy, Users } from "lucide-react"
 
 interface Tournament {

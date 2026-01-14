@@ -2,13 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '@/lib/axios';
+import { UserRole } from '@/types/user';
 
 export interface User {
     id: string;
     club_id?: string;
     name: string;
     email: string;
-    role: string;
+    role: UserRole | string; // Allow string for legacy/flexibility but prefer Enum
     medical_cert_status?: 'VALID' | 'EXPIRED' | 'PENDING';
     medical_cert_expiry?: string;
     family_group_id?: string;

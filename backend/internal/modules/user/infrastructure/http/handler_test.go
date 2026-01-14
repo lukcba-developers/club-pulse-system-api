@@ -326,7 +326,12 @@ func TestUserHandler_Public(t *testing.T) {
 		mockRepo.On("GetByEmail", mock.Anything, "dad@me.com").Return(nil, nil).Once()
 		mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil).Twice()
 		body, _ := json.Marshal(application.RegisterDependentDTO{
-			ParentEmail: "dad@me.com", ParentName: "Dad", ChildName: "Junior",
+			ParentEmail:     "dad@me.com",
+			ParentName:      "Dad",
+			ChildName:       "Junior",
+			Password:        "Secure123",
+			AcceptTerms:     true,
+			ParentalConsent: true,
 		})
 		req, _ := http.NewRequest("POST", "/api/v1/users/public/register-dependent?club_id=club-1", bytes.NewBuffer(body))
 		resp := httptest.NewRecorder()
