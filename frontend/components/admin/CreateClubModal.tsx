@@ -62,6 +62,7 @@ export function CreateClubModal({ open, onOpenChange, onSuccess }: CreateClubMod
 
     const onSubmit = async (data: ClubFormData) => {
         setLoading(true);
+        let createdClubId: string | null = null;
         try {
             // 1. Create Club
             const newClub = await clubService.createClub({
@@ -76,10 +77,17 @@ export function CreateClubModal({ open, onOpenChange, onSuccess }: CreateClubMod
                 theme_config: data.theme_config || undefined,
                 settings: data.settings || undefined,
             });
+            createdClubId = newClub.id;
 
             // 2. Upload Logo if selected
             if (selectedFile && newClub.id) {
-                await clubService.uploadLogo(newClub.id, selectedFile);
+                try {
+                    await clubService.uploadLogo(newClub.id, selectedFile);
+                } catch (uploadErr) {
+                    console.error("Logo upload failed:", uploadErr);
+                    alert("Club created successfully, but logo upload failed. You can try uploading it again from the club settings.");
+                    // We still proceed to success because the club exists
+                }
             }
 
             onSuccess();
@@ -89,7 +97,10 @@ export function CreateClubModal({ open, onOpenChange, onSuccess }: CreateClubMod
         } catch (err: unknown) {
             console.error(err);
             const errorMessage = err instanceof Error ? err.message : 'Failed to create club';
-            alert(errorMessage);
+            // Only show main failure if club wasn't created
+            if (!createdClubId) {
+                alert(errorMessage);
+            }
         } finally {
             setLoading(false);
         }
