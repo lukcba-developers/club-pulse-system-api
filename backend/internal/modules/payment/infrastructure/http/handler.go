@@ -22,21 +22,21 @@ func NewPaymentHandler(useCases *application.PaymentUseCases) *PaymentHandler {
 
 // CheckoutRequest is the HTTP request body for checkout.
 type CheckoutRequest struct {
-	Amount        float64 `json:"amount" binding:"required"`
-	Description   string  `json:"description" binding:"required"`
-	PayerEmail    string  `json:"payer_email" binding:"required,email"`
-	ReferenceID   string  `json:"reference_id" binding:"required"`
-	ReferenceType string  `json:"reference_type" binding:"required"` // MEMBERSHIP, BOOKING
+	Amount        string `json:"amount" binding:"required"`
+	Description   string `json:"description" binding:"required"`
+	PayerEmail    string `json:"payer_email" binding:"required,email"`
+	ReferenceID   string `json:"reference_id" binding:"required"`
+	ReferenceType string `json:"reference_type" binding:"required"` // MEMBERSHIP, BOOKING
 }
 
 // OfflinePaymentRequest is the HTTP request body for offline payments.
 type OfflinePaymentRequest struct {
-	Amount        float64 `json:"amount" binding:"required"`
-	Method        string  `json:"method" binding:"required,oneof=CASH LABOR_EXCHANGE TRANSFER"`
-	PayerID       string  `json:"payer_id" binding:"required"`
-	ReferenceID   string  `json:"reference_id"`
-	ReferenceType string  `json:"reference_type"`
-	Notes         string  `json:"notes"`
+	Amount        string `json:"amount" binding:"required"`
+	Method        string `json:"method" binding:"required,oneof=CASH LABOR_EXCHANGE TRANSFER"`
+	PayerID       string `json:"payer_id" binding:"required"`
+	ReferenceID   string `json:"reference_id"`
+	ReferenceType string `json:"reference_type"`
+	Notes         string `json:"notes"`
 }
 
 // Checkout creates a payment intent and returns the MP Preference URL.

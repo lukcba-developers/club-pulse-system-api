@@ -36,7 +36,7 @@ func (uc *PaymentUseCases) RegisterResponder(refType string, responder domain.Pa
 
 // CheckoutRequest represents the input for creating a checkout session.
 type CheckoutRequest struct {
-	Amount        float64
+	Amount        string
 	Description   string
 	PayerEmail    string
 	ReferenceID   uuid.UUID
@@ -47,9 +47,14 @@ type CheckoutRequest struct {
 
 // Checkout creates a payment record and returns a payment gateway URL.
 func (uc *PaymentUseCases) Checkout(ctx context.Context, req CheckoutRequest) (*domain.Payment, string, error) {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, "", errors.New("invalid amount format")
+	}
+
 	payment := &domain.Payment{
 		ID:            uuid.New(),
-		Amount:        decimal.NewFromFloat(req.Amount),
+		Amount:        amount,
 		Currency:      "ARS",
 		Status:        domain.PaymentStatusPending,
 		Method:        domain.PaymentMethodMercadoPago,
@@ -223,7 +228,7 @@ func (uc *PaymentUseCases) Refund(ctx context.Context, clubID string, referenceI
 
 // CreateOfflinePaymentRequest represents input for offline payment registration.
 type CreateOfflinePaymentRequest struct {
-	Amount        float64
+	Amount        string
 	Method        domain.PaymentMethod
 	PayerID       uuid.UUID
 	ReferenceID   uuid.UUID
@@ -234,10 +239,15 @@ type CreateOfflinePaymentRequest struct {
 
 // CreateOfflinePayment registers a payment made outside the system.
 func (uc *PaymentUseCases) CreateOfflinePayment(ctx context.Context, req CreateOfflinePaymentRequest) (*domain.Payment, error) {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, errors.New("invalid amount format")
+	}
+
 	now := time.Now()
 	payment := &domain.Payment{
 		ID:            uuid.New(),
-		Amount:        decimal.NewFromFloat(req.Amount),
+		Amount:        amount,
 		Currency:      "ARS",
 		Status:        domain.PaymentStatusCompleted, // Offline payments are recorded when completed
 		Method:        req.Method,

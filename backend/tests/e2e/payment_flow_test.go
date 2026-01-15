@@ -95,7 +95,7 @@ func TestPaymentCheckout(t *testing.T) {
 
 	t.Run("Checkout Success", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		body := `{"amount": 100.00, "description": "Test", "payer_email": "test@test.com", "reference_id": "` + uuid.New().String() + `", "reference_type": "MEMBERSHIP"}`
+		body := `{"amount": "100.00", "description": "Test", "payer_email": "test@test.com", "reference_id": "` + uuid.New().String() + `", "reference_type": "MEMBERSHIP"}`
 		req, _ := http.NewRequest("POST", "/api/v1/payments/checkout", strings.NewReader(body))
 		r.ServeHTTP(w, req)
 
@@ -117,7 +117,7 @@ func TestPaymentCheckout(t *testing.T) {
 		paymentHttp.RegisterRoutes(r2.Group("/api/v1"), handler, authMw, tenantMwFail)
 
 		w := httptest.NewRecorder()
-		body := `{"amount": 100.00, "description": "Test", "payer_email": "test@test.com", "reference_id": "` + uuid.New().String() + `", "reference_type": "MEMBERSHIP"}`
+		body := `{"amount": "100.00", "description": "Test", "payer_email": "test@test.com", "reference_id": "` + uuid.New().String() + `", "reference_type": "MEMBERSHIP"}`
 		req, _ := http.NewRequest("POST", "/api/v1/payments/checkout", strings.NewReader(body))
 		r2.ServeHTTP(w, req)
 

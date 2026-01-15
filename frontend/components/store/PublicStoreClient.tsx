@@ -21,9 +21,12 @@ interface Product {
     id: string
     name: string
     description: string
-    price: number
+    price: string
     image_url?: string
     stock_quantity: number
+    is_active: boolean
+    created_at: string
+    updated_at: string
 }
 
 interface CartItem extends Product {
@@ -44,9 +47,17 @@ export default function PublicStoreClient({ products, clubSlug }: { products: Pr
         setCart(prev => {
             const existing = prev.find(item => item.id === product.id)
             if (existing) {
+                // Validación de stock: No permitir agregar más del stock disponible
+                if (existing.quantity >= product.stock_quantity) {
+                    return prev
+                }
                 return prev.map(item =>
                     item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
                 )
+            }
+            // Validación de stock inicial: Asegurar que hay al menos 1 disponible
+            if (product.stock_quantity <= 0) {
+                return prev
             }
             return [...prev, { ...product, quantity: 1 }]
         })
@@ -56,7 +67,7 @@ export default function PublicStoreClient({ products, clubSlug }: { products: Pr
         setCart(prev => prev.filter(item => item.id !== productId))
     }
 
-    const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    const totalAmount = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0)
 
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -152,11 +163,11 @@ export default function PublicStoreClient({ products, clubSlug }: { products: Pr
                                         <div className="flex-1">
                                             <h4 className="font-semibold">{item.name}</h4>
                                             <div className="text-sm text-muted-foreground">
-                                                {item.quantity} x ${item.price.toFixed(2)}
+                                                {item.quantity} x ${parseFloat(item.price).toFixed(2)}
                                             </div>
                                         </div>
                                         <div className="font-bold mr-4">
-                                            ${(item.quantity * item.price).toFixed(2)}
+                                            ${(item.quantity * parseFloat(item.price)).toFixed(2)}
                                         </div>
                                         <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.id)}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -235,7 +246,7 @@ export default function PublicStoreClient({ products, clubSlug }: { products: Pr
                                 <CardDescription className="line-clamp-2">{product.description}</CardDescription>
                             </CardHeader>
                             <CardContent className="flex-grow">
-                                <div className="font-bold text-xl text-primary">${product.price.toFixed(2)}</div>
+                                <div className="font-bold text-xl text-primary">${parseFloat(product.price).toFixed(2)}</div>
                                 <div className="text-xs text-muted-foreground mt-1">Stock: {product.stock_quantity}</div>
                             </CardContent>
                             <CardFooter>

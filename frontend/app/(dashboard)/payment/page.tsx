@@ -324,7 +324,9 @@ export default function PaymentDashboardPage() {
                                                     {payment.status}
                                                 </Badge>
                                             </td>
-                                            <td className="p-2 max-w-xs truncate text-muted-foreground">{payment.notes || '-'}</td>
+                                            <td className="p-2 text-muted-foreground italic">
+                                                {payment.notes || '-'}
+                                            </td>
                                             <td className="p-2">
                                                 {payment.status === 'COMPLETED' && (
                                                     <Button

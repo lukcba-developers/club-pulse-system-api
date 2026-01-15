@@ -5,12 +5,15 @@ export interface Product {
     club_id: string;
     name: string;
     description: string;
-    price: number;
+    price: string;
     stock_quantity: number;
     sku: string;
     category: string;
     image_url?: string;
     status: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface CartItem {
