@@ -71,7 +71,7 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		return
 	}
 
-	url, err := h.useCases.Checkout(c.Request.Context(), application.CheckoutRequest{
+	payment, url, err := h.useCases.Checkout(c.Request.Context(), application.CheckoutRequest{
 		Amount:        req.Amount,
 		Description:   req.Description,
 		PayerEmail:    req.PayerEmail,
@@ -85,7 +85,10 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"url": url})
+	c.JSON(http.StatusOK, gin.H{
+		"checkout_url": url,
+		"payment_id":   payment.ID,
+	})
 }
 
 // HandleWebhook receives notifications from payment providers.

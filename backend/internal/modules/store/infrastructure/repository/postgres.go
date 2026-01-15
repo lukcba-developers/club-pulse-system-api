@@ -25,6 +25,7 @@ func (r *PostgresStoreRepository) GetProduct(ctx context.Context, id string) (*d
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&product).Error; err != nil {
 		return nil, err
 	}
+	// Status populated by AfterFind hook
 	return &product, nil
 }
 
@@ -41,6 +42,7 @@ func (r *PostgresStoreRepository) ListProducts(ctx context.Context, clubID strin
 	if err := query.Find(&products).Error; err != nil {
 		return nil, err
 	}
+	// Status populated by AfterFind hook
 	return products, nil
 }
 
