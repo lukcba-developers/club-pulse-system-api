@@ -5,6 +5,7 @@ import { membershipService, Membership } from '@/services/membership-service';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Users, AlertCircle, CheckCircle } from 'lucide-react';
+import { formatARS } from '@/lib/currency';
 
 const statusColors: Record<string, string> = {
     ACTIVE: 'bg-green-100 text-green-800',
@@ -45,7 +46,7 @@ export default function MembershipAdminPage() {
     // Summary calculations
     const activeCount = memberships.filter(m => m.status === 'ACTIVE').length;
     const pendingCount = memberships.filter(m => m.status === 'PENDING').length;
-    const overdueCount = memberships.filter(m => (m.outstanding_balance || 0) > 0).length;
+    const overdueCount = memberships.filter(m => Number(m.outstanding_balance || 0) > 0).length;
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -125,9 +126,9 @@ export default function MembershipAdminPage() {
                                             </td>
                                             <td className="p-2">{new Date(membership.start_date).toLocaleDateString()}</td>
                                             <td className="p-2">
-                                                {(membership.outstanding_balance || 0) > 0 ? (
+                                                {Number(membership.outstanding_balance || 0) > 0 ? (
                                                     <span className="text-red-600 font-medium">
-                                                        ${(membership.outstanding_balance || 0).toFixed(2)}
+                                                        {formatARS(membership.outstanding_balance)}
                                                     </span>
                                                 ) : (
                                                     <span className="flex items-center text-green-600">

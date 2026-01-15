@@ -87,16 +87,43 @@ func (m *MockScholarshipRepo) GetActiveByUserID(ctx context.Context, userID stri
 	}
 	return args.Get(0).(*domain.Scholarship), args.Error(1)
 }
+
 func (m *MockScholarshipRepo) ListActiveByUserIDs(ctx context.Context, userIDs []string) (map[string]*domain.Scholarship, error) {
 	args := m.Called(ctx, userIDs)
 	return args.Get(0).(map[string]*domain.Scholarship), args.Error(1)
+}
+
+type MockSubscriptionRepo struct {
+	mock.Mock
+}
+
+func (m *MockSubscriptionRepo) Create(ctx context.Context, s *domain.Subscription) error {
+	return m.Called(ctx, s).Error(0)
+}
+func (m *MockSubscriptionRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Subscription, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Subscription), args.Error(1)
+}
+func (m *MockSubscriptionRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Subscription, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Subscription), args.Error(1)
+}
+func (m *MockSubscriptionRepo) Update(ctx context.Context, s *domain.Subscription) error {
+	return m.Called(ctx, s).Error(0)
 }
 
 // --- Tests ---
 
 func TestMembershipUseCases_Creation(t *testing.T) {
 	mockRepo := new(MockMembershipRepo)
-	uc := application.NewMembershipUseCases(mockRepo, nil)
+	mockSubRepo := new(MockSubscriptionRepo)
+	uc := application.NewMembershipUseCases(mockRepo, nil, mockSubRepo)
 	clubID := "club-1"
 	tierID := uuid.New()
 	userID := uuid.New()
@@ -147,7 +174,8 @@ func TestMembershipUseCases_Creation(t *testing.T) {
 
 func TestMembershipUseCases_Cancellation(t *testing.T) {
 	mockRepo := new(MockMembershipRepo)
-	uc := application.NewMembershipUseCases(mockRepo, nil)
+	mockSubRepo := new(MockSubscriptionRepo)
+	uc := application.NewMembershipUseCases(mockRepo, nil, mockSubRepo)
 	clubID := "club-1"
 	mID := uuid.New()
 	uID := uuid.New()
@@ -166,7 +194,8 @@ func TestMembershipUseCases_Cancellation(t *testing.T) {
 func TestMembershipUseCases_Billing(t *testing.T) {
 	mockRepo := new(MockMembershipRepo)
 	mockScholarRepo := new(MockScholarshipRepo)
-	uc := application.NewMembershipUseCases(mockRepo, mockScholarRepo)
+	mockSubRepo := new(MockSubscriptionRepo)
+	uc := application.NewMembershipUseCases(mockRepo, mockScholarRepo, mockSubRepo)
 	clubID := "club-1"
 	uID := uuid.New()
 	mID := uuid.New()
@@ -209,7 +238,8 @@ func TestMembershipUseCases_Billing(t *testing.T) {
 
 func TestMembershipUseCases_ScholarshipAssignment(t *testing.T) {
 	mockScholarRepo := new(MockScholarshipRepo)
-	uc := application.NewMembershipUseCases(nil, mockScholarRepo)
+	mockSubRepo := new(MockSubscriptionRepo)
+	uc := application.NewMembershipUseCases(nil, mockScholarRepo, mockSubRepo)
 	clubID := "club-1"
 
 	t.Run("Assign scholarship", func(t *testing.T) {

@@ -116,7 +116,8 @@ func processAllClubs(db *gorm.DB) error {
 
 	membershipRepo := repository.NewPostgresMembershipRepository(db)
 	scholarshipRepo := repository.NewPostgresScholarshipRepository(db)
-	useCases := application.NewMembershipUseCases(membershipRepo, scholarshipRepo)
+	subscriptionRepo := repository.NewPostgresSubscriptionRepository(db)
+	useCases := application.NewMembershipUseCases(membershipRepo, scholarshipRepo, subscriptionRepo)
 
 	ctx := context.Background()
 	totalProcessed := 0

@@ -20,7 +20,7 @@ func NewPostgresSubscriptionRepository(db *gorm.DB) *PostgresSubscriptionReposit
 
 type SubscriptionModel struct {
 	ID              uuid.UUID `gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	UserID          string
+	UserID          uuid.UUID
 	MembershipID    uuid.UUID
 	Amount          decimal.Decimal `gorm:"type:decimal(10,2)"`
 	Currency        string
@@ -51,7 +51,7 @@ func (r *PostgresSubscriptionRepository) GetByID(ctx context.Context, id uuid.UU
 	return r.toDomain(&model), nil
 }
 
-func (r *PostgresSubscriptionRepository) GetByUserID(ctx context.Context, userID string) ([]domain.Subscription, error) {
+func (r *PostgresSubscriptionRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Subscription, error) {
 	var models []SubscriptionModel
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, err

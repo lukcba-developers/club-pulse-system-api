@@ -38,6 +38,7 @@ func TestMembershipFlow(t *testing.T) {
 	// Repos
 	memRepo := membershipRepo.NewPostgresMembershipRepository(db)
 	scholarshipRepo := membershipRepo.NewPostgresScholarshipRepository(db)
+	subRepo := membershipRepo.NewPostgresSubscriptionRepository(db)
 
 	// We need User UseCase / Service to create user or just use Auth helper
 	authR := authRepo.NewPostgresAuthRepository(db)
@@ -46,7 +47,7 @@ func TestMembershipFlow(t *testing.T) {
 	authUC := authApp.NewAuthUseCases(authR, tokenService, nil)
 
 	// Membership Logic
-	memUC := membershipApp.NewMembershipUseCases(memRepo, scholarshipRepo) // Correct repo
+	memUC := membershipApp.NewMembershipUseCases(memRepo, scholarshipRepo, subRepo) // Correct repo
 	memH := membershipHttp.NewMembershipHandler(memUC)
 
 	r := gin.Default()

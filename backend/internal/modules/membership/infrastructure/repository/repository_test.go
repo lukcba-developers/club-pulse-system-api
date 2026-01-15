@@ -61,7 +61,7 @@ func (TestScholarship) TableName() string { return "scholarships" }
 
 type TestSubscription struct {
 	ID              uuid.UUID `gorm:"type:uuid;primary_key"`
-	UserID          string
+	UserID          uuid.UUID
 	MembershipID    uuid.UUID
 	Amount          decimal.Decimal `gorm:"type:decimal(10,2)"`
 	Currency        string
@@ -159,7 +159,7 @@ func TestPostgresMembershipRepositories(t *testing.T) {
 	})
 
 	t.Run("Subscription Lifecycle", func(t *testing.T) {
-		uID := uuid.New().String()
+		uID := uuid.New()
 		mID := uuid.New()
 
 		sub := &domain.Subscription{

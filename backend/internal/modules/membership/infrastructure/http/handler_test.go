@@ -99,6 +99,32 @@ func (m *MockScholarshipRepo) ListActiveByUserIDs(ctx context.Context, userIDs [
 	return args.Get(0).(map[string]*domain.Scholarship), args.Error(1)
 }
 
+// --- Mock Subscription ---
+type MockSubscriptionRepo struct {
+	mock.Mock
+}
+
+func (m *MockSubscriptionRepo) Create(ctx context.Context, s *domain.Subscription) error {
+	return m.Called(ctx, s).Error(0)
+}
+func (m *MockSubscriptionRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Subscription, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Subscription), args.Error(1)
+}
+func (m *MockSubscriptionRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Subscription, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Subscription), args.Error(1)
+}
+func (m *MockSubscriptionRepo) Update(ctx context.Context, s *domain.Subscription) error {
+	return m.Called(ctx, s).Error(0)
+}
+
 // --- Setup ---
 
 func setupRouter(h *handler.MembershipHandler, clubID, userID, role string) *gin.Engine {
@@ -120,7 +146,8 @@ func setupRouter(h *handler.MembershipHandler, clubID, userID, role string) *gin
 func TestMembershipHandler_Endpoints(t *testing.T) {
 	mockRepo := new(MockMembershipRepo)
 	mockScholarRepo := new(MockScholarshipRepo)
-	uc := application.NewMembershipUseCases(mockRepo, mockScholarRepo)
+	mockSubRepo := new(MockSubscriptionRepo)
+	uc := application.NewMembershipUseCases(mockRepo, mockScholarRepo, mockSubRepo)
 	h := handler.NewMembershipHandler(uc)
 	clubID := "club-h-final"
 	userID := uuid.New().String()
@@ -190,7 +217,8 @@ func TestMembershipHandler_Endpoints(t *testing.T) {
 func TestMembershipHandler_DetailedErrors(t *testing.T) {
 	mockRepo := new(MockMembershipRepo)
 	mockScholarRepo := new(MockScholarshipRepo)
-	uc := application.NewMembershipUseCases(mockRepo, mockScholarRepo)
+	mockSubRepo := new(MockSubscriptionRepo)
+	uc := application.NewMembershipUseCases(mockRepo, mockScholarRepo, mockSubRepo)
 	h := handler.NewMembershipHandler(uc)
 	clubID := "club-h-error"
 	userID := uuid.New().String()

@@ -1,8 +1,8 @@
 import api from '../lib/axios';
-import type { Membership, MembershipTier } from '../types/membership';
+import type { Membership, MembershipTier, Subscription } from '../types/membership';
 
 // Re-export for convenience
-export type { Membership, MembershipTier };
+export type { Membership, MembershipTier, Subscription };
 
 // Alias para compatibilidad con código existente
 export type Tier = MembershipTier;
@@ -43,5 +43,11 @@ export const membershipService = {
     cancelMembership: async (id: string) => {
         const response = await api.delete<{ message: string; data: Membership }>(`/memberships/${id}`);
         return response.data;
+    },
+
+    // List user subscriptions (payment history)
+    listSubscriptions: async () => {
+        const response = await api.get<{ data: Subscription[] }>('/memberships/subscriptions');
+        return response.data.data;
     }
 }

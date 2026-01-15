@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Membership } from '@/services/membership-service';
 import { paymentService } from '@/services/payment-service';
+import { formatARS } from '@/lib/currency';
 
 interface BalanceAlertProps {
     membership: Membership;
@@ -9,12 +10,12 @@ interface BalanceAlertProps {
 }
 
 export function BalanceAlert({ membership, onPaymentSuccess }: BalanceAlertProps) {
-    if (!membership || (membership.outstanding_balance ?? 0) <= 0) return null;
+    if (!membership || Number(membership.outstanding_balance || 0) <= 0) return null;
 
     const handlePay = async () => {
-        const confirmed = window.confirm(`¿Pagar $${membership.outstanding_balance ?? 0} ahora con MercadoPago (Simulado)?`);
+        const confirmed = window.confirm(`¿Pagar ${formatARS(membership.outstanding_balance)} ahora con MercadoPago (Simulado)?`);
         if (confirmed) {
-            await paymentService.initiatePayment((membership.outstanding_balance ?? 0).toString(), 'ARS');
+            await paymentService.initiatePayment((membership.outstanding_balance || "0").toString(), 'ARS');
             alert('¡Pago procesado correctamente!');
             onPaymentSuccess();
         }
@@ -32,7 +33,7 @@ export function BalanceAlert({ membership, onPaymentSuccess }: BalanceAlertProps
                             Saldo Pendiente
                         </p>
                         <p className="text-sm text-red-700">
-                            Tienes una deuda de <span className="font-bold">${membership.outstanding_balance} ARS</span>. El acceso al club puede estar restringido.
+                            Tienes una deuda de <span className="font-bold">{formatARS(membership.outstanding_balance)}</span>. El acceso al club puede estar restringido.
                         </p>
                     </div>
                 </div>

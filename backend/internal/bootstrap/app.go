@@ -198,7 +198,8 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	// --- Module: Membership ---
 	membershipRepository := membershipRepo.NewPostgresMembershipRepository(db)
 	scholarshipRepository := membershipRepo.NewPostgresScholarshipRepository(db)
-	membershipUseCase := membershipApplication.NewMembershipUseCases(membershipRepository, scholarshipRepository)
+	subscriptionRepository := membershipRepo.NewPostgresSubscriptionRepository(db)
+	membershipUseCase := membershipApplication.NewMembershipUseCases(membershipRepository, scholarshipRepository, subscriptionRepository)
 	membershipHandler := membershipHTTP.NewMembershipHandler(membershipUseCase)
 
 	membershipHTTP.RegisterRoutes(api, membershipHandler, authMiddleware, tenantMiddleware)

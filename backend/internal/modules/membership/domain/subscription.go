@@ -20,7 +20,7 @@ const (
 // Subscription represents a recurring payment agreement for a membership.
 type Subscription struct {
 	ID              uuid.UUID          `json:"id"`
-	UserID          string             `json:"user_id"`
+	UserID          uuid.UUID          `json:"user_id"`
 	MembershipID    uuid.UUID          `json:"membership_id"`
 	Amount          decimal.Decimal    `json:"amount"`
 	Currency        string             `json:"currency"`
@@ -33,7 +33,7 @@ type Subscription struct {
 	UpdatedAt       time.Time          `json:"updated_at"`
 }
 
-func NewSubscription(userID string, membershipID uuid.UUID, amount decimal.Decimal, paymentMethodID string) *Subscription {
+func NewSubscription(userID uuid.UUID, membershipID uuid.UUID, amount decimal.Decimal, paymentMethodID string) *Subscription {
 	return &Subscription{
 		ID:              uuid.New(),
 		UserID:          userID,
@@ -51,6 +51,6 @@ func NewSubscription(userID string, membershipID uuid.UUID, amount decimal.Decim
 type SubscriptionRepository interface {
 	Create(ctx context.Context, subscription *Subscription) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Subscription, error)
-	GetByUserID(ctx context.Context, userID string) ([]Subscription, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]Subscription, error)
 	Update(ctx context.Context, subscription *Subscription) error
 }

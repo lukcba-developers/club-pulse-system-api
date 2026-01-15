@@ -25,6 +25,7 @@ func RegisterRoutes(r *gin.RouterGroup, h *MembershipHandler, authMiddleware, te
 		// Tenant/User routes
 		memberships.POST("", h.CreateMembership)
 		memberships.GET("", h.ListMemberships)
+		memberships.GET("/subscriptions", h.ListSubscriptions) // New endpoint
 		memberships.GET("/tiers", h.ListTiers)
 		memberships.GET("/:id", h.GetMembership)
 		memberships.DELETE("/:id", h.CancelMembership)
@@ -176,6 +177,24 @@ func (h *MembershipHandler) ListMemberships(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": memberships})
+}
+
+func (h *MembershipHandler) ListSubscriptions(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		return
+	}
+
+	uid := uuid.MustParse(userID.(string))
+	// Context implies fetching for current user
+	subscriptions, err := h.useCases.ListUserSubscriptions(c.Request.Context(), uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": subscriptions})
 }
 
 // ListAllMemberships returns all memberships for admin dashboard

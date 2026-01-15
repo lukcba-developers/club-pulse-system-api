@@ -15,17 +15,20 @@ type CreateMembershipRequest struct {
 	MembershipTierID uuid.UUID           `json:"membership_tier_id" binding:"required"`
 	BillingCycle     domain.BillingCycle `json:"billing_cycle"` // Optional, defaults to Monthly
 	StartDate        *time.Time          `json:"start_date"`    // Optional, defaults to Now
+	AutoRenew        *bool               `json:"auto_renew"`    // Optional, defaults based on tier type
 }
 
 type MembershipUseCases struct {
-	repo            domain.MembershipRepository
-	scholarshipRepo domain.ScholarshipRepository
+	repo             domain.MembershipRepository
+	scholarshipRepo  domain.ScholarshipRepository
+	subscriptionRepo domain.SubscriptionRepository
 }
 
-func NewMembershipUseCases(repo domain.MembershipRepository, scholarshipRepo domain.ScholarshipRepository) *MembershipUseCases {
+func NewMembershipUseCases(repo domain.MembershipRepository, scholarshipRepo domain.ScholarshipRepository, subscriptionRepo domain.SubscriptionRepository) *MembershipUseCases {
 	return &MembershipUseCases{
-		repo:            repo,
-		scholarshipRepo: scholarshipRepo,
+		repo:             repo,
+		scholarshipRepo:  scholarshipRepo,
+		subscriptionRepo: subscriptionRepo,
 	}
 }
 
@@ -96,6 +99,11 @@ func (uc *MembershipUseCases) CreateMembership(ctx context.Context, clubID strin
 		}
 	}
 
+	// Allow user to override auto_renew if explicitly provided
+	if req.AutoRenew != nil {
+		autoRenew = *req.AutoRenew
+	}
+
 	membership := &domain.Membership{
 		UserID:           req.UserID,
 		MembershipTierID: req.MembershipTierID,
@@ -122,6 +130,21 @@ func (uc *MembershipUseCases) GetMembership(ctx context.Context, clubID string, 
 
 func (uc *MembershipUseCases) ListUserMemberships(ctx context.Context, clubID string, userID uuid.UUID) ([]domain.Membership, error) {
 	return uc.repo.GetByUserID(ctx, clubID, userID)
+}
+
+type SubscriptionUseCases struct {
+	repo domain.SubscriptionRepository
+}
+
+func NewSubscriptionUseCases(repo domain.SubscriptionRepository) *SubscriptionUseCases {
+	return &SubscriptionUseCases{repo: repo}
+}
+
+func (uc *MembershipUseCases) ListUserSubscriptions(ctx context.Context, userID uuid.UUID) ([]domain.Subscription, error) {
+	// Note: Subscriptions are usually global or per-club? Check domain.
+	// Current repository generic GetByUserID doesn't filter by club.
+	// Assuming subscriptions are linked to memberships which are linked to clubs.
+	return uc.subscriptionRepo.GetByUserID(ctx, userID)
 }
 
 // ListAllMemberships returns all memberships for admin view

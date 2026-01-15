@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatARS } from '@/lib/currency';
 
 interface PricingCardsProps {
     tiers: MembershipTier[];
@@ -40,7 +41,7 @@ export function PricingCards({ tiers, onSelectTier, loadingId }: PricingCardsPro
                     </CardHeader>
                     <CardContent className="flex-grow">
                         <div className="mb-6">
-                            <span className="text-4xl font-extrabold">${tier.monthly_fee}</span>
+                            <span className="text-4xl font-extrabold">{formatARS(tier.monthly_fee)}</span>
                             <span className="text-gray-500 ml-2">/mes</span>
                         </div>
                         <ul className="space-y-3">
