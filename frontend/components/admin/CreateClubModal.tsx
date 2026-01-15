@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import Image from 'next/image';
 import { clubService } from '@/services/club-service';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -169,7 +170,24 @@ export function CreateClubModal({ open, onOpenChange, onSuccess }: CreateClubMod
                             <div className="p-4 border-b flex justify-between items-center" style={{ backgroundColor: '#ffffff' }}>
                                 <div className="flex items-center gap-2">
                                     {logoPreview ? (
-                                        <img src={logoPreview} alt="Logo" className="h-8 w-8 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                        <div className="relative w-8 h-8">
+                                            <Image
+                                                src={logoPreview}
+                                                alt="Logo"
+                                                fill
+                                                className="object-contain"
+                                                unoptimized
+                                                onError={(e) => {
+                                                    // Hide parent or handle error? Generic fallback handled by parent logic usually.
+                                                    // next/image doesn't have onError in same way on div.
+                                                    // We can use style display none on the wrapper if image fails?
+                                                    // For preview, simple img might be better if Image proves tricky with blob: URLs.
+                                                    // BUT user asked to fix warning. "unoptimized" works with blobs usually.
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.style.display = 'none';
+                                                }}
+                                            />
+                                        </div>
                                     ) : (
                                         <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
                                     )}

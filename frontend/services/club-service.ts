@@ -73,5 +73,16 @@ export const clubService = {
         // I will add GET /admin/clubs/:id to handler.go first for completeness.
         const response = await api.get(`/admin/clubs/${id}`);
         return response.data;
+    },
+
+    uploadLogo: async (clubId: string, file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await api.post(`/admin/clubs/${clubId}/logo`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
     }
 };
