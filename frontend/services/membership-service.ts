@@ -8,8 +8,9 @@ export type { Membership, MembershipTier };
 export type Tier = MembershipTier;
 
 export interface CreateMembershipRequest {
-    tier_id: string;
-    start_date: string; // YYYY-MM-DD
+    membership_tier_id: string;
+    start_date?: string; // YYYY-MM-DD
+    billing_cycle?: string;
 }
 
 

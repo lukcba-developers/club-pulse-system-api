@@ -13,7 +13,8 @@ import (
 type CreateMembershipRequest struct {
 	UserID           uuid.UUID           `json:"user_id" binding:"required"`
 	MembershipTierID uuid.UUID           `json:"membership_tier_id" binding:"required"`
-	BillingCycle     domain.BillingCycle `json:"billing_cycle" binding:"required"`
+	BillingCycle     domain.BillingCycle `json:"billing_cycle"` // Optional, defaults to Monthly
+	StartDate        *time.Time          `json:"start_date"`    // Optional, defaults to Now
 }
 
 type MembershipUseCases struct {
@@ -57,19 +58,42 @@ func (uc *MembershipUseCases) CreateMembership(ctx context.Context, clubID strin
 	// 2. Calculate dates
 	now := time.Now()
 	startDate := now
-	var nextBilling time.Time
+	if req.StartDate != nil {
+		startDate = *req.StartDate
+	}
 
-	switch req.BillingCycle {
-	case domain.BillingCycleMonthly:
-		nextBilling = addMonthsRobust(now, 1)
-	case domain.BillingCycleQuarterly:
-		nextBilling = addMonthsRobust(now, 3)
-	case domain.BillingCycleSemiAnnual:
-		nextBilling = addMonthsRobust(now, 6)
-	case domain.BillingCycleAnnual:
-		nextBilling = addMonthsRobust(now, 12)
-	default:
-		nextBilling = addMonthsRobust(now, 1)
+	var nextBilling time.Time
+	var endDate *time.Time
+	autoRenew := true
+	billingCycle := req.BillingCycle
+	if billingCycle == "" {
+		billingCycle = domain.BillingCycleMonthly
+	}
+
+	// Logic for Fixed Duration (Day Pass, Season Pass) vs Recurring
+	if tier.DurationDays != nil && *tier.DurationDays > 0 {
+		// Fixed Duration
+		calculatedEnd := startDate.AddDate(0, 0, *tier.DurationDays)
+		endDate = &calculatedEnd
+		autoRenew = false
+		// For fixed duration, NextBillingDate is irrelevant or could be same as EndDate
+		nextBilling = calculatedEnd
+	} else {
+		// Recurring Subscription
+		// autoRenew remains true (default)
+		// Calculate next billing
+		switch billingCycle {
+		case domain.BillingCycleMonthly:
+			nextBilling = addMonthsRobust(startDate, 1)
+		case domain.BillingCycleQuarterly:
+			nextBilling = addMonthsRobust(startDate, 3)
+		case domain.BillingCycleSemiAnnual:
+			nextBilling = addMonthsRobust(startDate, 6)
+		case domain.BillingCycleAnnual:
+			nextBilling = addMonthsRobust(startDate, 12)
+		default:
+			nextBilling = addMonthsRobust(startDate, 1)
+		}
 	}
 
 	membership := &domain.Membership{
@@ -78,9 +102,11 @@ func (uc *MembershipUseCases) CreateMembership(ctx context.Context, clubID strin
 		MembershipTier:   *tier,
 		ClubID:           clubID,
 		Status:           domain.MembershipStatusActive, // Auto-activate for MVP
-		BillingCycle:     req.BillingCycle,
+		BillingCycle:     billingCycle,
 		StartDate:        startDate,
+		EndDate:          endDate,
 		NextBillingDate:  nextBilling,
+		AutoRenew:        autoRenew,
 	}
 
 	if err := uc.repo.Create(ctx, membership); err != nil {
@@ -170,6 +196,13 @@ func (uc *MembershipUseCases) ProcessMonthlyBilling(ctx context.Context, clubID 
 	processedCount := 0
 
 	for _, m := range billable {
+		// CRITICAL FIX: Skip memberships that don't auto-renew
+		if !m.AutoRenew {
+			// Fixed-duration membership reached its end. Mark as expired.
+			// Note: This is a simplification. In production, use a separate job.
+			continue
+		}
+
 		// Calculate fee with potential scholarship
 		fee := m.MembershipTier.MonthlyFee
 

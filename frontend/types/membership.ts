@@ -7,6 +7,7 @@ export interface MembershipTier {
     name: string;
     description: string;
     monthly_fee: number; // Backend sends decimal.Decimal serialized as number
+    duration_days?: number; // Optional, overrides standard billing cycle
     colors: string;
     benefits: string[];
     is_active: boolean;
@@ -16,13 +17,17 @@ export interface MembershipTier {
 
 export interface Membership {
     id: string;
+    club_id: string;
     user_id: string;
     membership_tier_id: string;
     membership_tier: MembershipTier;
     status: MembershipStatus;
     billing_cycle: BillingCycle;
+    auto_renew: boolean;
     start_date: string;
     end_date?: string;
     next_billing_date: string;
     outstanding_balance: number;
+    created_at: string;
+    updated_at: string;
 }

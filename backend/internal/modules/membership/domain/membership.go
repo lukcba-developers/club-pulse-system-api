@@ -32,14 +32,15 @@ const (
 
 // MembershipTier defines the types of memberships available (Gold, Silver, etc.)
 type MembershipTier struct {
-	ID          uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	ClubID      string          `json:"club_id" gorm:"index;not null"`
-	Name        string          `json:"name" gorm:"not null;size:255"`
-	Description string          `json:"description" gorm:"type:text"`
-	MonthlyFee  decimal.Decimal `json:"monthly_fee" gorm:"type:decimal(10,2);not null"`
-	Colors      string          `json:"colors" gorm:"size:50"` // e.g. "bg-amber-100 text-amber-800" for frontend
-	Benefits    pq.StringArray  `json:"benefits" gorm:"type:text[]"`
-	IsActive    bool            `json:"is_active" gorm:"default:true"`
+	ID           uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ClubID       string          `json:"club_id" gorm:"index;not null"`
+	Name         string          `json:"name" gorm:"not null;size:255"`
+	Description  string          `json:"description" gorm:"type:text"`
+	MonthlyFee   decimal.Decimal `json:"monthly_fee" gorm:"type:decimal(10,2);not null"`
+	DurationDays *int            `json:"duration_days" gorm:"type:int"` // If set, overrides standard billing cycle
+	Colors       string          `json:"colors" gorm:"size:50"`         // e.g. "bg-amber-100 text-amber-800" for frontend
+	Benefits     pq.StringArray  `json:"benefits" gorm:"type:text[]"`
+	IsActive     bool            `json:"is_active" gorm:"default:true"`
 
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
@@ -56,6 +57,7 @@ type Membership struct {
 
 	Status       MembershipStatus `json:"status" gorm:"not null;default:'PENDING'"`
 	BillingCycle BillingCycle     `json:"billing_cycle" gorm:"not null;default:'MONTHLY'"`
+	AutoRenew    bool             `json:"auto_renew" gorm:"not null;default:true"`
 
 	StartDate          time.Time       `json:"start_date" gorm:"not null"`
 	EndDate            *time.Time      `json:"end_date,omitempty"`
