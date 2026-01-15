@@ -17,7 +17,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const pathname = usePathname();
     const { user, logout } = useAuth();
-    const { club } = useBrand();
+    const { club, isLoading } = useBrand();
 
     // Define menus per role
     const menus = {
@@ -73,16 +73,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="flex flex-col h-full">
                     {/* Logo */}
                     <div className="h-16 flex items-center px-6 border-b border-gray-100 dark:border-zinc-800">
-                        <div className="flex items-center gap-2 font-bold text-xl text-brand-600 dark:text-brand-400">
-                            {club?.logo_url ? (
-                                <img src={club.logo_url} alt={club.name} className="w-8 h-8 object-contain rounded-lg" />
-                            ) : (
-                                <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
-                                    {club?.name ? club.name.substring(0, 2).toUpperCase() : 'CP'}
-                                </div>
-                            )}
-                            <span className="truncate max-w-[150px]">{club?.name || 'Club Pulse'}</span>
-                        </div>
+                        {isLoading ? (
+                            <div className="flex items-center gap-2 animate-pulse">
+                                <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-zinc-800"></div>
+                                <div className="h-4 w-24 bg-gray-200 dark:bg-zinc-800 rounded"></div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 font-bold text-xl text-brand-600 dark:text-brand-400">
+                                {club?.logo_url ? (
+                                    <img src={club.logo_url} alt={club.name} className="w-8 h-8 object-contain rounded-lg" />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
+                                        {club?.name ? club.name.substring(0, 2).toUpperCase() : 'CP'}
+                                    </div>
+                                )}
+                                <span className="truncate max-w-[150px]">{club?.name || 'Club Pulse'}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Navigation */}

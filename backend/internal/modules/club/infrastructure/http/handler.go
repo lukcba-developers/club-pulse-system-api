@@ -111,7 +111,10 @@ func (h *ClubHandler) UploadLogo(c *gin.Context) {
 	// Create uploads directory if not exists
 	uploadDir := "./uploads/clubs"
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-		os.MkdirAll(uploadDir, 0755)
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
+			return
+		}
 	}
 
 	// Generate filename
