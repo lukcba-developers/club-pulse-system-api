@@ -13,17 +13,15 @@ import { Textarea } from '@/components/ui/textarea';
 
 const clubSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
-    slug: z.string().min(2).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
+    slug: z.string().optional(),
     domain: z.string().optional(),
     logo_url: z.string().url('Invalid URL').optional().or(z.literal('')),
-    theme_config: z.string().refine((val) => {
-        if (!val) return true;
-        try { JSON.parse(val); return true; } catch { return false; }
-    }, 'Invalid JSON format').optional(),
-    settings: z.string().refine((val) => {
-        if (!val) return true;
-        try { JSON.parse(val); return true; } catch { return false; }
-    }, 'Invalid JSON format').optional(),
+    primary_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid Color').optional().or(z.literal('')),
+    secondary_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid Color').optional().or(z.literal('')),
+    contact_email: z.string().email('Invalid Email').optional().or(z.literal('')),
+    contact_phone: z.string().optional(),
+    theme_config: z.string().optional(),
+    settings: z.string().optional(),
 });
 
 type ClubFormData = z.infer<typeof clubSchema>;
@@ -36,36 +34,60 @@ interface CreateClubModalProps {
 
 export function CreateClubModal({ open, onOpenChange, onSuccess }: CreateClubModalProps) {
     const [loading, setLoading] = useState(false);
-    const { register, handleSubmit, formState: { errors }, reset } = useForm<ClubFormData>({
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<ClubFormData>({
         resolver: zodResolver(clubSchema),
         defaultValues: {
             name: '',
             slug: '',
             domain: '',
             logo_url: '',
+            primary_color: '#000000',
+            secondary_color: '#ffffff',
+            contact_email: '',
+            contact_phone: '',
             theme_config: '',
             settings: ''
         }
     });
 
+    const watchedName = watch('name');
+    const watchedLogo = watch('logo_url');
+    const watchedPrimary = watch('primary_color');
+    const watchedSecondary = watch('secondary_color');
+
+    // Preview logo: either selected file blob or entered URL
+    const logoPreview = selectedFile ? URL.createObjectURL(selectedFile) : watchedLogo;
+
     const onSubmit = async (data: ClubFormData) => {
         setLoading(true);
         try {
-            await clubService.createClub({
+            // 1. Create Club
+            const newClub = await clubService.createClub({
                 ...data,
+                slug: data.slug || undefined,
                 domain: data.domain || undefined,
                 logo_url: data.logo_url || undefined,
+                primary_color: data.primary_color || undefined,
+                secondary_color: data.secondary_color || undefined,
+                contact_email: data.contact_email || undefined,
+                contact_phone: data.contact_phone || undefined,
                 theme_config: data.theme_config || undefined,
                 settings: data.settings || undefined,
             });
+
+            // 2. Upload Logo if selected
+            if (selectedFile && newClub.id) {
+                await clubService.uploadLogo(newClub.id, selectedFile);
+            }
+
             onSuccess();
             onOpenChange(false);
             reset();
+            setSelectedFile(null);
         } catch (err: unknown) {
             console.error(err);
             const errorMessage = err instanceof Error ? err.message : 'Failed to create club';
-            // handle global error if needed, but hook form handles field errors
-            // For now just alert or log, as simple modal
             alert(errorMessage);
         } finally {
             setLoading(false);
@@ -74,50 +96,110 @@ export function CreateClubModal({ open, onOpenChange, onSuccess }: CreateClubMod
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[700px]">
                 <DialogHeader>
                     <DialogTitle>Create New Club</DialogTitle>
                     <DialogDescription>
-                        Fill in the details to create a new club.
+                        Define the branding and settings for the new club.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input id="name" {...register('name')} />
-                        {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <form id="create-club-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input id="name" {...register('name')} />
+                            {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="slug">Slug (Auto-generated if empty)</Label>
+                            <Input id="slug" {...register('slug')} placeholder="club-name" />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="domain">Domain (Optional)</Label>
+                            <Input id="domain" {...register('domain')} placeholder="club.com" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="primary_color">Primary Color</Label>
+                                <div className="flex gap-2">
+                                    <Input id="primary_color" type="color" className="w-12 p-1" {...register('primary_color')} />
+                                    <Input {...register('primary_color')} placeholder="#000000" />
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="secondary_color">Secondary Color</Label>
+                                <div className="flex gap-2">
+                                    <Input id="secondary_color" type="color" className="w-12 p-1" {...register('secondary_color')} />
+                                    <Input {...register('secondary_color')} placeholder="#ffffff" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="logo_file">Logo</Label>
+                            <Input
+                                id="logo_file"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        setSelectedFile(e.target.files[0]);
+                                    }
+                                }}
+                            />
+                            <div className="text-xs text-center text-gray-500">- OR -</div>
+                            <Input id="logo_url" {...register('logo_url')} placeholder="https://... (External URL)" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="contact_email">Contact Email</Label>
+                                <Input id="contact_email" type="email" {...register('contact_email')} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="contact_phone">Contact Phone</Label>
+                                <Input id="contact_phone" {...register('contact_phone')} />
+                            </div>
+                        </div>
+                    </form>
+
+                    {/* Preview Section */}
+                    <div className="hidden md:block border rounded-lg p-4 bg-gray-50">
+                        <h3 className="text-sm font-semibold mb-3 text-gray-500 uppercase tracking-wider">Preview</h3>
+                        <div className="border rounded-lg bg-white shadow-sm overflow-hidden min-h-[300px] flex flex-col font-sans">
+                            {/* Header Preview */}
+                            <div className="p-4 border-b flex justify-between items-center" style={{ backgroundColor: '#ffffff' }}>
+                                <div className="flex items-center gap-2">
+                                    {logoPreview ? (
+                                        <img src={logoPreview} alt="Logo" className="h-8 w-8 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                    ) : (
+                                        <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                                    )}
+                                    <span className="font-bold text-lg text-gray-800">{watchedName || 'Club Name'}</span>
+                                </div>
+                                <div className="flex gap-2 text-sm">
+                                    <span className="text-gray-600">Home</span>
+                                    <span className="text-gray-600">Bookings</span>
+                                </div>
+                            </div>
+                            {/* Body Preview */}
+                            <div className="p-6 flex-1 bg-white">
+                                <h1 className="text-2xl font-bold mb-4" style={{ color: watchedPrimary }}>Welcome to {watchedName || 'Club Name'}</h1>
+                                <button className="px-4 py-2 rounded text-white font-medium" style={{ backgroundColor: watchedPrimary }}>
+                                    Book Now
+                                </button>
+                                <div className="mt-4 p-4 border rounded" style={{ borderColor: watchedSecondary, borderLeftWidth: '4px' }}>
+                                    <h4 className="font-semibold text-gray-700">Next Match</h4>
+                                    <p className="text-sm text-gray-500">Tomorrow at 19:00</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p className="text-xs text-center text-gray-400 mt-2">This is a preview of how the club branding will look.</p>
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="slug">Slug (URL Identifier)</Label>
-                        <Input id="slug" {...register('slug')} />
-                        {errors.slug && <p className="text-red-500 text-xs">{errors.slug.message}</p>}
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="domain">Custom Domain</Label>
-                        <Input id="domain" {...register('domain')} placeholder="club.com" />
-                        {errors.domain && <p className="text-red-500 text-xs">{errors.domain.message}</p>}
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="logo_url">Logo URL</Label>
-                        <Input id="logo_url" {...register('logo_url')} placeholder="https://..." />
-                        {errors.logo_url && <p className="text-red-500 text-xs">{errors.logo_url.message}</p>}
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="theme_config">Theme Config (JSON)</Label>
-                        <Textarea id="theme_config" {...register('theme_config')} placeholder='{"primary": "#ff0000"}' />
-                        {errors.theme_config && <p className="text-red-500 text-xs">{errors.theme_config.message}</p>}
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="settings">Settings (JSON)</Label>
-                        <Textarea id="settings" {...register('settings')} placeholder='{"timezone": "UTC"}' />
-                        {errors.settings && <p className="text-red-500 text-xs">{errors.settings.message}</p>}
-                    </div>
-                    <DialogFooter>
-                        <Button type="submit" disabled={loading}>
-                            {loading ? 'Creating...' : 'Create Club'}
-                        </Button>
-                    </DialogFooter>
-                </form>
+                </div>
+                <DialogFooter className="mt-4">
+                    <Button type="submit" form="create-club-form" disabled={loading}>
+                        {loading ? 'Creating...' : 'Create Club'}
+                    </Button>
+                </DialogFooter>
             </DialogContent >
         </Dialog >
     );

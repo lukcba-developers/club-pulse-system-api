@@ -94,6 +94,11 @@ func NewApp() (*App, error) {
 	// 3. Setup Health Check (Basic) - We can move this to a module if it grows
 	server.Engine.GET("/health", healthCheckHandler(infra))
 
+	// Static Files for Uploads
+	// Ensure "uploads" directory exists or create it on startup if needed,
+	// but usually handled by deployment. For now just serve it.
+	server.Engine.Static("/uploads", "./uploads")
+
 	// 4. Register Modules
 	v1 := server.Engine.Group("/api/v1")
 
