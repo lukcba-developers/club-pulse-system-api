@@ -79,8 +79,9 @@ func (uc *ClubUseCases) PublishNews(ctx context.Context, clubID, title, content,
 					_ = uc.notifier.Send(bgCtx, notification.Notification{
 						RecipientID: recipient,
 						Type:        notification.NotificationTypeEmail,
-						Subject:     subject,
-						Message:     body,
+						Title:       subject,
+						Body:        body,
+						ActionURL:   "https://" + clubID + ".club-pulse.com/news", // Example deep link
 					})
 				}(email)
 			}
@@ -103,16 +104,18 @@ func (uc *ClubUseCases) GetPublicNews(ctx context.Context, slug string) ([]domai
 
 // --- Club Management (Super Admin) ---
 
-func (uc *ClubUseCases) CreateClub(ctx context.Context, name, slug, domainStr, settings string) (*domain.Club, error) {
+func (uc *ClubUseCases) CreateClub(ctx context.Context, name, slug, domainStr, logoURL, themeConfig, settings string) (*domain.Club, error) {
 	club := &domain.Club{
-		ID:        uuid.New().String(),
-		Name:      name,
-		Slug:      slug,
-		Domain:    domainStr,
-		Status:    domain.ClubStatusActive,
-		Settings:  settings,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:          uuid.New().String(),
+		Name:        name,
+		Slug:        slug,
+		Domain:      domainStr,
+		LogoURL:     logoURL,
+		ThemeConfig: themeConfig,
+		Status:      domain.ClubStatusActive,
+		Settings:    settings,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 	if err := uc.clubRepo.Create(ctx, club); err != nil {
 		return nil, err

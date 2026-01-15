@@ -61,8 +61,8 @@ func (j *MatchReminderJob) Run(ctx context.Context, clubID string) error {
 			_ = j.notificationService.Send(ctx, notificationSvc.Notification{
 				RecipientID: userID,
 				Type:        notificationSvc.NotificationTypePush,
-				Subject:     "🏆 Recordatorio de Partido",
-				Message:     fmt.Sprintf("Tu partido es en menos de %d horas vs %s", j.reminderHours, match.AwayTeamName), // Simple message
+				Title:       "🏆 Recordatorio de Partido",
+				Body:        fmt.Sprintf("Tu partido es en menos de %d horas vs %s", j.reminderHours, match.AwayTeamName), // Simple message
 			})
 		}
 	}

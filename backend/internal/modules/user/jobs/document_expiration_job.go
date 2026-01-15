@@ -58,8 +58,8 @@ func (j *DocumentExpirationJob) notifyExpiringDocuments(days int, title string) 
 		notification := service.Notification{
 			RecipientID: doc.UserID,
 			Type:        service.NotificationTypeEmail,
-			Subject:     title,
-			Message:     message,
+			Title:       title,
+			Body:        message,
 		}
 
 		if err := j.notifService.Send(context.Background(), notification); err != nil {
@@ -95,8 +95,8 @@ func (j *DocumentExpirationJob) markExpiredDocuments() {
 		notification := service.Notification{
 			RecipientID: doc.UserID,
 			Type:        service.NotificationTypeEmail,
-			Subject:     "❌ Documento vencido",
-			Message:     message,
+			Title:       "❌ Documento vencido",
+			Body:        message,
 		}
 
 		if err := j.notifService.Send(context.Background(), notification); err != nil {

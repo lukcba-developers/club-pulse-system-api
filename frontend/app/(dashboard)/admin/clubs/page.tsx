@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { clubService, Club } from '@/services/club-service';
+import { CreateClubModal } from '@/components/admin/CreateClubModal';
 
 export default function AdminClubsPage() {
     const [clubs, setClubs] = useState<Club[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     useEffect(() => {
         loadClubs();
@@ -28,11 +30,17 @@ export default function AdminClubsPage() {
                 <h1 className="text-2xl font-bold text-gray-800">Tenant Management</h1>
                 <button
                     className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-                    onClick={() => alert('Feature coming next step: Create Modal')}
+                    onClick={() => setIsCreateModalOpen(true)}
                 >
                     + Create Club
                 </button>
             </div>
+
+            <CreateClubModal
+                open={isCreateModalOpen}
+                onOpenChange={setIsCreateModalOpen}
+                onSuccess={loadClubs}
+            />
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">

@@ -16,8 +16,13 @@ const (
 type Notification struct {
 	RecipientID string
 	Type        NotificationType
-	Subject     string
-	Message     string
+	Title       string // Replaces Subject
+	Body        string // Replaces Message
+	ActionURL   string // New field for deep linking
+	// Deprecated: Use Title
+	Subject string
+	// Deprecated: Use Body
+	Message string
 }
 
 type NotificationSender interface {
@@ -39,23 +44,32 @@ func NewNotificationService(email EmailProvider, sms SMSProvider) *NotificationS
 func (s *NotificationService) Send(ctx context.Context, n Notification) error {
 	var err error
 
+	// Backward compatibility mapping
+	if n.Title == "" {
+		n.Title = n.Subject
+	}
+	if n.Body == "" {
+		n.Body = n.Message
+	}
+
 	switch n.Type {
 	case NotificationTypeEmail:
 		if s.emailProvider != nil {
-			_, err = s.emailProvider.SendEmail(ctx, n.RecipientID, n.Subject, n.Message)
+			// Using Title/Body as primary
+			_, err = s.emailProvider.SendEmail(ctx, n.RecipientID, n.Title, n.Body)
 		} else {
 			// Fallback logging if provider not configured
-			fmt.Printf("[MOCK EMAIL] To: %s | Subject: %s\n", n.RecipientID, n.Subject)
+			fmt.Printf("[MOCK EMAIL] To: %s | Title: %s | Action: %s\n", n.RecipientID, n.Title, n.ActionURL)
 		}
 	case NotificationTypePush:
 		// Push not yet implemented, specific provider needed
-		fmt.Printf("[MOCK PUSH] To: %s | Subject: %s\n", n.RecipientID, n.Subject)
+		fmt.Printf("[MOCK PUSH] To: %s | Title: %s | Action: %s\n", n.RecipientID, n.Title, n.ActionURL)
 	case NotificationTypeSMS:
 		// Assuming we add SMS type constant
 		if s.smsProvider != nil {
-			_, err = s.smsProvider.SendSMS(ctx, n.RecipientID, n.Message)
+			_, err = s.smsProvider.SendSMS(ctx, n.RecipientID, n.Body)
 		} else {
-			fmt.Printf("[MOCK SMS] To: %s | Body: %s\n", n.RecipientID, n.Message)
+			fmt.Printf("[MOCK SMS] To: %s | Body: %s | Action: %s\n", n.RecipientID, n.Body, n.ActionURL)
 		}
 	default:
 		return fmt.Errorf("unsupported notification type: %s", n.Type)

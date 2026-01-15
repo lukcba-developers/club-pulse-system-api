@@ -22,10 +22,12 @@ func NewClubHandler(useCases *application.ClubUseCases) *ClubHandler {
 // --- Club Handlers (Super Admin) ---
 
 type CreateClubRequest struct {
-	Name     string `json:"name" binding:"required"`
-	Slug     string `json:"slug" binding:"required"`
-	Domain   string `json:"domain"`
-	Settings string `json:"settings"`
+	Name        string `json:"name" binding:"required"`
+	Slug        string `json:"slug" binding:"required"`
+	Domain      string `json:"domain"`
+	LogoURL     string `json:"logo_url"`
+	ThemeConfig string `json:"theme_config"` // JSON string
+	Settings    string `json:"settings"`
 }
 
 func (h *ClubHandler) CreateClub(c *gin.Context) {
@@ -35,7 +37,7 @@ func (h *ClubHandler) CreateClub(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	club, err := h.useCases.CreateClub(ctx, req.Name, req.Slug, req.Domain, req.Settings)
+	club, err := h.useCases.CreateClub(ctx, req.Name, req.Slug, req.Domain, req.LogoURL, req.ThemeConfig, req.Settings)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -12,6 +12,13 @@ const (
 	ClubStatusInactive ClubStatus = "INACTIVE"
 )
 
+type ClubSettings struct {
+	Timezone     string `json:"timezone"`
+	Currency     string `json:"currency"`
+	Language     string `json:"language"`
+	SupportEmail string `json:"support_email"`
+}
+
 type Club struct {
 	ID          string     `json:"id" gorm:"primaryKey"`
 	Name        string     `json:"name" gorm:"not null"`

@@ -215,8 +215,8 @@ func (uc *BookingUseCases) CancelBooking(ctx context.Context, clubID, bookingID,
 		_ = uc.notifier.Send(ctx, service.Notification{
 			RecipientID: next.UserID.String(),
 			Type:        service.NotificationTypeEmail,
-			Subject:     "Slot Available!",
-			Message:     "Good news! A slot has opened up for your waitlisted time: " + booking.StartTime.String(),
+			Title:       "Slot Available!",
+			Body:        "Good news! A slot has opened up for your waitlisted time: " + booking.StartTime.String(),
 		})
 	}
 
@@ -622,8 +622,8 @@ func (uc *BookingUseCases) notifyAsync(userID, bookingID string) {
 		err := uc.notifier.Send(context.Background(), service.Notification{
 			RecipientID: userID,
 			Type:        service.NotificationTypeEmail,
-			Subject:     "Booking Confirmed",
-			Message:     "Booking Confirmed: " + bookingID,
+			Title:       "Booking Confirmed",
+			Body:        "Booking Confirmed: " + bookingID,
 		})
 		if err != nil {
 			// Logger should be injected, but ignoring for now as per previous lint strategy

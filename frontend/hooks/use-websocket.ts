@@ -11,6 +11,7 @@ export interface WebSocketMessage {
         end_time: string;
         user_id?: string;
         message?: string;
+        action_url?: string;
         timestamp: string;
     };
     timestamp: string;

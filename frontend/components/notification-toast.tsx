@@ -10,6 +10,7 @@ interface Notification {
     title: string;
     message: string;
     facilityId?: string;
+    actionUrl?: string;
     timestamp: Date;
     read: boolean;
 }
@@ -30,6 +31,7 @@ export function NotificationToast() {
             title: getNotificationTitle(message.payload.type),
             message: message.payload.message || getDefaultMessage(message.payload.type),
             facilityId: message.payload.facility_id,
+            actionUrl: message.payload.action_url,
             timestamp: new Date(message.timestamp),
             read: false
         };
@@ -45,7 +47,7 @@ export function NotificationToast() {
         const toast = document.createElement('div');
         toast.className = 'fixed bottom-4 right-4 z-50 animate-slide-up';
         toast.innerHTML = `
-            <div class="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-gray-200 dark:border-zinc-700 p-4 max-w-sm">
+            <div class="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-gray-200 dark:border-zinc-700 p-4 max-w-sm cursor-pointer" onclick="${notification.actionUrl ? `window.location.href='${notification.actionUrl}'` : ''}">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-r from-brand-500 to-purple-500 flex items-center justify-center">
                         <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -55,6 +57,7 @@ export function NotificationToast() {
                     <div class="flex-1">
                         <h4 class="font-semibold text-gray-900 dark:text-gray-100">${notification.title}</h4>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">${notification.message}</p>
+                        ${notification.actionUrl ? `<p class="text-xs text-indigo-500 mt-2 font-medium">Click to view</p>` : ''}
                     </div>
                 </div>
             </div>
