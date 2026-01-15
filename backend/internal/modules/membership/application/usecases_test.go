@@ -115,6 +115,33 @@ func TestMembershipUseCases_Creation(t *testing.T) {
 		m, err := uc.CreateMembership(context.Background(), clubID, req)
 		assert.NoError(t, err)
 		assert.Equal(t, domain.MembershipStatusActive, m.Status)
+		assert.True(t, m.AutoRenew)
+	})
+
+	t.Run("Create Fixed Duration Membership", func(t *testing.T) {
+		days := 7
+		tier := &domain.MembershipTier{
+			ID:           tierID,
+			MonthlyFee:   decimal.NewFromInt(50),
+			DurationDays: &days,
+		}
+		mockRepo.On("GetTierByID", mock.Anything, clubID, tierID).Return(tier, nil).Once()
+		mockRepo.On("Create", mock.Anything, mock.MatchedBy(func(m *domain.Membership) bool {
+			return m.AutoRenew == false &&
+				m.EndDate != nil &&
+				m.EndDate.Sub(m.StartDate).Hours() > 24*6 // Check roughly 7 days difference
+		})).Return(nil).Once()
+
+		req := application.CreateMembershipRequest{
+			UserID:           userID,
+			MembershipTierID: tierID,
+			// BillingCycle ignored for fixed duration
+		}
+
+		m, err := uc.CreateMembership(context.Background(), clubID, req)
+		assert.NoError(t, err)
+		assert.False(t, m.AutoRenew)
+		assert.NotNil(t, m.EndDate)
 	})
 }
 
@@ -152,6 +179,7 @@ func TestMembershipUseCases_Billing(t *testing.T) {
 				UserID:          uID,
 				MembershipTier:  tier,
 				NextBillingDate: time.Now().AddDate(0, 0, -1),
+				AutoRenew:       true, // Must be true for billing to process
 			},
 		}
 
