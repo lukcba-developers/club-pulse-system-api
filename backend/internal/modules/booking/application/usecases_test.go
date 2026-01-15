@@ -517,8 +517,8 @@ func TestGetAvailability(t *testing.T) {
 		mfr.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID:          facilityID,
 			Status:      facilityDomain.FacilityStatusActive,
-			OpeningHour: 8,
-			ClosingHour: 22,
+			OpeningTime: "08:00",
+			ClosingTime: "22:00",
 		}, nil).Once()
 		mfr.On("ListMaintenanceByFacility", mock.Anything, facilityID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
 		mbr.On("ListByFacilityAndDate", mock.Anything, clubID, uuid.MustParse(facilityID), mock.Anything).Return([]bookingDomain.Booking{}, nil).Once()
@@ -696,7 +696,7 @@ func TestGetAvailabilityDetailed(t *testing.T) {
 	t.Run("With Bookings and Maintenance", func(t *testing.T) {
 		mfr.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive,
-			OpeningHour: 8, ClosingHour: 10,
+			OpeningTime: "08:00", ClosingTime: "10:00",
 		}, nil).Once()
 
 		mfr.On("ListMaintenanceByFacility", mock.Anything, facilityID).Return([]*facilityDomain.MaintenanceTask{
@@ -793,7 +793,7 @@ func TestGetAvailabilityExtra(t *testing.T) {
 	t.Run("Complex Availability - Multiple Bookings", func(t *testing.T) {
 		date := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
 		mfr.On("GetByID", mock.Anything, clubID, facilityID.String()).Return(&facilityDomain.Facility{
-			ID: facilityID.String(), Status: facilityDomain.FacilityStatusActive, OpeningHour: 8, ClosingHour: 10,
+			ID: facilityID.String(), Status: facilityDomain.FacilityStatusActive, OpeningTime: "08:00", ClosingTime: "10:00",
 		}, nil).Once()
 		mfr.On("ListMaintenanceByFacility", mock.Anything, facilityID.String()).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
 
@@ -950,8 +950,8 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 
 		fr.On("GetByID", mock.Anything, clubID, fID).Return(&facilityDomain.Facility{
 			ID:          fID,
-			OpeningHour: 8,
-			ClosingHour: 22,
+			OpeningTime: "08:00",
+			ClosingTime: "22:00",
 		}, nil).Once()
 		fr.On("ListMaintenanceByFacility", mock.Anything, fID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
 

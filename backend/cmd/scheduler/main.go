@@ -8,8 +8,11 @@ import (
 	"syscall"
 	"time"
 
+	championshipRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/infrastructure/repository"
+	championshipJobs "github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/jobs"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/membership/infrastructure/repository"
+	notificationSvc "github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
@@ -56,7 +59,35 @@ func main() {
 
 	log.Printf("📅 Scheduled billing job with pattern: %s", cronSchedule)
 
-	// 4. Start scheduler
+	// 4. Schedule Match Reminder Job (hourly)
+	matchReminderSchedule := os.Getenv("MATCH_REMINDER_CRON_SCHEDULE")
+	if matchReminderSchedule == "" {
+		matchReminderSchedule = "0 0 * * * *" // Default: Every hour at :00
+	}
+
+	champRepo := championshipRepo.NewPostgresChampionshipRepository(db)
+	notifService := notificationSvc.NewNotificationService(nil, nil) // Console fallback
+	matchReminderJob := championshipJobs.NewMatchReminderJob(champRepo, notifService, 24)
+
+	_, err = c.AddFunc(matchReminderSchedule, func() {
+		log.Printf("🏆 [%s] Starting match reminder job...", time.Now().Format(time.RFC3339))
+		// Process all clubs
+		var clubIDs []string
+		db.Table("clubs").Select("id").Find(&clubIDs)
+		for _, clubID := range clubIDs {
+			if err := matchReminderJob.Run(context.Background(), clubID); err != nil {
+				log.Printf("⚠️ Match reminder failed for club %s: %v", clubID, err)
+			}
+		}
+		log.Printf("✅ [%s] Match reminder job completed", time.Now().Format(time.RFC3339))
+	})
+	if err != nil {
+		log.Printf("⚠️ Failed to schedule match reminder job: %v", err)
+	} else {
+		log.Printf("📅 Scheduled match reminder job with pattern: %s", matchReminderSchedule)
+	}
+
+	// 5. Start scheduler
 	c.Start()
 
 	// 5. Wait for shutdown signal

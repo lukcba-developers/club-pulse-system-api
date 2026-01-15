@@ -17,8 +17,8 @@ interface FacilityScheduleModalProps {
     onClose: () => void;
     facilityId: string;
     facilityName: string;
-    currentOpeningHour: number;
-    currentClosingHour: number;
+    currentOpeningHour: string;
+    currentClosingHour: string;
     onSuccess?: () => void;
 }
 
@@ -30,6 +30,11 @@ const formatHour = (hour: number) => {
     return `${hour.toString().padStart(2, '0')}:00`;
 };
 
+// Parse string time back to number (e.g., "08:00" -> 8)
+const parseHour = (timeStr: string) => {
+    return parseInt(timeStr.split(':')[0]);
+};
+
 export function FacilityScheduleModal({
     isOpen,
     onClose,
@@ -39,8 +44,8 @@ export function FacilityScheduleModal({
     currentClosingHour,
     onSuccess,
 }: FacilityScheduleModalProps) {
-    const [openingHour, setOpeningHour] = useState(currentOpeningHour);
-    const [closingHour, setClosingHour] = useState(currentClosingHour);
+    const [openingHour, setOpeningHour] = useState(parseHour(currentOpeningHour));
+    const [closingHour, setClosingHour] = useState(parseHour(currentClosingHour));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -54,8 +59,11 @@ export function FacilityScheduleModal({
         setLoading(true);
         setError('');
 
+        const opening_time = formatHour(openingHour);
+        const closing_time = formatHour(closingHour);
+
         try {
-            await facilityService.updateSchedule(facilityId, openingHour, closingHour);
+            await facilityService.updateSchedule(facilityId, opening_time, closing_time);
             onSuccess?.();
             onClose();
         } catch (err) {

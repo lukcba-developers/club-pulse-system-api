@@ -57,7 +57,7 @@ type TestStanding struct {
 	ID             uuid.UUID `gorm:"type:uuid;primary_key"`
 	GroupID        uuid.UUID `gorm:"type:uuid;not null;index"`
 	TeamID         uuid.UUID `gorm:"type:uuid;not null;index"`
-	Points         int
+	Points         float64
 	Played         int
 	Won            int
 	Drawn          int
@@ -65,6 +65,7 @@ type TestStanding struct {
 	GoalsFor       float64
 	GoalsAgainst   float64
 	GoalDifference float64
+	Position       int
 	UpdatedAt      time.Time
 }
 

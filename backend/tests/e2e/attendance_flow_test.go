@@ -33,7 +33,7 @@ func TestAttendanceFlow(t *testing.T) {
 
 	// 2. Setup DB & Migrations
 	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
-	err := db.AutoMigrate(&userRepo.UserModel{}, &attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{})
+	err := db.AutoMigrate(&userRepo.UserModel{}, &attendanceRepo.AttendanceListModel{}, &attendanceRepo.AttendanceRecordModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
 	assert.NoError(t, err)
 
 	// Repos

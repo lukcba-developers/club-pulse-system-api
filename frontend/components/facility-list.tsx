@@ -4,21 +4,10 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
 import { Loader2, Activity } from 'lucide-react';
 import { FacilityCard } from '@/components/ui/facility-card';
+import { Facility } from '@/services/facility-service';
 
-interface Facility {
-    id: string;
-    name: string;
-    type: string;
-    location: {
-        name: string;
-        description?: string;
-    };
-    capacity: number;
-    status: string;
-    hourly_rate: number;
-    opening_hour?: number;
-    closing_hour?: number;
-}
+
+
 
 export function FacilityList() {
     const [facilities, setFacilities] = useState<Facility[]>([]);

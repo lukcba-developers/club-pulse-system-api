@@ -22,8 +22,8 @@ type TestFacility struct {
 	Status         string                `gorm:"default:'active'"`
 	Capacity       int                   `gorm:"not null"`
 	HourlyRate     float64               `gorm:"not null"`
-	OpeningHour    int                   `gorm:"default:8"`
-	ClosingHour    int                   `gorm:"default:23"`
+	OpeningTime    string                `gorm:"default:'08:00'"`
+	ClosingTime    string                `gorm:"default:'23:00'"`
 	GuestFee       float64               `gorm:"default:0"`
 	Specifications domain.Specifications `gorm:"type:text;serializer:json"`
 	Location       domain.Location       `gorm:"type:text;serializer:json"`

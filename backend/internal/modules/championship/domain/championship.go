@@ -85,7 +85,7 @@ type Standing struct {
 	ID             uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
 	GroupID        uuid.UUID `json:"group_id" gorm:"type:uuid;not null;index"`
 	TeamID         uuid.UUID `json:"team_id" gorm:"type:uuid;not null;index"`
-	Points         int       `json:"points"`
+	Points         float64   `json:"points"`
 	Played         int       `json:"played"`
 	Won            int       `json:"won"`
 	Drawn          int       `json:"drawn"`
@@ -93,6 +93,7 @@ type Standing struct {
 	GoalsFor       float64   `json:"goals_for"`
 	GoalsAgainst   float64   `json:"goals_against"`
 	GoalDifference float64   `json:"goal_difference"`
+	Position       int       `json:"position"` // Calculated ranking position
 	UpdatedAt      time.Time `json:"updated_at"`
 
 	// Enriched Fields
@@ -151,4 +152,8 @@ type ChampionshipRepository interface {
 	UpdateStanding(ctx context.Context, standing *Standing) error
 	UpdateStandingsBatch(ctx context.Context, standings []Standing) error
 	GetTeamMembers(ctx context.Context, teamID string) ([]string, error)
+	CreateTeam(ctx context.Context, team *Team) error
+	AddMember(ctx context.Context, teamID, userID string) error
+	GetMatchesByUserID(ctx context.Context, clubID, userID string) ([]TournamentMatch, error)
+	GetUpcomingMatches(ctx context.Context, clubID string, from, to time.Time) ([]TournamentMatch, error)
 }

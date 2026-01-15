@@ -129,9 +129,25 @@ func (r *PostgresUserRepository) Update(ctx context.Context, user *domain.User) 
 
 	// Defensive: Ensure we only update the user belonging to this club
 	// (Assuming user struct has ID and ClubID set correctly by the UseCase)
-	result := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ? AND club_id = ?", user.ID, user.ClubID).Updates(updates)
+	if err := r.db.WithContext(ctx).Model(&UserModel{}).Where("id = ? AND club_id = ?", user.ID, user.ClubID).Updates(updates).Error; err != nil {
+		return err
+	}
 
-	return result.Error
+	// Persist Stats if present (Gamification Fix)
+	if user.Stats != nil {
+		if err := r.db.WithContext(ctx).Save(user.Stats).Error; err != nil {
+			return err
+		}
+	}
+
+	// Persist Wallet if present
+	if user.Wallet != nil {
+		if err := r.db.WithContext(ctx).Save(user.Wallet).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *PostgresUserRepository) Delete(ctx context.Context, clubID, id string) error {
@@ -140,7 +156,9 @@ func (r *PostgresUserRepository) Delete(ctx context.Context, clubID, id string) 
 
 func (r *PostgresUserRepository) List(ctx context.Context, clubID string, limit, offset int, filters map[string]interface{}) ([]domain.User, error) {
 	var models []UserModel
-	query := r.db.WithContext(ctx).Model(&UserModel{}).Where("club_id = ?", clubID).Limit(limit).Offset(offset)
+	query := r.db.WithContext(ctx).Model(&UserModel{}).
+		Preload("Stats").Preload("Wallet"). // Preload for consistency
+		Where("club_id = ?", clubID).Limit(limit).Offset(offset)
 
 	if search, ok := filters["search"].(string); ok && search != "" {
 		// PostgreSQL ILIKE
@@ -175,6 +193,8 @@ func (r *PostgresUserRepository) List(ctx context.Context, clubID string, limit,
 			ClubID:            model.ClubID,
 			MedicalCertStatus: &status,
 			MedicalCertExpiry: model.MedicalCertExpiry,
+			Stats:             model.Stats,
+			Wallet:            model.Wallet,
 		}
 	}
 	return users, nil
@@ -204,6 +224,8 @@ func (r *PostgresUserRepository) ListByIDs(ctx context.Context, clubID string, i
 			ClubID:            m.ClubID,
 			MedicalCertStatus: &status,
 			MedicalCertExpiry: m.MedicalCertExpiry,
+			Stats:             m.Stats,
+			Wallet:            m.Wallet,
 			// Simplified mapping, add other fields if needed for Attendance (Name is key)
 		}
 	}
@@ -233,6 +255,8 @@ func (r *PostgresUserRepository) FindChildren(ctx context.Context, clubID, paren
 			ClubID:            m.ClubID,
 			MedicalCertStatus: &status,
 			MedicalCertExpiry: m.MedicalCertExpiry,
+			Stats:             m.Stats,
+			Wallet:            m.Wallet,
 		}
 	}
 	return users, nil

@@ -85,8 +85,8 @@ func TestBookingPricing(t *testing.T) {
 		Status:      facilityDomain.FacilityStatusActive,
 		HourlyRate:  100.00,
 		GuestFee:    50.00,
-		OpeningHour: 8,
-		ClosingHour: 22,
+		OpeningTime: "08:00",
+		ClosingTime: "22:00",
 	}
 	err = fRepo.Create(context.Background(), facility)
 	assert.NoError(t, err)

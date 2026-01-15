@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -150,6 +152,44 @@ func (uc *ChampionshipUseCases) RegisterTeam(ctx context.Context, clubID, groupI
 	return standing, nil
 }
 
+type CreateTeamInput struct {
+	ClubID  string `json:"club_id"`
+	Name    string `json:"name" binding:"required"`
+	LogoURL string `json:"logo_url"`
+	Contact string `json:"contact"`
+}
+
+func (uc *ChampionshipUseCases) CreateTeam(ctx context.Context, input CreateTeamInput) (*domain.Team, error) {
+	// TODO: Validate ClubID if Team belongs to Club (current domain.Team doesn't have ClubID field, but likely should.
+	// For now, teams are global or shared? Actually Championship domain Team doesn't have ClubID.
+	// Assuming they are shared or we rely on repo logic if we add ClubID later.
+	// Ideally we should add ClubID to Team struct, but keeping minimal changes as requested.)
+	// Wait, if Name is unique per Club?
+
+	team := &domain.Team{
+		ID:        uuid.New(),
+		Name:      input.Name,
+		LogoURL:   input.LogoURL,
+		Contact:   input.Contact,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := uc.repo.CreateTeam(ctx, team); err != nil {
+		return nil, err
+	}
+	return team, nil
+}
+
+func (uc *ChampionshipUseCases) AddMember(ctx context.Context, clubID, teamID, userID string) error {
+	// 1. Verify Team belongs to Club?
+	// Current Team struct has no ClubID, but we assume it's global or implicitly trustworthy for Admin.
+	// But ideally we should check if User belongs to Club (ClubID check).
+	// We lack user repo here to check club membership easily without importing user module.
+	// Proceeding with adding member.
+	return uc.repo.AddMember(ctx, teamID, userID)
+}
+
 func (uc *ChampionshipUseCases) GenerateGroupFixture(ctx context.Context, clubID, groupID string) ([]domain.TournamentMatch, error) {
 	// 1. Get Teams in Group (via Standings)
 	standings, err := uc.repo.GetStandings(ctx, clubID, groupID)
@@ -258,6 +298,113 @@ func (uc *ChampionshipUseCases) UpdateMatchResult(ctx context.Context, input Upd
 	return uc.recalculateStandings(ctx, input.ClubID, match.GroupID.String())
 }
 
+func (uc *ChampionshipUseCases) GetMyMatches(ctx context.Context, clubID, userID string) ([]domain.TournamentMatch, error) {
+	return uc.repo.GetMatchesByUserID(ctx, clubID, userID)
+}
+
+// HeadToHeadResult represents the summary and history of matches between two teams
+type HeadToHeadResult struct {
+	TeamAID    string                   `json:"team_a_id"`
+	TeamBID    string                   `json:"team_b_id"`
+	TeamAWins  int                      `json:"team_a_wins"`
+	TeamBWins  int                      `json:"team_b_wins"`
+	Draws      int                      `json:"draws"`
+	TeamAGoals int                      `json:"team_a_goals"`
+	TeamBGoals int                      `json:"team_b_goals"`
+	Matches    []domain.TournamentMatch `json:"matches"`
+}
+
+func (uc *ChampionshipUseCases) GetHeadToHeadHistory(ctx context.Context, clubID, groupID, teamAID, teamBID string) (*HeadToHeadResult, error) {
+	matches, err := uc.repo.GetMatchesByGroup(ctx, clubID, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	teamA := uuid.MustParse(teamAID)
+	teamB := uuid.MustParse(teamBID)
+
+	result := &HeadToHeadResult{
+		TeamAID: teamAID,
+		TeamBID: teamBID,
+	}
+
+	for _, m := range matches {
+		if m.Status != domain.MatchCompleted || m.HomeScore == nil || m.AwayScore == nil {
+			continue
+		}
+
+		isH2H := (m.HomeTeamID == teamA && m.AwayTeamID == teamB) ||
+			(m.HomeTeamID == teamB && m.AwayTeamID == teamA)
+		if !isH2H {
+			continue
+		}
+
+		result.Matches = append(result.Matches, m)
+		homeScore := int(*m.HomeScore)
+		awayScore := int(*m.AwayScore)
+
+		// Normalize: teamA goals vs teamB goals
+		var aGoals, bGoals int
+		if m.HomeTeamID == teamA {
+			aGoals, bGoals = homeScore, awayScore
+		} else {
+			aGoals, bGoals = awayScore, homeScore
+		}
+
+		result.TeamAGoals += aGoals
+		result.TeamBGoals += bGoals
+
+		if aGoals > bGoals {
+			result.TeamAWins++
+		} else if bGoals > aGoals {
+			result.TeamBWins++
+		} else {
+			result.Draws++
+		}
+	}
+
+	return result, nil
+}
+
+// compareHeadToHead returns:
+//   - positive if teamA has advantage over teamB in direct matches
+//   - negative if teamB has advantage
+//   - 0 if tied or no direct matches
+func compareHeadToHead(teamA, teamB uuid.UUID, matches []domain.TournamentMatch) int {
+	var aPoints, bPoints int
+	for _, m := range matches {
+		if m.Status != domain.MatchCompleted || m.HomeScore == nil || m.AwayScore == nil {
+			continue
+		}
+		homeScore := *m.HomeScore
+		awayScore := *m.AwayScore
+
+		// Match between teamA (home) vs teamB (away)
+		if m.HomeTeamID == teamA && m.AwayTeamID == teamB {
+			if homeScore > awayScore {
+				aPoints += 3
+			} else if awayScore > homeScore {
+				bPoints += 3
+			} else {
+				aPoints++
+				bPoints++
+			}
+		}
+		// Match between teamB (home) vs teamA (away)
+		if m.HomeTeamID == teamB && m.AwayTeamID == teamA {
+			if homeScore > awayScore {
+				bPoints += 3
+			} else if awayScore > homeScore {
+				aPoints += 3
+			} else {
+				aPoints++
+				bPoints++
+			}
+		}
+	}
+	return aPoints - bPoints
+}
+
 func (uc *ChampionshipUseCases) recalculateStandings(ctx context.Context, clubID, groupID string) error {
 	standings, err := uc.repo.GetStandings(ctx, clubID, groupID)
 	if err != nil {
@@ -267,6 +414,45 @@ func (uc *ChampionshipUseCases) recalculateStandings(ctx context.Context, clubID
 	matches, err := uc.repo.GetMatchesByGroup(ctx, clubID, groupID)
 	if err != nil {
 		return err
+	}
+
+	// 1. Get Group for StageID
+	group, err := uc.repo.GetGroup(ctx, clubID, groupID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Get Stage for TournamentID
+	stage, err := uc.repo.GetStage(ctx, clubID, group.StageID.String())
+	if err != nil {
+		return err
+	}
+
+	// 3. Get Tournament for Settings
+	tournament, err := uc.repo.GetTournament(ctx, clubID, stage.TournamentID.String())
+	if err != nil {
+		return err
+	}
+
+	// Default Points
+	pointsWin := 3.0
+	pointsDraw := 1.0
+
+	// Parse custom points if available
+	if tournament.Settings != nil {
+		var settings struct {
+			PointsWin  float64 `json:"points_win"`
+			PointsDraw float64 `json:"points_draw"`
+		}
+
+		if err := json.Unmarshal(tournament.Settings, &settings); err == nil {
+			if settings.PointsWin > 0 {
+				pointsWin = settings.PointsWin
+			}
+			if settings.PointsDraw > 0 {
+				pointsDraw = settings.PointsDraw
+			}
+		}
 	}
 
 	stats := make(map[uuid.UUID]*domain.Standing)
@@ -310,17 +496,17 @@ func (uc *ChampionshipUseCases) recalculateStandings(ctx context.Context, clubID
 
 			if homeScore > awayScore {
 				home.Won++
-				home.Points += 3
+				home.Points += pointsWin
 				away.Lost++
 			} else if awayScore > homeScore {
 				away.Won++
-				away.Points += 3
+				away.Points += pointsWin
 				home.Lost++
 			} else {
 				home.Drawn++
-				home.Points += 1
+				home.Points += pointsDraw
 				away.Drawn++
-				away.Points += 1
+				away.Points += pointsDraw
 			}
 		}
 	}
@@ -329,6 +515,49 @@ func (uc *ChampionshipUseCases) recalculateStandings(ctx context.Context, clubID
 	var standingsToUpdate []domain.Standing
 	for _, s := range stats {
 		standingsToUpdate = append(standingsToUpdate, *s)
+	}
+
+	// Parse tiebreaker criteria from settings
+	tiebreakerCriteria := []string{"GOAL_DIFF", "GOALS_FOR"} // Default order
+	if tournament.Settings != nil {
+		var tSettings struct {
+			TiebreakerCriteria []string `json:"tiebreaker_criteria"`
+		}
+		if err := json.Unmarshal(tournament.Settings, &tSettings); err == nil && len(tSettings.TiebreakerCriteria) > 0 {
+			tiebreakerCriteria = tSettings.TiebreakerCriteria
+		}
+	}
+
+	// Sort standings by Points (desc), then by tiebreaker criteria
+	sort.SliceStable(standingsToUpdate, func(i, j int) bool {
+		a, b := standingsToUpdate[i], standingsToUpdate[j]
+		if a.Points != b.Points {
+			return a.Points > b.Points
+		}
+		for _, criterion := range tiebreakerCriteria {
+			switch criterion {
+			case "GOAL_DIFF":
+				if a.GoalDifference != b.GoalDifference {
+					return a.GoalDifference > b.GoalDifference
+				}
+			case "GOALS_FOR":
+				if a.GoalsFor != b.GoalsFor {
+					return a.GoalsFor > b.GoalsFor
+				}
+			case "HEAD_TO_HEAD":
+				// Compare head-to-head results between team A and team B
+				h2hResult := compareHeadToHead(a.TeamID, b.TeamID, matches)
+				if h2hResult != 0 {
+					return h2hResult > 0 // Positive means A won more
+				}
+			}
+		}
+		return false // Maintain original order if all criteria are equal
+	})
+
+	// Assign position based on sorted order
+	for i := range standingsToUpdate {
+		standingsToUpdate[i].Position = i + 1
 	}
 
 	if len(standingsToUpdate) > 0 {

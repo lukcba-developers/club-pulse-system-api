@@ -31,6 +31,7 @@ type AccessLog struct {
 	ClubID     string          `gorm:"type:varchar(255);index;not null" json:"club_id"`
 	UserID     string          `gorm:"type:text;not null" json:"user_id"`
 	FacilityID *uuid.UUID      `gorm:"type:uuid" json:"facility_id,omitempty"`
+	DeviceID   string          `gorm:"type:varchar(255)" json:"device_id,omitempty"`
 	Direction  AccessDirection `gorm:"type:varchar(10);not null" json:"direction"`
 	Status     AccessStatus    `gorm:"type:varchar(50);not null" json:"status"`
 	Reason     string          `gorm:"type:varchar(255)" json:"reason,omitempty"`

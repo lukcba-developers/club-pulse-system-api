@@ -7,11 +7,12 @@ import { DigitalMemberCard } from '@/components/dashboard/digital-member-card';
 import { membershipService, Membership } from '@/services/membership-service';
 import { bookingService, Booking } from '@/services/booking-service';
 import { facilityService, Facility } from '@/services/facility-service';
+import { championshipService, Match } from '@/services/championship-service';
 import { MatchScheduler } from '@/components/team/match-scheduler';
 import { IncidentReportModal } from '@/components/user/incident-report-modal';
 import { SponsorBanner } from '@/components/club/sponsor-banner';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, MapPin, Clock, CreditCard, ArrowRight, Trophy, Sparkles } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Calendar, MapPin, Clock, CreditCard, ArrowRight, Trophy, Sparkles, Swords } from 'lucide-react';
 import { XPProgressBar, LevelUpModal } from '@/components/gamification';
 import { useGamification } from '@/hooks/useGamification';
 
@@ -21,6 +22,7 @@ export function MemberDashboardView({ user }: { user: User }) {
     const router = useRouter();
     const [membership, setMembership] = useState<Membership | null>(null);
     const [nextBooking, setNextBooking] = useState<Booking | null>(null);
+    const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
     const [facilities, setFacilities] = useState<Record<string, Facility>>({});
 
     // Gamification Hook
@@ -34,10 +36,11 @@ export function MemberDashboardView({ user }: { user: User }) {
 
     const fetchData = useCallback(async () => {
         try {
-            const [memberships, bookingsData, facilitiesList] = await Promise.all([
+            const [memberships, bookingsData, facilitiesList, matchesData] = await Promise.all([
                 membershipService.listMyMemberships().catch(() => [] as Membership[]),
-                bookingService.getMyBookings(),
-                facilityService.list(100)
+                bookingService.getMyBookings().catch(() => [] as Booking[]),
+                facilityService.list(100).catch(() => [] as Facility[]),
+                championshipService.getMyMatches().catch(() => [] as Match[])
             ]);
 
             setMembership(memberships && memberships.length > 0 ? memberships[0] : null);
@@ -47,9 +50,18 @@ export function MemberDashboardView({ user }: { user: User }) {
             facilitiesList.forEach(f => facilitiesMap[f.id] = f);
             setFacilities(facilitiesMap);
 
+            const now = new Date();
+
+            // Handle Matches
+            if (matchesData) {
+                const upcoming = matchesData
+                    .filter(m => new Date(m.date) > now && m.status !== 'CANCELLED')
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                setUpcomingMatches(upcoming);
+            }
+
             // Find next booking
             if (bookingsData && bookingsData.length > 0) {
-                const now = new Date();
                 const futureBookings = bookingsData
                     .filter(b => new Date(b.start_time) > now && b.status !== 'CANCELLED')
                     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
@@ -213,6 +225,58 @@ export function MemberDashboardView({ user }: { user: User }) {
                             <IncidentReportModal />
                         </div>
                     </div>
+
+                    {/* Upcoming Tournament Matches Section */}
+                    {upcomingMatches.length > 0 && (
+                        <Card className="border-0 shadow-sm bg-zinc-50 dark:bg-zinc-900/50">
+                            <CardHeader className="pb-3 px-6">
+                                <div className="flex items-center gap-2">
+                                    <Swords className="w-5 h-5 text-brand-500" />
+                                    <CardTitle className="text-lg">Tus Partidos de Torneo</CardTitle>
+                                </div>
+                                <CardDescription>No faltes a tus compromisos competitivos</CardDescription>
+                            </CardHeader>
+                            <CardContent className="px-6 pb-6 pt-0 space-y-3">
+                                {upcomingMatches.map((match) => (
+                                    <div key={match.id} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-center min-w-[60px] p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+                                                <p className="text-xs font-bold uppercase text-zinc-500">
+                                                    {new Date(match.date).toLocaleDateString([], { month: 'short' })}
+                                                </p>
+                                                <p className="text-xl font-black text-brand-600">
+                                                    {new Date(match.date).getDate()}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-gray-900 dark:text-gray-100">{match.home_team_name || "Equipo A"}</span>
+                                                    <span className="text-zinc-400 text-xs font-bold">VS</span>
+                                                    <span className="font-bold text-gray-900 dark:text-gray-100">{match.away_team_name || "Equipo B"}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        {formatTime(match.date)}
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Trophy className="w-3.5 h-3.5" />
+                                                        Torneo Activo
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => router.push(`/championships`)}
+                                            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                                        >
+                                            <ArrowRight className="w-5 h-5 text-zinc-400" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 <div className="space-y-6">

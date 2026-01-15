@@ -3,6 +3,8 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { useState, memo } from 'react';
+import { Facility } from '@/services/facility-service';
+
 
 // Lazy loading de modales pesados (~18KB combinados)
 const BookingModal = dynamic(
@@ -15,20 +17,7 @@ const FacilityScheduleModal = dynamic(
 );
 
 
-interface Facility {
-    id: string;
-    name: string;
-    type: string;
-    location: {
-        name: string;
-        description?: string;
-    };
-    capacity: number;
-    status: string;
-    hourly_rate: number;
-    opening_hour?: number;
-    closing_hour?: number;
-}
+
 
 const getFacilityImage = (type: string) => {
     // Using high quality Unsplash placeholders
@@ -48,9 +37,9 @@ export const FacilityCard = memo(function FacilityCard({ facility }: { facility:
     const [isScheduleModalOpen, setScheduleModalOpen] = useState(false);
 
     // Format schedule for display
-    const formatHour = (hour: number) => `${hour.toString().padStart(2, '0')}:00`;
-    const openingHour = facility.opening_hour ?? 8;
-    const closingHour = facility.closing_hour ?? 22;
+    // Format schedule for display
+    const openingTime = facility.opening_time ?? "08:00";
+    const closingTime = facility.closing_time ?? "22:00";
 
 
     return (
@@ -122,7 +111,7 @@ export const FacilityCard = memo(function FacilityCard({ facility }: { facility:
                     <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                         <Clock className="h-4 w-4 text-brand-500" />
                         <span className="text-xs font-medium">
-                            {formatHour(openingHour)} - {formatHour(closingHour)}
+                            {openingTime} - {closingTime}
                         </span>
                     </div>
                     <button
@@ -163,8 +152,8 @@ export const FacilityCard = memo(function FacilityCard({ facility }: { facility:
                         onClose={() => setScheduleModalOpen(false)}
                         facilityId={facility.id}
                         facilityName={facility.name}
-                        currentOpeningHour={openingHour}
-                        currentClosingHour={closingHour}
+                        currentOpeningHour={openingTime}
+                        currentClosingHour={closingTime}
                         onSuccess={() => window.location.reload()}
                     />
                 </div>

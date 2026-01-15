@@ -30,12 +30,13 @@ func NewPostgresFacilityRepository(db *gorm.DB) *PostgresFacilityRepository {
 type FacilityModel struct {
 	ID             string                `gorm:"primaryKey"`
 	Name           string                `gorm:"not null"`
+	Description    string                `gorm:"type:text"`
 	Type           string                `gorm:"not null"`
 	Status         string                `gorm:"default:'active'"`
 	Capacity       int                   `gorm:"not null"`
 	HourlyRate     float64               `gorm:"not null"`
-	OpeningHour    int                   `gorm:"default:8"`
-	ClosingHour    int                   `gorm:"default:23"`
+	OpeningTime    string                `gorm:"default:'08:00'"`
+	ClosingTime    string                `gorm:"default:'23:00'"`
 	GuestFee       float64               `gorm:"default:0"`
 	Specifications domain.Specifications `gorm:"type:jsonb;serializer:json"` // Postgres JSONB
 	Location       domain.Location       `gorm:"type:jsonb;serializer:json"`
@@ -52,12 +53,13 @@ func (r *PostgresFacilityRepository) Create(ctx context.Context, facility *domai
 	model := FacilityModel{
 		ID:             facility.ID,
 		Name:           facility.Name,
+		Description:    facility.Description,
 		Type:           string(facility.Type),
 		Status:         string(facility.Status),
 		Capacity:       facility.Capacity,
 		HourlyRate:     facility.HourlyRate,
-		OpeningHour:    facility.OpeningHour,
-		ClosingHour:    facility.ClosingHour,
+		OpeningTime:    facility.OpeningTime,
+		ClosingTime:    facility.ClosingTime,
 		GuestFee:       facility.GuestFee,
 		Specifications: facility.Specifications,
 		Location:       facility.Location,
@@ -98,12 +100,13 @@ func (r *PostgresFacilityRepository) Update(ctx context.Context, facility *domai
 	model := FacilityModel{
 		ID:             facility.ID,
 		Name:           facility.Name,
+		Description:    facility.Description,
 		Type:           string(facility.Type),
 		Status:         string(facility.Status),
 		Capacity:       facility.Capacity,
 		HourlyRate:     facility.HourlyRate,
-		OpeningHour:    facility.OpeningHour,
-		ClosingHour:    facility.ClosingHour,
+		OpeningTime:    facility.OpeningTime,
+		ClosingTime:    facility.ClosingTime,
 		GuestFee:       facility.GuestFee,
 		Specifications: facility.Specifications,
 		Location:       facility.Location,
@@ -119,12 +122,13 @@ func (r *PostgresFacilityRepository) toDomain(m FacilityModel) *domain.Facility 
 	return &domain.Facility{
 		ID:             m.ID,
 		Name:           m.Name,
+		Description:    m.Description,
 		Type:           domain.FacilityType(m.Type),
 		Status:         domain.FacilityStatus(m.Status),
 		Capacity:       m.Capacity,
 		HourlyRate:     m.HourlyRate,
-		OpeningHour:    m.OpeningHour,
-		ClosingHour:    m.ClosingHour,
+		OpeningTime:    m.OpeningTime,
+		ClosingTime:    m.ClosingTime,
 		GuestFee:       m.GuestFee,
 		Specifications: m.Specifications,
 		Location:       m.Location,
@@ -374,7 +378,7 @@ func (r *PostgresFacilityRepository) SemanticSearch(ctx context.Context, clubID 
 	// Query using pgvector cosine distance operator <=>
 	query := `
 		SELECT 
-			id, name, type, status, capacity, hourly_rate, 
+			id, name, description, type, status, capacity, hourly_rate, 
 			specifications, location, created_at, updated_at, club_id,
 			1 - (embedding <=> $1::vector) as similarity
 		FROM facilities 
@@ -395,7 +399,7 @@ func (r *PostgresFacilityRepository) SemanticSearch(ctx context.Context, clubID 
 		var similarity float32
 
 		if err := rows.Scan(
-			&m.ID, &m.Name, &m.Type, &m.Status, &m.Capacity, &m.HourlyRate,
+			&m.ID, &m.Name, &m.Description, &m.Type, &m.Status, &m.Capacity, &m.HourlyRate,
 			&m.Specifications, &m.Location, &m.CreatedAt, &m.UpdatedAt, &m.ClubID,
 			&similarity,
 		); err != nil {

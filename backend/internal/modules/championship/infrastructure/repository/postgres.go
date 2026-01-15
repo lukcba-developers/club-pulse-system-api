@@ -223,3 +223,43 @@ func (r *PostgresChampionshipRepository) GetTeamMembers(ctx context.Context, tea
 		Scan(&userIDs).Error
 	return userIDs, err
 }
+
+func (r *PostgresChampionshipRepository) CreateTeam(ctx context.Context, team *domain.Team) error {
+	return r.db.WithContext(ctx).Create(team).Error
+}
+
+func (r *PostgresChampionshipRepository) AddMember(ctx context.Context, teamID, userID string) error {
+	// Raw SQL or GORM map not ideal if we don't have a struct for TeamMember.
+	// Check grep results: test define TestTeamMember.
+	// I'll do a raw insert or use a map.
+	// map[string]interface{} with Table("team_members").Create(...) works if GORM supports it.
+	// But Create usually expects a struct.
+	// Exec is safer.
+	// Timestamp? team_members usually has added_at or nothing.
+	// Let's assume (team_id, user_id).
+	return r.db.WithContext(ctx).Exec("INSERT INTO team_members (team_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", teamID, userID).Error
+}
+
+func (r *PostgresChampionshipRepository) GetMatchesByUserID(ctx context.Context, clubID, userID string) ([]domain.TournamentMatch, error) {
+	var matches []domain.TournamentMatch
+	err := r.db.WithContext(ctx).
+		Table("tournament_matches").
+		Select("tournament_matches.*").
+		Where("club_id = ?", clubID).
+		Where("home_team_id IN (SELECT team_id FROM team_members WHERE user_id = ?) OR away_team_id IN (SELECT team_id FROM team_members WHERE user_id = ?)", userID, userID).
+		Find(&matches).Error
+	return matches, err
+}
+
+func (r *PostgresChampionshipRepository) GetUpcomingMatches(ctx context.Context, clubID string, from, to time.Time) ([]domain.TournamentMatch, error) {
+	var matches []domain.TournamentMatch
+	err := r.db.WithContext(ctx).
+		Table("tournament_matches").
+		Joins("JOIN championships ON championships.id = tournament_matches.tournament_id").
+		Where("championships.club_id = ?", clubID).
+		Where("tournament_matches.status = ?", domain.MatchScheduled).
+		Where("tournament_matches.date >= ? AND tournament_matches.date <= ?", from, to).
+		Order("tournament_matches.date ASC").
+		Find(&matches).Error
+	return matches, err
+}

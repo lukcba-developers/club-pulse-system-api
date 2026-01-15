@@ -137,6 +137,26 @@ func (m *MockChampionshipRepo) GetTeamMembers(ctx context.Context, id string) ([
 	return res, args.Error(1)
 }
 
+func (m *MockChampionshipRepo) CreateTeam(ctx context.Context, team *domain.Team) error {
+	args := m.Called(ctx, team)
+	return args.Error(0)
+}
+
+func (m *MockChampionshipRepo) AddMember(ctx context.Context, teamID, userID string) error {
+	args := m.Called(ctx, teamID, userID)
+	return args.Error(0)
+}
+
+func (m *MockChampionshipRepo) GetMatchesByUserID(ctx context.Context, clubID, userID string) ([]domain.TournamentMatch, error) {
+	args := m.Called(ctx, clubID, userID)
+	return args.Get(0).([]domain.TournamentMatch), args.Error(1)
+}
+
+func (m *MockChampionshipRepo) GetUpcomingMatches(ctx context.Context, clubID string, from, to time.Time) ([]domain.TournamentMatch, error) {
+	args := m.Called(ctx, clubID, from, to)
+	return args.Get(0).([]domain.TournamentMatch), args.Error(1)
+}
+
 type MockBookingService struct {
 	mock.Mock
 }
@@ -385,7 +405,9 @@ func TestChampionshipUseCases_Results(t *testing.T) {
 		}
 		repo.On("UpdateMatchResult", mock.Anything, cID, mID, 2.0, 1.0).Return(nil).Once()
 		repo.On("GetMatch", mock.Anything, cID, mID).Return(match, nil).Once()
-		repo.On("GetTournament", mock.Anything, cID, mock.Anything).Return(&domain.Tournament{ClubID: uuid.New()}, nil).Once()
+		repo.On("GetGroup", mock.Anything, cID, mock.Anything).Return(&domain.Group{StageID: uuid.New()}, nil).Once()
+		repo.On("GetStage", mock.Anything, cID, mock.Anything).Return(&domain.TournamentStage{TournamentID: uuid.New()}, nil).Once()
+		repo.On("GetTournament", mock.Anything, cID, mock.Anything).Return(&domain.Tournament{ClubID: uuid.New()}, nil).Twice()
 		repo.On("GetTeamMembers", mock.Anything, mock.Anything).Return([]string{"u1"}, nil).Twice()
 		userSvc.On("UpdateMatchStats", mock.Anything, mock.Anything, "u1", mock.Anything, 100).Return(nil).Twice()
 

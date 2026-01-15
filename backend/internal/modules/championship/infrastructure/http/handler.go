@@ -35,9 +35,13 @@ func (h *ChampionshipHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware 
 		group.POST("/:id/stages", h.AddStage)
 		group.POST("/stages/:id/groups", h.AddGroup)
 		group.POST("/groups/:id/teams", h.RegisterTeam)
+		group.POST("/teams", h.CreateTeam)
+		group.GET("/my-matches", h.GetMyMatches)
+		group.POST("/teams/:id/members", h.AddMember)
 		group.POST("/groups/:id/fixture", h.GenerateFixture)
 		group.GET("/groups/:id/matches", h.GetMatchesByGroup)
 		group.GET("/groups/:id/standings", h.GetStandings)
+		group.GET("/groups/:id/head-to-head", h.GetHeadToHead)
 		group.POST("/matches/result", h.UpdateMatchResult)
 		group.POST("/matches/schedule", h.ScheduleMatch)
 		group.POST("/stages/:id/knockout", h.GenerateKnockoutBracket)
@@ -52,8 +56,8 @@ func (h *ChampionshipHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware 
 	{
 		public.GET("/", h.GetPublicTournaments)
 		public.GET("/:id", h.GetPublicTournament)
-		public.GET("/groups/:id/standings", h.GetStandings)    // Reusing existing if possible, or wrap
-		public.GET("/groups/:id/fixture", h.GetMatchesByGroup) // Reusing existing
+		public.GET("/groups/:id/standings", h.GetPublicStandings)
+		public.GET("/groups/:id/fixture", h.GetPublicMatches)
 	}
 }
 
@@ -98,6 +102,40 @@ func (h *ChampionshipHandler) GetPublicTournament(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, tournament)
+}
+
+func (h *ChampionshipHandler) GetPublicStandings(c *gin.Context) {
+	slug := c.Param("slug")
+	club, err := h.clubUseCases.GetClubBySlug(c.Request.Context(), slug)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
+		return
+	}
+
+	groupID := c.Param("id")
+	standings, err := h.useCases.GetStandings(c.Request.Context(), club.ID, groupID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, standings)
+}
+
+func (h *ChampionshipHandler) GetPublicMatches(c *gin.Context) {
+	slug := c.Param("slug")
+	club, err := h.clubUseCases.GetClubBySlug(c.Request.Context(), slug)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Club not found"})
+		return
+	}
+
+	groupID := c.Param("id")
+	matches, err := h.useCases.GetMatchesByGroup(c.Request.Context(), club.ID, groupID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, matches)
 }
 
 // ... (Existing methods remain unchanged, appending new methods)
@@ -395,6 +433,56 @@ func (h *ChampionshipHandler) RegisterTeam(c *gin.Context) {
 	c.JSON(http.StatusCreated, standing)
 }
 
+func (h *ChampionshipHandler) CreateTeam(c *gin.Context) {
+	// RBAC: Only ADMIN can create teams
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
+	var input application.CreateTeamInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	input.ClubID = c.GetString("clubID")
+
+	team, err := h.useCases.CreateTeam(c.Request.Context(), input)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, team)
+}
+
+func (h *ChampionshipHandler) AddMember(c *gin.Context) {
+	// RBAC: Only ADMIN can add members to teams (for now)
+	role, exists := c.Get("userRole")
+	if !exists || (role != userDomain.RoleAdmin && role != userDomain.RoleSuperAdmin) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "requires ADMIN role"})
+		return
+	}
+
+	teamID := c.Param("id")
+	var input struct {
+		UserID string `json:"user_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	clubID := c.GetString("clubID")
+
+	if err := h.useCases.AddMember(c.Request.Context(), clubID, teamID, input.UserID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"status": "member added"})
+}
+
 func (h *ChampionshipHandler) GenerateFixture(c *gin.Context) {
 	// SECURITY FIX (VUL-003): Only ADMIN can generate fixtures
 	role, exists := c.Get("userRole")
@@ -453,4 +541,41 @@ func (h *ChampionshipHandler) GenerateKnockoutBracket(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"matches": matches, "count": len(matches)})
+}
+func (h *ChampionshipHandler) GetMyMatches(c *gin.Context) {
+	userID := c.GetString("userID")
+	clubID := c.GetString("clubID") // Note: tenancy middleware sets "clubID"
+
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	matches, err := h.useCases.GetMyMatches(c.Request.Context(), clubID, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, matches)
+}
+
+func (h *ChampionshipHandler) GetHeadToHead(c *gin.Context) {
+	groupID := c.Param("id")
+	teamAID := c.Query("team_a")
+	teamBID := c.Query("team_b")
+	clubID := c.GetString("clubID")
+
+	if teamAID == "" || teamBID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "team_a and team_b query params required"})
+		return
+	}
+
+	result, err := h.useCases.GetHeadToHeadHistory(c.Request.Context(), clubID, groupID, teamAID, teamBID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }

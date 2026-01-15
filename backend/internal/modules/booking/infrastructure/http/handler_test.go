@@ -274,7 +274,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		r := setupRouter(h, clubID, userID, userDomain.RoleMember)
 		facilityID := uuid.New().String()
 		mockFacilityRepo.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
-			ID: facilityID, Status: facilityDomain.FacilityStatusActive, OpeningHour: 8, ClosingHour: 22,
+			ID: facilityID, Status: facilityDomain.FacilityStatusActive, OpeningTime: "08:00", ClosingTime: "22:00",
 		}, nil).Once()
 		mockFacilityRepo.On("ListMaintenanceByFacility", mock.Anything, facilityID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
 		mockBookingRepo.On("ListByFacilityAndDate", mock.Anything, clubID, uuid.MustParse(facilityID), mock.Anything).Return([]domain.Booking{}, nil).Once()

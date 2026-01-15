@@ -139,6 +139,26 @@ func (m *MockChampionshipRepo) GetTeamMembers(ctx context.Context, id string) ([
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func (m *MockChampionshipRepo) CreateTeam(ctx context.Context, team *domain.Team) error {
+	args := m.Called(ctx, team)
+	return args.Error(0)
+}
+
+func (m *MockChampionshipRepo) AddMember(ctx context.Context, teamID, userID string) error {
+	args := m.Called(ctx, teamID, userID)
+	return args.Error(0)
+}
+
+func (m *MockChampionshipRepo) GetMatchesByUserID(ctx context.Context, clubID, userID string) ([]domain.TournamentMatch, error) {
+	args := m.Called(ctx, clubID, userID)
+	return args.Get(0).([]domain.TournamentMatch), args.Error(1)
+}
+
+func (m *MockChampionshipRepo) GetUpcomingMatches(ctx context.Context, clubID string, from, to time.Time) ([]domain.TournamentMatch, error) {
+	args := m.Called(ctx, clubID, from, to)
+	return args.Get(0).([]domain.TournamentMatch), args.Error(1)
+}
+
 type MockVolunteerRepo struct {
 	mock.Mock
 }

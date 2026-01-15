@@ -7,7 +7,7 @@ export interface MembershipTier {
     name: string;
     description: string;
     monthly_fee: number; // Backend sends decimal.Decimal serialized as number
-    duration_days?: number; // Optional, overrides standard billing cycle
+    duration_days?: number | null; // Optional, overrides standard billing cycle
     colors: string;
     benefits: string[];
     is_active: boolean;

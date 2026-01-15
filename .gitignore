@@ -17,3 +17,12 @@ dist/
 build/
 .env*
 ! .env.example
+
+# Test artifacts
+*.test
+test_output.txt
+backend/test_output.txt
+
+# Binaries
+scheduler
+backend/scheduler

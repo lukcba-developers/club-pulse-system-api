@@ -23,36 +23,38 @@ func NewFacilityUseCases(repo domain.FacilityRepository, loanRepo domain.LoanRep
 
 type CreateFacilityDTO struct {
 	Name           string                `json:"name" binding:"required"`
+	Description    string                `json:"description"`
 	Type           domain.FacilityType   `json:"type" binding:"required"`
 	Capacity       int                   `json:"capacity" binding:"required,min=1"`
 	HourlyRate     float64               `json:"hourly_rate" binding:"required,min=0"`
-	OpeningHour    int                   `json:"opening_hour"`
-	ClosingHour    int                   `json:"closing_hour"`
+	OpeningTime    string                `json:"opening_time"`
+	ClosingTime    string                `json:"closing_time"`
 	Specifications domain.Specifications `json:"specifications"`
 	Location       domain.Location       `json:"location"`
 }
 
 func (uc *FacilityUseCases) CreateFacility(ctx context.Context, clubID string, dto CreateFacilityDTO) (*domain.Facility, error) {
 	// Defaults
-	opening := dto.OpeningHour
-	if opening == 0 {
-		opening = 8
+	opening := dto.OpeningTime
+	if opening == "" {
+		opening = "08:00"
 	}
-	closing := dto.ClosingHour
-	if closing == 0 {
-		closing = 23
+	closing := dto.ClosingTime
+	if closing == "" {
+		closing = "23:00"
 	}
 
 	facility := &domain.Facility{
 		ID:             uuid.New().String(),
 		ClubID:         clubID,
 		Name:           dto.Name,
+		Description:    dto.Description,
 		Type:           dto.Type,
 		Status:         domain.FacilityStatusActive,
 		Capacity:       dto.Capacity,
 		HourlyRate:     dto.HourlyRate,
-		OpeningHour:    opening,
-		ClosingHour:    closing,
+		OpeningTime:    opening,
+		ClosingTime:    closing,
 		Specifications: dto.Specifications,
 		Location:       dto.Location,
 		CreatedAt:      time.Now(),
@@ -82,9 +84,10 @@ func (uc *FacilityUseCases) GetFacility(ctx context.Context, clubID, id string) 
 
 type UpdateFacilityDTO struct {
 	Name           *string                `json:"name,omitempty"`
+	Description    *string                `json:"description,omitempty"`
 	Status         *domain.FacilityStatus `json:"status,omitempty"`
-	OpeningHour    *int                   `json:"opening_hour,omitempty"`
-	ClosingHour    *int                   `json:"closing_hour,omitempty"`
+	OpeningTime    *string                `json:"opening_time,omitempty"`
+	ClosingTime    *string                `json:"closing_time,omitempty"`
 	Specifications *domain.Specifications `json:"specifications,omitempty"`
 }
 
@@ -100,14 +103,17 @@ func (uc *FacilityUseCases) UpdateFacility(ctx context.Context, clubID, id strin
 	if dto.Name != nil {
 		facility.Name = *dto.Name
 	}
+	if dto.Description != nil {
+		facility.Description = *dto.Description
+	}
 	if dto.Status != nil {
 		facility.Status = *dto.Status
 	}
-	if dto.OpeningHour != nil {
-		facility.OpeningHour = *dto.OpeningHour
+	if dto.OpeningTime != nil {
+		facility.OpeningTime = *dto.OpeningTime
 	}
-	if dto.ClosingHour != nil {
-		facility.ClosingHour = *dto.ClosingHour
+	if dto.ClosingTime != nil {
+		facility.ClosingTime = *dto.ClosingTime
 	}
 	if dto.Specifications != nil {
 		// Full replacement of specs for simplicity in MVP, or merge?

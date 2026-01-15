@@ -10,7 +10,7 @@ import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { facilityService } from '@/services/facility-service';
+import { facilityService, FacilityType, CreateFacilityRequest } from '@/services/facility-service';
 
 // Form Validation Schema
 const facilitySchema = z.object({
@@ -19,8 +19,8 @@ const facilitySchema = z.object({
     description: z.string().optional(),
     hourly_rate: z.coerce.number().min(0, 'Rate must be a positive number'),
     capacity: z.coerce.number().int().min(1, 'Capacity must be at least 1'),
-    opening_hour: z.coerce.number().int().min(0).max(23).default(8),
-    closing_hour: z.coerce.number().int().min(0).max(23).default(22),
+    opening_time: z.string().default("08:00"),
+    closing_time: z.string().default("22:00"),
     guest_fee: z.coerce.number().min(0).default(0),
     location_name: z.string().min(2, 'Location name is required'),
     location_description: z.string().optional(),
@@ -41,8 +41,8 @@ export default function CreateFacilityPage() {
         defaultValues: {
             hourly_rate: 0,
             capacity: 4,
-            opening_hour: 8,
-            closing_hour: 22,
+            opening_time: "08:00",
+            closing_time: "22:00",
             guest_fee: 0,
             lighting: true,
             covered: false
@@ -53,7 +53,7 @@ export default function CreateFacilityPage() {
         setIsSubmitting(true);
         setError(null);
         try {
-            await facilityService.create(data);
+            await facilityService.create(data as unknown as CreateFacilityRequest);
             router.push('/');
             router.refresh();
         } catch (err: unknown) {
@@ -103,12 +103,10 @@ export default function CreateFacilityPage() {
                                     {...register('type')}
                                 >
                                     <option value="">Selecciona un tipo...</option>
-                                    <option value="Tennis Court">Pista de Tenis</option>
-                                    <option value="Padel Court">Pista de Pádel</option>
-                                    <option value="Swimming Pool">Piscina</option>
-                                    <option value="Gym">Gimnasio</option>
-                                    <option value="Football Field">Campo de Fútbol</option>
-                                    <option value="Golf Simulator">Simulador de Golf</option>
+                                    <option value={FacilityType.Court}>Pista de Tenis / Pádel</option>
+                                    <option value={FacilityType.Pool}>Piscina</option>
+                                    <option value={FacilityType.Gym}>Gimnasio</option>
+                                    <option value={FacilityType.Field}>Campo de Deportes</option>
                                 </select>
                             </div>
                             {errors.type && <p className="text-xs text-red-500 font-medium">{errors.type.message}</p>}
@@ -151,28 +149,30 @@ export default function CreateFacilityPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label htmlFor="opening_hour">Hora de Apertura</Label>
+                            <Label htmlFor="opening_time">Hora de Apertura</Label>
                             <select
-                                id="opening_hour"
+                                id="opening_time"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                {...register('opening_hour')}
+                                {...register('opening_time')}
                             >
-                                {Array.from({ length: 24 }, (_, i) => (
-                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                ))}
+                                {Array.from({ length: 24 }, (_, i) => {
+                                    const t = `${i.toString().padStart(2, '0')}:00`;
+                                    return <option key={t} value={t}>{t}</option>;
+                                })}
                             </select>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="closing_hour">Hora de Cierre</Label>
+                            <Label htmlFor="closing_time">Hora de Cierre</Label>
                             <select
-                                id="closing_hour"
+                                id="closing_time"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                {...register('closing_hour')}
+                                {...register('closing_time')}
                             >
-                                {Array.from({ length: 24 }, (_, i) => (
-                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                ))}
+                                {Array.from({ length: 24 }, (_, i) => {
+                                    const t = `${i.toString().padStart(2, '0')}:00`;
+                                    return <option key={t} value={t}>{t}</option>;
+                                })}
                             </select>
                         </div>
                     </div>

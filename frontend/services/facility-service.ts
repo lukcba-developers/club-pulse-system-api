@@ -1,14 +1,34 @@
 import api from '../lib/axios';
 
+export enum FacilityType {
+    Court = "court",
+    Pool = "pool",
+    Gym = "gym",
+    Field = "field",
+    // Legacy values that may exist in DB
+    TennisCourt = "Tennis Court",
+    PadelCourt = "Padel Court",
+    SwimmingPool = "Swimming Pool",
+    FootballField = "Football Field",
+    GolfSimulator = "Golf Simulator"
+}
+
+export enum FacilityStatus {
+    Active = "active",
+    Maintenance = "maintenance",
+    Closed = "closed"
+}
+
 export interface Facility {
     id: string;
     name: string;
-    type: string;
-    status: string;
+    description?: string;
+    type: FacilityType;
+    status: FacilityStatus;
     capacity: number;
     hourly_rate: number;
-    opening_hour: number; // 0-23
-    closing_hour: number; // 0-23
+    opening_time: string; // HH:MM
+    closing_time: string; // HH:MM
     guest_fee: number;
     specifications: {
         surface_type?: string;
@@ -26,12 +46,12 @@ export interface Facility {
 
 export interface CreateFacilityRequest {
     name: string;
-    type: string;
     description?: string;
+    type: FacilityType;
     hourly_rate: number;
     capacity: number;
-    opening_hour?: number; // 0-23
-    closing_hour?: number; // 0-23
+    opening_time?: string; // HH:MM
+    closing_time?: string; // HH:MM
     guest_fee?: number;
     location_name: string;
     location_description?: string;
@@ -53,9 +73,10 @@ export interface SearchResponse {
 
 export interface UpdateFacilityRequest {
     name?: string;
-    status?: 'active' | 'maintenance' | 'closed';
-    opening_hour?: number; // 0-23
-    closing_hour?: number; // 0-23
+    description?: string;
+    status?: FacilityStatus;
+    opening_time?: string; // HH:MM
+    closing_time?: string; // HH:MM
     hourly_rate?: number;
     guest_fee?: number;
     specifications?: {
@@ -90,12 +111,12 @@ export const facilityService = {
     create: async (data: CreateFacilityRequest): Promise<Facility> => {
         const response = await api.post<{ data: Facility }>('/facilities', {
             name: data.name,
-            type: data.type, // "Tennis Court", "Swimming Pool", etc.
             description: data.description,
+            type: data.type,
             hourly_rate: data.hourly_rate,
             capacity: data.capacity,
-            opening_hour: data.opening_hour ?? 8,
-            closing_hour: data.closing_hour ?? 22,
+            opening_time: data.opening_time ?? "08:00",
+            closing_time: data.closing_time ?? "22:00",
             guest_fee: data.guest_fee ?? 0,
             location: {
                 name: data.location_name,
@@ -140,10 +161,10 @@ export const facilityService = {
     /**
      * Update facility schedule (convenience method)
      */
-    updateSchedule: async (id: string, openingHour: number, closingHour: number): Promise<Facility> => {
+    updateSchedule: async (id: string, openingTime: string, closingTime: string): Promise<Facility> => {
         return facilityService.update(id, {
-            opening_hour: openingHour,
-            closing_hour: closingHour
+            opening_time: openingTime,
+            closing_time: closingTime
         });
     }
 };

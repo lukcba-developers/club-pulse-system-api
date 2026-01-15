@@ -413,26 +413,38 @@ func (uc *BookingUseCases) GetAvailability(ctx context.Context, clubID, facility
 	}
 
 	// 2. Calculate Slots
-	startHour := facility.OpeningHour
-	endHour := facility.ClosingHour
 
-	// Safety Defaults
-	if startHour == 0 && endHour == 0 {
-		startHour = 8
-		endHour = 23
-	}
+	// Parse Opening Times
+	startH, startM := parseTimeStr(facility.OpeningTime, 8, 0)
+	endH, endM := parseTimeStr(facility.ClosingTime, 23, 0)
 
 	var slots []map[string]interface{}
 
-	for h := startHour; h < endHour; h++ {
-		slotStart := time.Date(date.Year(), date.Month(), date.Day(), h, 0, 0, 0, date.Location())
-		slotEnd := slotStart.Add(1 * time.Hour)
+	// Iterate by hour from Opening Time until Closing Time
+	// We construct daily dates based on the passed 'date'
+
+	// Start Time for the day
+	// Start Time for the day
+	loopStart := time.Date(date.Year(), date.Month(), date.Day(), startH, startM, 0, 0, date.Location())
+
+	// End Time for the day
+	loopEnd := time.Date(date.Year(), date.Month(), date.Day(), endH, endM, 0, 0, date.Location())
+
+	// Loop in 1-hour increments
+	for t := loopStart; t.Before(loopEnd); t = t.Add(1 * time.Hour) {
+		slotEnd := t.Add(1 * time.Hour)
+
+		// If slotEnd exceeds ClosingTime, should we include partial slot?
+		// Usually booking systems enforce full slots. We'll skip if it exceeds.
+		if slotEnd.After(loopEnd) {
+			break
+		}
 
 		// Pass pre-fetched maintenance to helper
-		status := uc.determineSlotStatusInMemory(slotStart, slotEnd, bookings, dailyMaintenance)
+		status := uc.determineSlotStatusInMemory(t, slotEnd, bookings, dailyMaintenance)
 
 		slots = append(slots, map[string]interface{}{
-			"start_time": slotStart.Format("15:04"),
+			"start_time": t.Format("15:04"),
 			"end_time":   slotEnd.Format("15:04"),
 			"available":  status == "available",
 			"status":     status,
@@ -716,4 +728,15 @@ func (uc *BookingUseCases) JoinWaitlist(ctx context.Context, clubID string, dto 
 		return nil, err
 	}
 	return entry, nil
+}
+
+func parseTimeStr(timeStr string, defaultH, defaultM int) (int, int) {
+	if timeStr == "" {
+		return defaultH, defaultM
+	}
+	t, err := time.Parse("15:04", timeStr)
+	if err != nil {
+		return defaultH, defaultM
+	}
+	return t.Hour(), t.Minute()
 }
