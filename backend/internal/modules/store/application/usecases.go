@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/domain"
+	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 )
 
@@ -41,7 +42,7 @@ func (uc *StoreUseCases) PurchaseItems(ctx context.Context, req PurchaseRequest)
 		return nil, errors.New("must provide UserID or GuestEmail")
 	}
 
-	var totalAmount float64
+	var totalAmount decimal.Decimal
 	var orderItems []domain.OrderItem
 
 	// Validate stock and calculate total (Optimistic check, real deduction happens in repo transaction)
@@ -59,7 +60,9 @@ func (uc *StoreUseCases) PurchaseItems(ctx context.Context, req PurchaseRequest)
 		}
 
 		item.UnitPrice = product.Price
-		totalAmount += item.UnitPrice * float64(item.Quantity)
+		// totalAmount += item.UnitPrice * float64(item.Quantity)
+		lineTotal := item.UnitPrice.Mul(decimal.NewFromInt(int64(item.Quantity)))
+		totalAmount = totalAmount.Add(lineTotal)
 		orderItems = append(orderItems, item)
 	}
 

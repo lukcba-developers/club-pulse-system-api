@@ -46,7 +46,7 @@ type CheckoutRequest struct {
 }
 
 // Checkout creates a payment record and returns a payment gateway URL.
-func (uc *PaymentUseCases) Checkout(ctx context.Context, req CheckoutRequest) (string, error) {
+func (uc *PaymentUseCases) Checkout(ctx context.Context, req CheckoutRequest) (*domain.Payment, string, error) {
 	payment := &domain.Payment{
 		ID:            uuid.New(),
 		Amount:        decimal.NewFromFloat(req.Amount),
@@ -61,16 +61,16 @@ func (uc *PaymentUseCases) Checkout(ctx context.Context, req CheckoutRequest) (s
 
 	if err := uc.repo.Create(ctx, payment); err != nil {
 		log.Printf("Failed to create payment: %v", err)
-		return "", errors.New("failed to create payment record")
+		return nil, "", errors.New("failed to create payment record")
 	}
 
 	url, err := uc.gateway.CreatePreference(ctx, payment, req.PayerEmail, req.Description)
 	if err != nil {
 		log.Printf("Gateway Error: %v", err)
-		return "", errors.New("failed to contact payment gateway")
+		return nil, "", errors.New("failed to contact payment gateway")
 	}
 
-	return url, nil
+	return payment, url, nil
 }
 
 // ProcessWebhookRequest contains parsed webhook data.

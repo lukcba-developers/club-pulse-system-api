@@ -17,6 +17,7 @@ import (
 	storeHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/infrastructure/http"
 	storeRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/store/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,7 +71,7 @@ func TestStoreFlow(t *testing.T) {
 		ClubID:        "test-club-store",
 		Name:          "Protein Bar",
 		Description:   "Chocolate",
-		Price:         250.0,
+		Price:         decimal.NewFromFloat(250.0),
 		StockQuantity: 100,
 		Category:      "Food",
 	})
