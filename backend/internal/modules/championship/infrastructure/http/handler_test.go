@@ -101,7 +101,7 @@ func (m *MockChampionshipRepo) GetMatchesByGroup(ctx context.Context, clubID, gr
 	return args.Get(0).([]domain.TournamentMatch), args.Error(1)
 }
 
-func (m *MockChampionshipRepo) UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore int) error {
+func (m *MockChampionshipRepo) UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore float64) error {
 	args := m.Called(ctx, clubID, matchID, homeScore, awayScore)
 	return args.Error(0)
 }
@@ -303,7 +303,10 @@ func TestChampionshipHandler_Tournaments(t *testing.T) {
 	t.Run("Create Tournament", func(t *testing.T) {
 		mockRepo.On("CreateTournament", mock.Anything, mock.Anything).Return(nil).Once()
 		body, _ := json.Marshal(application.CreateTournamentInput{
-			ClubID: cID, Name: "Interclub", Sport: "Padel",
+			ClubID:    cID,
+			Name:      "Interclub",
+			Sport:     "Padel",
+			StartDate: time.Now(),
 		})
 		req, _ := http.NewRequest("POST", "/api/v1/championships/", bytes.NewBuffer(body))
 		resp := httptest.NewRecorder()
@@ -443,10 +446,10 @@ func TestChampionshipHandler_StagesAndResults(t *testing.T) {
 
 	t.Run("Update Result", func(t *testing.T) {
 		mID := uuid.New()
-		mockRepo.On("UpdateMatchResult", mock.Anything, cID, mID.String(), 2, 1).Return(nil).Once()
+		mockRepo.On("UpdateMatchResult", mock.Anything, cID, mID.String(), 2.0, 1.0).Return(nil).Once()
 		mockRepo.On("GetMatch", mock.Anything, cID, mID.String()).Return(&domain.TournamentMatch{ID: mID}, nil).Once()
 
-		body, _ := json.Marshal(application.UpdateMatchResultInput{MatchID: mID.String(), HomeScore: 2, AwayScore: 1})
+		body, _ := json.Marshal(application.UpdateMatchResultInput{MatchID: mID.String(), HomeScore: 2.0, AwayScore: 1.0})
 		req, _ := http.NewRequest("POST", "/api/v1/championships/matches/result", bytes.NewBuffer(body))
 		resp := httptest.NewRecorder()
 		r.ServeHTTP(resp, req)
@@ -593,8 +596,8 @@ func TestChampionshipHandler_DetailedErrors(t *testing.T) {
 	})
 	t.Run("UpdateMatchResult_ServiceError", func(t *testing.T) {
 		mID := uuid.New()
-		mockRepo.On("UpdateMatchResult", mock.Anything, cID, mID.String(), 1, 1).Return(errors.New("fail")).Once()
-		body, _ := json.Marshal(application.UpdateMatchResultInput{MatchID: mID.String(), HomeScore: 1, AwayScore: 1})
+		mockRepo.On("UpdateMatchResult", mock.Anything, cID, mID.String(), 1.0, 1.0).Return(errors.New("fail")).Once()
+		body, _ := json.Marshal(application.UpdateMatchResultInput{MatchID: mID.String(), HomeScore: 1.0, AwayScore: 1.0})
 		req, _ := http.NewRequest("POST", "/api/v1/championships/matches/result", bytes.NewBuffer(body))
 		resp := httptest.NewRecorder()
 		r.ServeHTTP(resp, req)

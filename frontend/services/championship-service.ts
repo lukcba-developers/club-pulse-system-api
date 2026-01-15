@@ -1,4 +1,16 @@
 import api from '@/lib/axios';
+import {
+    TOURNAMENT_STATUS,
+    type TournamentStatus,
+    TournamentStatusSchema,
+    MatchStatusSchema,
+    TournamentFormSchema,
+    MatchResultSchema
+} from '@/lib/validations/championship';
+
+// Re-export for backward compatibility
+export { TOURNAMENT_STATUS, TournamentStatusSchema, MatchStatusSchema };
+export type { TournamentStatus };
 
 export interface Tournament {
     id: string;
@@ -6,11 +18,12 @@ export interface Tournament {
     description?: string;
     sport: string;
     category?: string;
-    status: 'DRAFT' | 'ACTIVE' | 'COMPLETED';
+    status: TournamentStatus;
     start_date: string;
     end_date?: string;
     stages?: TournamentStage[];
     club_id?: string;
+    settings?: Record<string, unknown>;
 }
 
 export interface TournamentStage {
@@ -97,7 +110,18 @@ export const championshipService = {
     },
 
     async updateMatchResult(matchId: string, homeScore: number, awayScore: number): Promise<void> {
-        await api.post('/championships/matches/result', { match_id: matchId, home_score: homeScore, away_score: awayScore });
+        // Validate with Zod schema for type safety
+        const validatedData = MatchResultSchema.parse({
+            match_id: matchId,
+            home_score: homeScore,
+            away_score: awayScore
+        });
+
+        await api.post('/championships/matches/result', {
+            match_id: validatedData.match_id,
+            home_score: validatedData.home_score,
+            away_score: validatedData.away_score
+        });
     },
 
     async scheduleMatch(data: { club_id: string; match_id: string; court_id: string; start_time: string; end_time: string }): Promise<void> {

@@ -34,10 +34,10 @@ func NewChampionshipUseCases(repo domain.ChampionshipRepository, bookingService 
 
 type CreateTournamentInput struct {
 	ClubID    string    `json:"club_id"`
-	Name      string    `json:"name"`
-	Sport     string    `json:"sport"`
+	Name      string    `json:"name" binding:"required"`
+	Sport     string    `json:"sport" binding:"required"`
 	Category  string    `json:"category"`
-	StartDate time.Time `json:"start_date"`
+	StartDate time.Time `json:"start_date" binding:"required" time_format:"2006-01-02T15:04:05Z07:00"`
 }
 
 func (uc *ChampionshipUseCases) CreateTournament(ctx context.Context, input CreateTournamentInput) (*domain.Tournament, error) {
@@ -205,10 +205,10 @@ func (uc *ChampionshipUseCases) GenerateGroupFixture(ctx context.Context, clubID
 }
 
 type UpdateMatchResultInput struct {
-	ClubID    string `json:"club_id"`
-	MatchID   string `json:"match_id"`
-	HomeScore int    `json:"home_score"`
-	AwayScore int    `json:"away_score"`
+	ClubID    string  `json:"club_id"`
+	MatchID   string  `json:"match_id"`
+	HomeScore float64 `json:"home_score"`
+	AwayScore float64 `json:"away_score"`
 }
 
 func (uc *ChampionshipUseCases) UpdateMatchResult(ctx context.Context, input UpdateMatchResultInput) error {

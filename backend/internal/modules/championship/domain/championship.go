@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 )
 
 type TournamentStatus string
@@ -28,6 +29,8 @@ type Tournament struct {
 	LogoURL     string           `json:"logo_url,omitempty"`
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   time.Time        `json:"updated_at"`
+
+	Settings datatypes.JSON `json:"settings" gorm:"default:'{}'"` // Dynamic configuration (points per win, durations, etc)
 
 	Stages []TournamentStage `json:"stages,omitempty" gorm:"foreignKey:TournamentID"`
 }
@@ -87,9 +90,9 @@ type Standing struct {
 	Won            int       `json:"won"`
 	Drawn          int       `json:"drawn"`
 	Lost           int       `json:"lost"`
-	GoalsFor       int       `json:"goals_for"`
-	GoalsAgainst   int       `json:"goals_against"`
-	GoalDifference int       `json:"goal_difference"`
+	GoalsFor       float64   `json:"goals_for"`
+	GoalsAgainst   float64   `json:"goals_against"`
+	GoalDifference float64   `json:"goal_difference"`
 	UpdatedAt      time.Time `json:"updated_at"`
 
 	// Enriched Fields
@@ -113,8 +116,8 @@ type TournamentMatch struct {
 	HomeTeamID uuid.UUID `json:"home_team_id" gorm:"type:uuid;not null;index"`
 	AwayTeamID uuid.UUID `json:"away_team_id" gorm:"type:uuid;not null;index"`
 
-	HomeScore *int `json:"home_score,omitempty"`
-	AwayScore *int `json:"away_score,omitempty"`
+	HomeScore *float64 `json:"home_score,omitempty"`
+	AwayScore *float64 `json:"away_score,omitempty"`
 
 	BookingID *uuid.UUID  `json:"booking_id,omitempty" gorm:"type:uuid;index"` // Link to Booking system
 	Status    MatchStatus `json:"status" gorm:"default:'SCHEDULED'"`
@@ -141,7 +144,7 @@ type ChampionshipRepository interface {
 	CreateMatchesBatch(ctx context.Context, matches []TournamentMatch) error // Atomic batch creation
 	GetMatch(ctx context.Context, clubID, id string) (*TournamentMatch, error)
 	GetMatchesByGroup(ctx context.Context, clubID, groupID string) ([]TournamentMatch, error)
-	UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore int) error
+	UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore float64) error
 	UpdateMatchScheduling(ctx context.Context, clubID, matchID string, date time.Time, bookingID uuid.UUID) error
 	GetStandings(ctx context.Context, clubID, groupID string) ([]Standing, error)
 	RegisterTeam(ctx context.Context, standing *Standing) error

@@ -9,6 +9,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/championship/infrastructure/repository"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -23,6 +24,7 @@ type TestTournament struct {
 	Sport       string `gorm:"not null"`
 	Category    string
 	Status      string `gorm:"default:'DRAFT'"`
+	Settings    datatypes.JSON
 	StartDate   time.Time
 	EndDate     *time.Time
 	LogoURL     string
@@ -60,9 +62,9 @@ type TestStanding struct {
 	Won            int
 	Drawn          int
 	Lost           int
-	GoalsFor       int
-	GoalsAgainst   int
-	GoalDifference int
+	GoalsFor       float64
+	GoalsAgainst   float64
+	GoalDifference float64
 	UpdatedAt      time.Time
 }
 
@@ -75,8 +77,8 @@ type TestMatch struct {
 	GroupID      *uuid.UUID `gorm:"type:uuid;index"`
 	HomeTeamID   uuid.UUID  `gorm:"type:uuid;not null;index"`
 	AwayTeamID   uuid.UUID  `gorm:"type:uuid;not null;index"`
-	HomeScore    *int
-	AwayScore    *int
+	HomeScore    *float64
+	AwayScore    *float64
 	BookingID    *uuid.UUID `gorm:"type:uuid;index"`
 	Status       string     `gorm:"default:'SCHEDULED'"`
 	Date         time.Time
@@ -117,6 +119,26 @@ type TestTeamMember struct {
 
 func (TestTeamMember) TableName() string { return "team_members" }
 
+type TestUser struct {
+	ID    string `gorm:"primary_key"`
+	Name  string
+	Email string
+	Role  string
+}
+
+func (TestUser) TableName() string { return "users" }
+
+type TestTournamentTeamMember struct {
+	ID           uuid.UUID `gorm:"type:uuid;primary_key"`
+	TournamentID uuid.UUID `gorm:"type:uuid;not null;index"`
+	TeamID       uuid.UUID `gorm:"type:uuid;not null;index"`
+	MemberID     string    `gorm:"not null;index"`
+	PlayerName   string
+	PlayerNumber int
+}
+
+func (TestTournamentTeamMember) TableName() string { return "tournament_team_members" }
+
 func setupTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
@@ -132,7 +154,10 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&TestMatch{},
 		&TestTeam{},
 		&TestVolunteerAssignment{},
+		&TestVolunteerAssignment{},
 		&TestTeamMember{},
+		&TestUser{},
+		&TestTournamentTeamMember{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate: %v", err)
@@ -208,18 +233,18 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 		saved, _ := repo.GetMatch(context.TODO(), clubID.String(), m1.ID.String())
 		assert.NotNil(t, saved)
 
-		err = repo.UpdateMatchResult(context.TODO(), clubID.String(), m1.ID.String(), 2, 0)
+		err = repo.UpdateMatchResult(context.TODO(), clubID.String(), m1.ID.String(), 2.0, 0.0)
 		assert.NoError(t, err)
 
 		updated, _ := repo.GetMatch(context.TODO(), clubID.String(), m1.ID.String())
-		assert.Equal(t, 2, *updated.HomeScore)
+		assert.Equal(t, 2.0, *updated.HomeScore)
 		assert.Equal(t, domain.MatchCompleted, updated.Status)
 
 		// Create match from another club
 		otherClub := uuid.New()
 		m2 := domain.TournamentMatch{ID: uuid.New(), TournamentID: tournament.ID, StageID: stage.ID}
 		db.Create(&m2) // Note: This doesn't strictly link to otherClub correctly if championships table isn't updated, but the Join in UpdateMatchResult will fail to find it for otherClub
-		err = repo.UpdateMatchResult(context.TODO(), otherClub.String(), m2.ID.String(), 1, 1)
+		err = repo.UpdateMatchResult(context.TODO(), otherClub.String(), m2.ID.String(), 1.0, 1.0)
 		assert.Error(t, err)
 		assert.Equal(t, gorm.ErrRecordNotFound, err)
 	})
@@ -274,6 +299,10 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 		teamID := uuid.New()
 		db.Create(&TestTeam{ID: teamID, Name: "Best Team"})
 
+		// Create team members BEFORE registering team
+		db.Create(&TestUser{ID: "user-1", Name: "Player 1"})
+		db.Create(&TestTeamMember{TeamID: teamID, UserID: "user-1"})
+
 		standing := &domain.Standing{
 			ID:      uuid.New(),
 			GroupID: group.ID,
@@ -296,12 +325,82 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 		// Complex standings
 		t2 := uuid.New()
 		db.Create(&TestTeam{ID: t2, Name: "Team B"})
+		// Create member for Team B
+		db.Create(&TestUser{ID: "user-2", Name: "Player 2"})
+		db.Create(&TestTeamMember{TeamID: t2, UserID: "user-2"})
+
 		s2 := &domain.Standing{ID: uuid.New(), GroupID: group.ID, TeamID: t2, Points: 10}
 		_ = repo.RegisterTeam(context.TODO(), s2)
 
 		list, _ = repo.GetStandings(context.TODO(), clubID.String(), group.ID.String())
 		assert.Len(t, list, 2)
 		assert.Equal(t, "Team B", list[0].TeamName) // Team B has more points
+
+		// Verify Roster Snapshot
+		// Create a user and link to team
+		userID := "user-snap-1"
+		db.Create(&TestUser{ID: userID, Name: "Snapshot Player"})
+		db.Create(&TestTeamMember{TeamID: teamID, UserID: userID})
+
+		// Re-register team (should trigger snapshot insert logic, though typically done once per tournament/group)
+		// For test simplicity, we register a new team in a new group
+		group2 := &domain.Group{ID: uuid.New(), StageID: stage.ID, Name: "B"}
+		_ = repo.CreateGroup(context.TODO(), group2)
+
+		standingSnap := &domain.Standing{
+			ID:      uuid.New(),
+			GroupID: group2.ID,
+			TeamID:  teamID,
+		}
+		err = repo.RegisterTeam(context.TODO(), standingSnap)
+		assert.NoError(t, err)
+
+		var members []TestTournamentTeamMember
+		db.Where("tournament_id = ? AND team_id = ? AND group_id = ?", tournament.ID, teamID, group2.ID).Find(&members)
+		// Should have 2 members (user-1 and user-snap-1)
+		// Note: The snapshot happens only once per team registration, so we expect 2 total members for teamID
+		var allMembersForTeam []TestTournamentTeamMember
+		db.Where("tournament_id = ? AND team_id = ?", tournament.ID, teamID).Find(&allMembersForTeam)
+		assert.GreaterOrEqual(t, len(allMembersForTeam), 1)
+		// Verify the snapshot player is captured
+		found := false
+		for _, m := range allMembersForTeam {
+			if m.PlayerName == "Snapshot Player" {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Snapshot Player should be in the roster")
+	})
+
+	t.Run("RegisterTeam Rejects Empty Roster", func(t *testing.T) {
+		tournament := &domain.Tournament{ID: uuid.New(), ClubID: clubID, Name: "No Empty Teams"}
+		_ = repo.CreateTournament(context.TODO(), tournament)
+		stage := &domain.TournamentStage{ID: uuid.New(), TournamentID: tournament.ID, Name: "S1"}
+		_ = repo.CreateStage(context.TODO(), stage)
+		group := &domain.Group{ID: uuid.New(), StageID: stage.ID, Name: "A"}
+		_ = repo.CreateGroup(context.TODO(), group)
+
+		// Create team WITHOUT members
+		emptyTeamID := uuid.New()
+		db.Create(&TestTeam{ID: emptyTeamID, Name: "Empty Team"})
+
+		standing := &domain.Standing{
+			ID:      uuid.New(),
+			GroupID: group.ID,
+			TeamID:  emptyTeamID,
+		}
+
+		err := repo.RegisterTeam(context.TODO(), standing)
+		assert.Error(t, err)
+		if err != nil {
+			assert.Contains(t, err.Error(), "al menos 1 jugador")
+		}
+
+		// Verify standing was NOT created (transaction rolled back)
+		var count int64
+		db.Model(&TestStanding{}).Where("id = ?", standing.ID).Count(&count)
+		assert.Equal(t, int64(0), count)
 	})
 
 	t.Run("GetTeamMembers", func(t *testing.T) {

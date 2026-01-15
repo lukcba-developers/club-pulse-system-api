@@ -28,14 +28,14 @@ const (
 
 // LeaderboardEntry represents a single entry in the leaderboard.
 type LeaderboardEntry struct {
-	Rank          int    `json:"rank"`
-	UserID        string `json:"user_id"`
-	UserName      string `json:"user_name"`
-	AvatarURL     string `json:"avatar_url,omitempty"`
-	Score         int    `json:"score"`
-	Level         int    `json:"level"`
-	Change        int    `json:"change"` // Position change since last period (+2, -1, 0)
-	IsCurrentUser bool   `json:"is_current_user,omitempty"`
+	Rank          int     `json:"rank"`
+	UserID        string  `json:"user_id"`
+	UserName      string  `json:"user_name"`
+	AvatarURL     string  `json:"avatar_url,omitempty"`
+	Score         float64 `json:"score"`
+	Level         int     `json:"level"`
+	Change        int     `json:"change"` // Position change since last period (+2, -1, 0)
+	IsCurrentUser bool    `json:"is_current_user,omitempty"`
 }
 
 // Leaderboard represents a complete ranking table.

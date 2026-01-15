@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -106,7 +107,7 @@ func (r *PostgresChampionshipRepository) GetMatchesByGroup(ctx context.Context, 
 	return matches, err
 }
 
-func (r *PostgresChampionshipRepository) UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore int) error {
+func (r *PostgresChampionshipRepository) UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore float64) error {
 	// Verify club ownership before update
 	var count int64
 	r.db.WithContext(ctx).Table("tournament_matches").
@@ -160,7 +161,44 @@ func (r *PostgresChampionshipRepository) GetStandings(ctx context.Context, clubI
 }
 
 func (r *PostgresChampionshipRepository) RegisterTeam(ctx context.Context, standing *domain.Standing) error {
-	return r.db.WithContext(ctx).Create(standing).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. Get Tournament ID from Group
+		var tournamentID string
+		err := tx.Table("groups").
+			Select("tournament_stages.tournament_id").
+			Joins("JOIN tournament_stages ON tournament_stages.id = groups.stage_id").
+			Where("groups.id = ?", standing.GroupID).
+			Scan(&tournamentID).Error
+		if err != nil {
+			return err
+		}
+
+		// 2. Validate Team Has Members BEFORE Creating Standing
+		var memberCount int64
+		tx.Table("team_members").
+			Where("team_id = ?", standing.TeamID).
+			Count(&memberCount)
+
+		if memberCount < 1 {
+			return errors.New("el equipo debe tener al menos 1 jugador registrado para participar en el torneo")
+		}
+
+		// 3. Create the Standing (Register Team in Group)
+		if err := tx.Create(standing).Error; err != nil {
+			return err
+		}
+
+		// 4. Snapshot: Copy Current Team Members to TournamentTeamMembers
+		err = tx.Exec(`
+			INSERT INTO tournament_team_members (tournament_id, team_id, member_id, player_name, player_number)
+			SELECT ?, ?, tm.user_id, u.name, 0
+			FROM team_members tm
+			LEFT JOIN users u ON u.id = tm.user_id
+			WHERE tm.team_id = ?
+		`, tournamentID, standing.TeamID, standing.TeamID).Error
+
+		return err
+	})
 }
 
 func (r *PostgresChampionshipRepository) UpdateStanding(ctx context.Context, standing *domain.Standing) error {

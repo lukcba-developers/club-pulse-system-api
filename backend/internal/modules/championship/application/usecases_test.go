@@ -94,7 +94,7 @@ func (m *MockChampionshipRepo) GetMatchesByGroup(ctx context.Context, clubID, gr
 	return res, args.Error(1)
 }
 
-func (m *MockChampionshipRepo) UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore int) error {
+func (m *MockChampionshipRepo) UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore float64) error {
 	args := m.Called(ctx, clubID, matchID, homeScore, awayScore)
 	return args.Error(0)
 }
@@ -383,7 +383,7 @@ func TestChampionshipUseCases_Results(t *testing.T) {
 			HomeTeamID:   uuid.New(),
 			AwayTeamID:   uuid.New(),
 		}
-		repo.On("UpdateMatchResult", mock.Anything, cID, mID, 2, 1).Return(nil).Once()
+		repo.On("UpdateMatchResult", mock.Anything, cID, mID, 2.0, 1.0).Return(nil).Once()
 		repo.On("GetMatch", mock.Anything, cID, mID).Return(match, nil).Once()
 		repo.On("GetTournament", mock.Anything, cID, mock.Anything).Return(&domain.Tournament{ClubID: uuid.New()}, nil).Once()
 		repo.On("GetTeamMembers", mock.Anything, mock.Anything).Return([]string{"u1"}, nil).Twice()
@@ -393,8 +393,8 @@ func TestChampionshipUseCases_Results(t *testing.T) {
 		repo.On("GetStandings", mock.Anything, cID, mock.Anything).Return([]domain.Standing{
 			{TeamID: match.HomeTeamID}, {TeamID: match.AwayTeamID},
 		}, nil).Once()
-		hScore := 2
-		aScore := 1
+		hScore := 2.0
+		aScore := 1.0
 		repo.On("GetMatchesByGroup", mock.Anything, cID, mock.Anything).Return([]domain.TournamentMatch{
 			{
 				HomeTeamID: match.HomeTeamID, AwayTeamID: match.AwayTeamID,
@@ -404,25 +404,25 @@ func TestChampionshipUseCases_Results(t *testing.T) {
 		repo.On("UpdateStandingsBatch", mock.Anything, mock.Anything).Return(nil).Once()
 
 		err := uc.UpdateMatchResult(context.TODO(), application.UpdateMatchResultInput{
-			ClubID: cID, MatchID: mID, HomeScore: 2, AwayScore: 1,
+			ClubID: cID, MatchID: mID, HomeScore: 2.0, AwayScore: 1.0,
 		})
 		assert.NoError(t, err)
 	})
 
 	t.Run("UpdateMatchResult MatchNotFoundError", func(t *testing.T) {
-		repo.On("UpdateMatchResult", mock.Anything, cID, mID, 2, 1).Return(nil).Once()
+		repo.On("UpdateMatchResult", mock.Anything, cID, mID, 2.0, 1.0).Return(nil).Once()
 		repo.On("GetMatch", mock.Anything, cID, mID).Return(nil, nil).Once()
 		err := uc.UpdateMatchResult(context.TODO(), application.UpdateMatchResultInput{
-			ClubID: cID, MatchID: mID, HomeScore: 2, AwayScore: 1,
+			ClubID: cID, MatchID: mID, HomeScore: 2.0, AwayScore: 1.0,
 		})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "match not found")
 	})
 
 	t.Run("UpdateMatchResult RepoError", func(t *testing.T) {
-		repo.On("UpdateMatchResult", mock.Anything, cID, mID, 2, 1).Return(errors.New("db error")).Once()
+		repo.On("UpdateMatchResult", mock.Anything, cID, mID, 2.0, 1.0).Return(errors.New("db error")).Once()
 		err := uc.UpdateMatchResult(context.TODO(), application.UpdateMatchResultInput{
-			ClubID: cID, MatchID: mID, HomeScore: 2, AwayScore: 1,
+			ClubID: cID, MatchID: mID, HomeScore: 2.0, AwayScore: 1.0,
 		})
 		assert.Error(t, err)
 	})

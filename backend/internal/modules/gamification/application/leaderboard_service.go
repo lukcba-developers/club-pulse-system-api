@@ -181,7 +181,7 @@ func (s *LeaderboardServiceImpl) buildEntriesFromUsers(users []userDomain.User, 
 		entries = append(entries, domain.LeaderboardEntry{
 			UserID:   user.ID,
 			UserName: user.Name,
-			Score:    score,
+			Score:    float64(score),
 			Level:    user.Stats.Level,
 			Change:   0, // Would require historical tracking
 		})
@@ -203,7 +203,7 @@ func (s *LeaderboardServiceImpl) buildBookingEntriesFromUsers(users []userDomain
 		entries = append(entries, domain.LeaderboardEntry{
 			UserID:   user.ID,
 			UserName: user.Name,
-			Score:    bookings,
+			Score:    float64(bookings),
 			Level:    1,
 		})
 	}
