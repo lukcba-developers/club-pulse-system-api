@@ -64,10 +64,10 @@ type OrderItem struct {
 
 type StoreRepository interface {
 	CreateProduct(ctx context.Context, product *Product) error
-	GetProduct(ctx context.Context, id string) (*Product, error)
+	GetProduct(ctx context.Context, clubID, id string) (*Product, error)
 	UpdateProduct(ctx context.Context, product *Product) error
 	ListProducts(ctx context.Context, clubID string, category string) ([]Product, error)
 	CreateOrder(ctx context.Context, order *Order) error
 	CreateOrderWithStockUpdate(ctx context.Context, order *Order, items []OrderItem) error
-	DecreaseStock(ctx context.Context, productID string, quantity int) error
+	DecreaseStock(ctx context.Context, clubID, productID string, quantity int) error
 }

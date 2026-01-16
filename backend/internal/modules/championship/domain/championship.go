@@ -141,16 +141,16 @@ type ChampionshipRepository interface {
 	GetStage(ctx context.Context, clubID, id string) (*TournamentStage, error)
 	CreateGroup(ctx context.Context, group *Group) error
 	GetGroup(ctx context.Context, clubID, id string) (*Group, error)
-	CreateMatch(ctx context.Context, match *TournamentMatch) error
-	CreateMatchesBatch(ctx context.Context, matches []TournamentMatch) error // Atomic batch creation
+	CreateMatch(ctx context.Context, clubID string, match *TournamentMatch) error
+	CreateMatchesBatch(ctx context.Context, clubID string, matches []TournamentMatch) error // Atomic batch creation
 	GetMatch(ctx context.Context, clubID, id string) (*TournamentMatch, error)
 	GetMatchesByGroup(ctx context.Context, clubID, groupID string) ([]TournamentMatch, error)
 	UpdateMatchResult(ctx context.Context, clubID, matchID string, homeScore, awayScore float64) error
 	UpdateMatchScheduling(ctx context.Context, clubID, matchID string, date time.Time, bookingID uuid.UUID) error
 	GetStandings(ctx context.Context, clubID, groupID string) ([]Standing, error)
-	RegisterTeam(ctx context.Context, standing *Standing) error
+	RegisterTeam(ctx context.Context, clubID string, standing *Standing) error
 	UpdateStanding(ctx context.Context, standing *Standing) error
-	UpdateStandingsBatch(ctx context.Context, standings []Standing) error
+	UpdateStandingsBatch(ctx context.Context, clubID string, standings []Standing) error
 	GetTeamMembers(ctx context.Context, teamID string) ([]string, error)
 	CreateTeam(ctx context.Context, team *Team) error
 	AddMember(ctx context.Context, teamID, userID string) error

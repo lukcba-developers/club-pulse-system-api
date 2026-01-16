@@ -62,7 +62,7 @@ func (uc *TeamUseCases) RespondAvailability(ctx context.Context, clubID, eventID
 		UpdatedAt:    time.Now(),
 	}
 
-	return uc.repo.SetPlayerAvailability(ctx, availability)
+	return uc.repo.SetPlayerAvailability(ctx, clubID, availability)
 }
 
 func (uc *TeamUseCases) GetEventAvailabilities(ctx context.Context, clubID, eventID string) ([]domain.PlayerAvailability, error) {

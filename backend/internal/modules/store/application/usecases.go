@@ -48,7 +48,7 @@ func (uc *StoreUseCases) PurchaseItems(ctx context.Context, req PurchaseRequest)
 	// Validate stock and calculate total (Optimistic check, real deduction happens in repo transaction)
 	// In a high concurrence scenario, repo should handle "UPDATE ... WHERE stock > qty"
 	for _, item := range req.Items {
-		product, err := uc.repo.GetProduct(ctx, item.ProductID.String())
+		product, err := uc.repo.GetProduct(ctx, req.ClubID, item.ProductID.String())
 		if err != nil {
 			return nil, errors.New("product not found: " + item.ProductID.String())
 		}

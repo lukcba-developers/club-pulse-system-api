@@ -316,9 +316,9 @@ func (r *PostgresUserRepository) CreateIncident(ctx context.Context, incident *d
 	return r.db.WithContext(ctx).Create(incident).Error
 }
 
-func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (r *PostgresUserRepository) GetByEmail(ctx context.Context, clubID, email string) (*domain.User, error) {
 	var model UserModel
-	result := r.db.WithContext(ctx).Where("email = ?", email).First(&model)
+	result := r.db.WithContext(ctx).Where("email = ? AND club_id = ?", email, clubID).First(&model)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil

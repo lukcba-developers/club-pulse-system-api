@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { FacilityCard } from './facility-card';
-import { Facility } from '@/services/facility-service';
+import { Facility, FacilityType, FacilityStatus } from '@/types/facility';
 
 // Mock child components dynamically loaded
 jest.mock('@/components/booking-modal', () => ({
@@ -22,28 +22,34 @@ jest.mock('@/components/facility-schedule-modal', () => ({
 // Mock Next.js Image
 jest.mock('next/image', () => ({
     __esModule: true,
-    default: (props: any) => <img {...props} alt={props.alt} />,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    default: (props: any) => {
+        // eslint-disable-next-line @next/next/no-img-element
+        return <img {...props} alt={props.alt} />;
+    },
 }));
 
 describe('FacilityCard', () => {
     const mockFacility: Facility = {
         id: '123',
         name: 'Tennis Court 1',
-        type: 'court',
+        type: FacilityType.Court,
         description: 'Best court',
         capacity: 4,
         hourly_rate: 50,
-        status: 'active',
+        status: FacilityStatus.Active,
         location: {
             name: 'Central Club',
             description: 'Main Hall',
-            address: '123 Main St',
-            latitude: 0,
-            longitude: 0
         },
+        specifications: {
+            surface_type: 'Clay',
+            lighting: true,
+            covered: false
+        },
+        guest_fee: 10,
         opening_time: '09:00',
         closing_time: '21:00',
-        images: [],
         club_id: 'club-1',
         created_at: '',
         updated_at: ''
@@ -66,7 +72,7 @@ describe('FacilityCard', () => {
     });
 
     it('displays "Ocupado" status when inactive', () => {
-        const inactiveFacility = { ...mockFacility, status: 'inactive' };
+        const inactiveFacility = { ...mockFacility, status: FacilityStatus.Closed };
         render(<FacilityCard facility={inactiveFacility} />);
         expect(screen.getByText('Ocupado')).toBeInTheDocument();
     });

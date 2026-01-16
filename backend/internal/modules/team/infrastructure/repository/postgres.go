@@ -28,7 +28,20 @@ func (r *PostgresTeamRepository) GetMatchEvent(ctx context.Context, clubID, id s
 	return &event, err
 }
 
-func (r *PostgresTeamRepository) SetPlayerAvailability(ctx context.Context, availability *domain.PlayerAvailability) error {
+func (r *PostgresTeamRepository) SetPlayerAvailability(ctx context.Context, clubID string, availability *domain.PlayerAvailability) error {
+	// Verify that the match event belongs to the club
+	var count int64
+	err := r.db.WithContext(ctx).Table("match_events").
+		Joins("JOIN training_groups ON training_groups.id = match_events.training_group_id").
+		Where("match_events.id = ? AND training_groups.club_id = ?", availability.MatchEventID, clubID).
+		Count(&count).Error
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
 	// Upsert: On conflict update status and reason
 	return r.db.WithContext(ctx).Save(availability).Error
 }

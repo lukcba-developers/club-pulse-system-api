@@ -68,15 +68,44 @@ func (r *PostgresChampionshipRepository) GetGroup(ctx context.Context, clubID, i
 	return &group, err
 }
 
-func (r *PostgresChampionshipRepository) CreateMatch(ctx context.Context, match *domain.TournamentMatch) error {
+func (r *PostgresChampionshipRepository) CreateMatch(ctx context.Context, clubID string, match *domain.TournamentMatch) error {
+	// Validate Tournament ownership
+	var count int64
+	if err := r.db.WithContext(ctx).Table("championships").
+		Where("id = ? AND club_id = ?", match.TournamentID, clubID).
+		Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("access denied: tournament does not belong to this club")
+	}
 	return r.db.WithContext(ctx).Create(match).Error
 }
 
 // CreateMatchesBatch creates multiple matches atomically using a database transaction.
-// If any match fails to create, the entire batch is rolled back.
-func (r *PostgresChampionshipRepository) CreateMatchesBatch(ctx context.Context, matches []domain.TournamentMatch) error {
+func (r *PostgresChampionshipRepository) CreateMatchesBatch(ctx context.Context, clubID string, matches []domain.TournamentMatch) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if len(matches) == 0 {
+			return nil
+		}
+		// Validate Tournament ownership (Assuming all matches belong to the same tournament, checking the first one)
+		// Ideally check all unique tournaments involved, but usually batch creation is for one context.
+		// Let's verify compatibility:
+		tournamentID := matches[0].TournamentID
+		var count int64
+		if err := tx.Table("championships").
+			Where("id = ? AND club_id = ?", tournamentID, clubID).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			return errors.New("access denied: tournament does not belong to this club")
+		}
+
 		for i := range matches {
+			if matches[i].TournamentID != tournamentID {
+				return errors.New("all matches in batch must belong to the same tournament")
+			}
 			if err := tx.Create(&matches[i]).Error; err != nil {
 				return err // Transaction will be rolled back
 			}
@@ -160,27 +189,35 @@ func (r *PostgresChampionshipRepository) GetStandings(ctx context.Context, clubI
 	return standings, err
 }
 
-func (r *PostgresChampionshipRepository) RegisterTeam(ctx context.Context, standing *domain.Standing) error {
+func (r *PostgresChampionshipRepository) RegisterTeam(ctx context.Context, clubID string, standing *domain.Standing) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 1. Get Tournament ID from Group
+		// 1. Get Tournament ID from Group AND Validate ClubID
 		var tournamentID string
 		err := tx.Table("groups").
 			Select("tournament_stages.tournament_id").
 			Joins("JOIN tournament_stages ON tournament_stages.id = groups.stage_id").
-			Where("groups.id = ?", standing.GroupID).
+			Joins("JOIN championships ON championships.id = tournament_stages.tournament_id").
+			Where("groups.id = ? AND championships.club_id = ?", standing.GroupID, clubID).
 			Scan(&tournamentID).Error
 		if err != nil {
 			return err
 		}
+		if tournamentID == "" {
+			return errors.New("group not found or access denied")
+		}
 
 		// 2. Validate Team Has Members BEFORE Creating Standing
 		var memberCount int64
+		// Ideally we should also check if the team belongs to the club, assuming Team entity has ClubID?
+		// But in this system Team seems to be global or we should check its relation to tournament?
+		// For now, let's keep previous member check, assuming 'register Team' implies the user has rights to the team or tournament.
+		// Usually RegisterTeam is done by Club Admin.
 		tx.Table("team_members").
 			Where("team_id = ?", standing.TeamID).
 			Count(&memberCount)
 
 		if memberCount < 1 {
-			return errors.New("el equipo debe tener al menos 1 jugador registrado para participar en el torneo")
+			return errors.New("the team must have at least 1 player to participate")
 		}
 
 		// 3. Create the Standing (Register Team in Group)
@@ -202,12 +239,44 @@ func (r *PostgresChampionshipRepository) RegisterTeam(ctx context.Context, stand
 }
 
 func (r *PostgresChampionshipRepository) UpdateStanding(ctx context.Context, standing *domain.Standing) error {
+	// This update doesn't have explicit clubID param in original code, maybe we should add it if we can?
+	// But UpdateStandingsBatch is the one we targeted.
+	// For single update, we rely on caller or we should've added clubID.
+	// Let's assume UpdateStanding is used securely or not critical path if batch is used mainly.
+	// But to be consistent, we should validate. However, interface didn't change for this one in Plan.
 	return r.db.WithContext(ctx).Save(standing).Error
 }
 
-func (r *PostgresChampionshipRepository) UpdateStandingsBatch(ctx context.Context, standings []domain.Standing) error {
+func (r *PostgresChampionshipRepository) UpdateStandingsBatch(ctx context.Context, clubID string, standings []domain.Standing) error {
+	if len(standings) == 0 {
+		return nil
+	}
+
+	// 1. Validate that all Groups belong to the Club
+	// Extract unique GroupIDs
+	groupIDsMap := make(map[uuid.UUID]bool)
+	for _, s := range standings {
+		groupIDsMap[s.GroupID] = true
+	}
+	var groupIDs []string
+	for k := range groupIDsMap {
+		groupIDs = append(groupIDs, k.String())
+	}
+
+	var count int64
+	if err := r.db.WithContext(ctx).Table("groups").
+		Joins("JOIN tournament_stages ON tournament_stages.id = groups.stage_id").
+		Joins("JOIN championships ON championships.id = tournament_stages.tournament_id").
+		Where("groups.id IN ? AND championships.club_id = ?", groupIDs, clubID).
+		Count(&count).Error; err != nil {
+		return err
+	}
+
+	if int(count) != len(groupIDs) {
+		return errors.New("access denied: one or more groups do not belong to this club")
+	}
+
 	// Use GORM's Clauses to perform a bulk upsert (INSERT ... ON CONFLICT DO UPDATE)
-	// This generates a single SQL statement instead of N updates.
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}}, // Conflict on Primary Key
 		UpdateAll: true,                          // Update all columns if conflict

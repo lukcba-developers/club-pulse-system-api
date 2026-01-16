@@ -38,6 +38,6 @@ type PlayerAvailability struct {
 type TeamRepository interface {
 	CreateMatchEvent(ctx context.Context, event *MatchEvent) error
 	GetMatchEvent(ctx context.Context, clubID, id string) (*MatchEvent, error)
-	SetPlayerAvailability(ctx context.Context, availability *PlayerAvailability) error
+	SetPlayerAvailability(ctx context.Context, clubID string, availability *PlayerAvailability) error
 	GetEventAvailabilities(ctx context.Context, clubID, eventID string) ([]PlayerAvailability, error)
 }

@@ -111,18 +111,18 @@ func (r *PostgresClubRepository) GetPublicNewsByClub(ctx context.Context, clubID
 	return news, err
 }
 
-func (r *PostgresClubRepository) GetNewsByID(ctx context.Context, id uuid.UUID) (*domain.News, error) {
+func (r *PostgresClubRepository) GetNewsByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.News, error) {
 	var news domain.News
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&news).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ? AND club_id = ?", id, clubID).First(&news).Error; err != nil {
 		return nil, err
 	}
 	return &news, nil
 }
 
-func (r *PostgresClubRepository) UpdateNews(ctx context.Context, news *domain.News) error {
-	return r.db.WithContext(ctx).Save(news).Error
+func (r *PostgresClubRepository) UpdateNews(ctx context.Context, clubID string, news *domain.News) error {
+	return r.db.WithContext(ctx).Where("id = ? AND club_id = ?", news.ID, clubID).Updates(news).Error
 }
 
-func (r *PostgresClubRepository) DeleteNews(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Delete(&domain.News{}, "id = ?", id).Error
+func (r *PostgresClubRepository) DeleteNews(ctx context.Context, clubID string, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&domain.News{}, "id = ? AND club_id = ?", id, clubID).Error
 }

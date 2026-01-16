@@ -35,8 +35,10 @@ func (m *MockRepo) CreateGroup(ctx context.Context, group *domain.Group) error {
 func (m *MockRepo) GetGroup(ctx context.Context, clubID, id string) (*domain.Group, error) {
 	return nil, nil
 }
-func (m *MockRepo) CreateMatch(ctx context.Context, match *domain.TournamentMatch) error { return nil }
-func (m *MockRepo) CreateMatchesBatch(ctx context.Context, matches []domain.TournamentMatch) error {
+func (m *MockRepo) CreateMatch(ctx context.Context, clubID string, match *domain.TournamentMatch) error {
+	return nil
+}
+func (m *MockRepo) CreateMatchesBatch(ctx context.Context, clubID string, matches []domain.TournamentMatch) error {
 	return nil
 }
 func (m *MockRepo) GetMatch(ctx context.Context, clubID, id string) (*domain.TournamentMatch, error) {
@@ -54,9 +56,11 @@ func (m *MockRepo) UpdateMatchScheduling(ctx context.Context, clubID, matchID st
 func (m *MockRepo) GetStandings(ctx context.Context, clubID, groupID string) ([]domain.Standing, error) {
 	return nil, nil
 }
-func (m *MockRepo) RegisterTeam(ctx context.Context, standing *domain.Standing) error   { return nil }
+func (m *MockRepo) RegisterTeam(ctx context.Context, clubID string, standing *domain.Standing) error {
+	return nil
+}
 func (m *MockRepo) UpdateStanding(ctx context.Context, standing *domain.Standing) error { return nil }
-func (m *MockRepo) UpdateStandingsBatch(ctx context.Context, standings []domain.Standing) error {
+func (m *MockRepo) UpdateStandingsBatch(ctx context.Context, clubID string, standings []domain.Standing) error {
 	return nil
 }
 func (m *MockRepo) CreateTeam(ctx context.Context, team *domain.Team) error    { return nil }

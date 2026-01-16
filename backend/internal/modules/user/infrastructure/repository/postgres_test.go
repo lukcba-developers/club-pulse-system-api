@@ -123,7 +123,7 @@ func (s *UserRepositorySuite) TestGetByEmail() {
 	s.NoError(s.repo.Create(context.Background(), user))
 
 	// Find
-	found, err := s.repo.GetByEmail(context.Background(), "findme@example.com")
+	found, err := s.repo.GetByEmail(context.Background(), clubID, "findme@example.com")
 	s.NoError(err)
 	s.NotNil(found)
 	if found != nil {

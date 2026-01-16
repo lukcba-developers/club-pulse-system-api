@@ -134,6 +134,7 @@ type TestTournamentTeamMember struct {
 	TournamentID uuid.UUID `gorm:"type:uuid;not null;index"`
 	TeamID       uuid.UUID `gorm:"type:uuid;not null;index"`
 	MemberID     string    `gorm:"not null;index"`
+	GroupID      uuid.UUID `gorm:"type:uuid;index"`
 	PlayerName   string
 	PlayerNumber int
 }
@@ -228,7 +229,7 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 			Status:       domain.MatchScheduled,
 		}
 
-		err := repo.CreateMatchesBatch(context.TODO(), []domain.TournamentMatch{m1})
+		err := repo.CreateMatchesBatch(context.TODO(), clubID.String(), []domain.TournamentMatch{m1})
 		assert.NoError(t, err)
 
 		saved, _ := repo.GetMatch(context.TODO(), clubID.String(), m1.ID.String())
@@ -311,7 +312,7 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 			Points:  3,
 		}
 
-		err := repo.RegisterTeam(context.TODO(), standing)
+		err := repo.RegisterTeam(context.TODO(), clubID.String(), standing)
 		assert.NoError(t, err)
 
 		list, err := repo.GetStandings(context.TODO(), clubID.String(), group.ID.String())
@@ -320,7 +321,7 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 		assert.Equal(t, "Best Team", list[0].TeamName)
 
 		standing.Won = 1
-		err = repo.UpdateStandingsBatch(context.TODO(), []domain.Standing{*standing})
+		err = repo.UpdateStandingsBatch(context.TODO(), clubID.String(), []domain.Standing{*standing})
 		assert.NoError(t, err)
 
 		// Complex standings
@@ -331,7 +332,7 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 		db.Create(&TestTeamMember{TeamID: t2, UserID: "user-2"})
 
 		s2 := &domain.Standing{ID: uuid.New(), GroupID: group.ID, TeamID: t2, Points: 10}
-		_ = repo.RegisterTeam(context.TODO(), s2)
+		_ = repo.RegisterTeam(context.TODO(), clubID.String(), s2)
 
 		list, _ = repo.GetStandings(context.TODO(), clubID.String(), group.ID.String())
 		assert.Len(t, list, 2)
@@ -353,7 +354,7 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 			GroupID: group2.ID,
 			TeamID:  teamID,
 		}
-		err = repo.RegisterTeam(context.TODO(), standingSnap)
+		err = repo.RegisterTeam(context.TODO(), clubID.String(), standingSnap)
 		assert.NoError(t, err)
 
 		var members []TestTournamentTeamMember
@@ -392,10 +393,10 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 			TeamID:  emptyTeamID,
 		}
 
-		err := repo.RegisterTeam(context.TODO(), standing)
+		err := repo.RegisterTeam(context.TODO(), clubID.String(), standing)
 		assert.Error(t, err)
 		if err != nil {
-			assert.Contains(t, err.Error(), "al menos 1 jugador")
+			assert.Contains(t, err.Error(), "the team must have at least 1 player to participate")
 		}
 
 		// Verify standing was NOT created (transaction rolled back)
@@ -424,7 +425,7 @@ func TestPostgresChampionshipRepository(t *testing.T) {
 		m1 := domain.TournamentMatch{ID: uuid.New(), TournamentID: tournament.ID, StageID: stage.ID}
 		m2 := domain.TournamentMatch{ID: m1.ID, TournamentID: tournament.ID, StageID: stage.ID} // Duplicate ID for error
 
-		err := repo.CreateMatchesBatch(context.TODO(), []domain.TournamentMatch{m1, m2})
+		err := repo.CreateMatchesBatch(context.TODO(), clubID.String(), []domain.TournamentMatch{m1, m2})
 		assert.Error(t, err) // Should fail due to duplicate ID
 
 		var count int64
