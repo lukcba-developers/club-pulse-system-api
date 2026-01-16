@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type PostgresFacilityRepository struct {
@@ -73,6 +75,22 @@ func (r *PostgresFacilityRepository) Create(ctx context.Context, facility *domai
 func (r *PostgresFacilityRepository) GetByID(ctx context.Context, clubID, id string) (*domain.Facility, error) {
 	var model FacilityModel
 	result := r.db.WithContext(ctx).Where("id = ? AND club_id = ?", id, clubID).First(&model)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return r.toDomain(model), nil
+}
+
+func (r *PostgresFacilityRepository) GetByIDForUpdate(ctx context.Context, clubID, id string) (*domain.Facility, error) {
+	var model FacilityModel
+	db := r.db
+	if tx := database.GetTx(ctx); tx != nil {
+		db = tx
+	}
+	result := db.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND club_id = ?", id, clubID).First(&model)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -255,7 +273,11 @@ func (r *PostgresFacilityRepository) HasConflict(ctx context.Context, clubID, fa
 	// But maintenance tasks don't have ClubID on them explicitly, they rely on FacilityID.
 	// So just filtering by FacilityID is technically enough if we trust the facilityID belongs to the club.
 	// However, for strictness, we could join or check facility. But keeping it simple as Facility ownership is verified by ID.
-	err := r.db.WithContext(ctx).Model(&MaintenanceTaskModel{}).
+	db := r.db
+	if tx := database.GetTx(ctx); tx != nil {
+		db = tx
+	}
+	err := db.WithContext(ctx).Model(&MaintenanceTaskModel{}).
 		Where("facility_id = ?", facilityID).
 		Where("status IN ?", []string{string(domain.MaintenanceStatusScheduled), string(domain.MaintenanceStatusInProgress)}).
 		Where("start_time < ? AND end_time > ?", endTime, startTime).

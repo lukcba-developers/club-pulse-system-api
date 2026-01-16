@@ -32,6 +32,7 @@ type AccessLog struct {
 	UserID     string          `gorm:"type:text;not null" json:"user_id"`
 	FacilityID *uuid.UUID      `gorm:"type:uuid" json:"facility_id,omitempty"`
 	DeviceID   string          `gorm:"type:varchar(255)" json:"device_id,omitempty"`
+	EventID    string          `gorm:"type:varchar(255);uniqueIndex;not null" json:"event_id"`
 	Direction  AccessDirection `gorm:"type:varchar(10);not null" json:"direction"`
 	Status     AccessStatus    `gorm:"type:varchar(50);not null" json:"status"`
 	Reason     string          `gorm:"type:varchar(255)" json:"reason,omitempty"`
@@ -43,4 +44,5 @@ type AccessLog struct {
 type AccessRepository interface {
 	Create(ctx context.Context, log *AccessLog) error
 	GetByUserID(ctx context.Context, clubID string, userID string, limit int) ([]AccessLog, error)
+	GetByEventID(ctx context.Context, clubID string, eventID string) (*AccessLog, error)
 }

@@ -1,48 +1,9 @@
 import api from '../lib/axios';
 
-export enum FacilityType {
-    Court = "court",
-    Pool = "pool",
-    Gym = "gym",
-    Field = "field",
-    // Legacy values that may exist in DB
-    TennisCourt = "Tennis Court",
-    PadelCourt = "Padel Court",
-    SwimmingPool = "Swimming Pool",
-    FootballField = "Football Field",
-    GolfSimulator = "Golf Simulator"
-}
+import { Facility, FacilityType, FacilityStatus } from '@/types/facility';
 
-export enum FacilityStatus {
-    Active = "active",
-    Maintenance = "maintenance",
-    Closed = "closed"
-}
-
-export interface Facility {
-    id: string;
-    name: string;
-    description?: string;
-    type: FacilityType;
-    status: FacilityStatus;
-    capacity: number;
-    hourly_rate: number;
-    opening_time: string; // HH:MM
-    closing_time: string; // HH:MM
-    guest_fee: number;
-    specifications: {
-        surface_type?: string;
-        lighting: boolean;
-        covered: boolean;
-        equipment?: string[];
-    };
-    location: {
-        name: string;
-        description?: string;
-    };
-    created_at: string;
-    updated_at: string;
-}
+export { FacilityType, FacilityStatus };
+export type { Facility };
 
 export interface CreateFacilityRequest {
     name: string;

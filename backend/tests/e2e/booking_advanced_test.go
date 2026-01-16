@@ -16,6 +16,8 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
+	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
+	clubRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository"
 	facilitiesRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
@@ -37,17 +39,18 @@ func TestBookingAdvancedFlow(t *testing.T) {
 	database.InitDB()
 	db := database.GetDB()
 
-	_ = db.Migrator().DropTable(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{})
-	_ = db.AutoMigrate(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{}, &userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
+	_ = db.Migrator().DropTable(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{}, &clubDomain.Club{})
+	_ = db.AutoMigrate(&domain.Booking{}, &domain.Waitlist{}, &facilitiesRepo.FacilityModel{}, &userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &clubDomain.Club{})
 
 	facRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
 	bookRepo := bookingRepo.NewPostgresBookingRepository(db)
 	recRepo := bookingRepo.NewPostgresRecurringRepository(db)
+	clRepo := clubRepo.NewPostgresClubRepository(db)
 
 	usRepo := userRepo.NewPostgresUserRepository(db)
 
 	sharedMock := &SharedMockNotifier{}
-	uc := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, sharedMock, sharedMock)
+	uc := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, clRepo, usRepo, sharedMock, sharedMock)
 	h := bookingHttp.NewBookingHandler(uc)
 
 	// Middleware Helper (Removed as unused)
@@ -62,6 +65,13 @@ func TestBookingAdvancedFlow(t *testing.T) {
 		Status: "active",
 	})
 
+	// Club
+	db.Create(&clubDomain.Club{
+		ID:       "test-club-adv-booking",
+		Name:     "Test Club",
+		Timezone: "UTC",
+	})
+
 	// Users
 	user1ID := uuid.New().String()
 	user2ID := uuid.New().String()
@@ -69,7 +79,7 @@ func TestBookingAdvancedFlow(t *testing.T) {
 	db.Create(&userRepo.UserModel{ID: user2ID, ClubID: "test-club-adv-booking", Name: "U2", Email: "u2@test.com", MedicalCertStatus: "VALID"})
 
 	// 3. Test: User 1 Books
-	startTime := time.Now().Add(24 * time.Hour).Truncate(time.Hour)
+	startTime := time.Now().Add(48 * time.Hour).Truncate(24 * time.Hour).Add(10 * time.Hour)
 	endTime := startTime.Add(time.Hour)
 
 	// Duplicate test removed

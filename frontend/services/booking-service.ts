@@ -1,25 +1,8 @@
 import api from '../lib/axios';
 
-export interface Booking {
-    id: string;
-    club_id: string;
-    user_id: string;
-    facility_id: string;
-    start_time: string;
-    end_time: string;
-    total_price: string;
-    status: 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED' | 'COMPLETED' | 'NO_SHOW';
-    guest_details?: GuestDetail[];
-    payment_expiry?: string;
-    created_at: string;
-    updated_at: string;
-}
+import { Booking, GuestDetail } from '@/types/booking';
 
-export interface GuestDetail {
-    name: string;
-    dni: string;
-    fee_amount: number;
-}
+export type { Booking, GuestDetail };
 
 export interface CreateBookingDTO {
     facility_id: string;

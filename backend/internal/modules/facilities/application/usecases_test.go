@@ -30,6 +30,14 @@ func (m *MockFacilityRepo) GetByID(ctx context.Context, clubID, id string) (*dom
 	return args.Get(0).(*domain.Facility), args.Error(1)
 }
 
+func (m *MockFacilityRepo) GetByIDForUpdate(ctx context.Context, clubID, id string) (*domain.Facility, error) {
+	args := m.Called(ctx, clubID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Facility), args.Error(1)
+}
+
 func (m *MockFacilityRepo) List(ctx context.Context, clubID string, limit, offset int) ([]*domain.Facility, error) {
 	args := m.Called(ctx, clubID, limit, offset)
 	if args.Get(0) == nil {

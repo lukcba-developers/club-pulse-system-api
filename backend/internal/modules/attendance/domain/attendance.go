@@ -14,6 +14,7 @@ const (
 	StatusPresent AttendanceStatus = "PRESENT"
 	StatusAbsent  AttendanceStatus = "ABSENT"
 	StatusLate    AttendanceStatus = "LATE"
+	StatusExcused AttendanceStatus = "EXCUSED"
 )
 
 // AttendanceList represents a roll call session for a specific group/category on a specific date.
@@ -36,6 +37,7 @@ type AttendanceRecord struct {
 	UserID           string           `json:"user_id"`
 	Status           AttendanceStatus `json:"status"`
 	Notes            string           `json:"notes,omitempty"`
+	ScannedAt        *time.Time       `json:"scanned_at,omitempty"`
 	HasDebt          bool             `json:"has_debt"` // Computed field for UI
 	// Populated for response convenience
 	User *userDomain.User `json:"user,omitempty" gorm:"-"`

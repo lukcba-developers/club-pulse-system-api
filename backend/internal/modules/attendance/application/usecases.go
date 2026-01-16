@@ -201,9 +201,10 @@ func (uc *AttendanceUseCases) populateRecords(ctx context.Context, clubID string
 }
 
 type MarkAttendanceDTO struct {
-	UserID string                  `json:"user_id"`
-	Status domain.AttendanceStatus `json:"status"`
-	Notes  string                  `json:"notes"`
+	UserID    string                  `json:"user_id"`
+	Status    domain.AttendanceStatus `json:"status"`
+	Notes     string                  `json:"notes"`
+	ScannedAt *time.Time              `json:"scanned_at"`
 }
 
 func (uc *AttendanceUseCases) MarkAttendance(ctx context.Context, clubID string, listID uuid.UUID, dto MarkAttendanceDTO) error {
@@ -222,6 +223,12 @@ func (uc *AttendanceUseCases) MarkAttendance(ctx context.Context, clubID string,
 		UserID:           dto.UserID,
 		Status:           dto.Status,
 		Notes:            dto.Notes,
+		ScannedAt:        dto.ScannedAt,
+	}
+
+	if record.ScannedAt == nil {
+		now := time.Now()
+		record.ScannedAt = &now
 	}
 
 	// For Upsert to work on ID, we need the ID.

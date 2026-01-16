@@ -102,6 +102,7 @@ type FacilityWithSimilarity struct {
 type FacilityRepository interface {
 	Create(ctx context.Context, facility *Facility) error
 	GetByID(ctx context.Context, clubID, id string) (*Facility, error)
+	GetByIDForUpdate(ctx context.Context, clubID, id string) (*Facility, error)
 	List(ctx context.Context, clubID string, limit, offset int) ([]*Facility, error)
 	Update(ctx context.Context, facility *Facility) error
 

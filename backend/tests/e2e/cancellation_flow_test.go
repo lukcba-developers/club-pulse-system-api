@@ -10,9 +10,13 @@ import (
 	"github.com/google/uuid"
 	bookingApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
+	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
+	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
+	clubRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository"
 	facilitiesRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
+	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"github.com/stretchr/testify/assert"
@@ -26,19 +30,19 @@ func TestBookingCancellationFlow(t *testing.T) {
 	db := database.GetDB()
 
 	// Clean state
-	_ = db.Migrator().DropTable(&domain.Booking{}, &facilitiesRepo.FacilityModel{})
-	_ = db.AutoMigrate(&domain.Booking{}, &facilitiesRepo.FacilityModel{})
+	_ = db.Migrator().DropTable(&bookingDomain.Booking{}, &facilitiesRepo.FacilityModel{}, &userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &clubDomain.Club{})
+	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &facilitiesRepo.FacilityModel{}, &bookingDomain.Booking{}, &clubDomain.Club{})
 
 	// Deps
-	facRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
-	bookRepo := bookingRepo.NewPostgresBookingRepository(db)
-	recRepo := bookingRepo.NewPostgresRecurringRepository(db)
+	fRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
+	bRepo := bookingRepo.NewPostgresBookingRepository(db)
+	rRepo := bookingRepo.NewPostgresRecurringRepository(db)
 	uRepo := userRepo.NewPostgresUserRepository(db)
+	cRepo := clubRepo.NewPostgresClubRepository(db)
+	mockNotifier := &SharedMockNotifier{}
 
-	// Mock Notifier & Refund
-	sharedMock := &SharedMockNotifier{}
-	bookingUC := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, uRepo, sharedMock, sharedMock)
-	h := bookingHttp.NewBookingHandler(bookingUC)
+	useCases := bookingApp.NewBookingUseCases(bRepo, rRepo, fRepo, cRepo, uRepo, mockNotifier, mockNotifier)
+	h := bookingHttp.NewBookingHandler(useCases)
 
 	r := gin.New()
 	authMw := func(userID string) gin.HandlerFunc {
@@ -49,22 +53,31 @@ func TestBookingCancellationFlow(t *testing.T) {
 		}
 	}
 
+	clubID := "test-club-cancel"
 	facID := uuid.New()
 	db.Create(&facilitiesRepo.FacilityModel{
 		ID:     facID.String(),
-		ClubID: "test-club-cancel",
+		ClubID: clubID,
 		Name:   "Court Cancel",
 		Status: "active",
 	})
 
 	userID := uuid.New()
-	db.Create(&userRepo.UserModel{ID: userID.String(), ClubID: "test-club-cancel", Name: "U Cancel", Email: "cancel@test.com", MedicalCertStatus: "VALID"})
+	// 0. Create Club
+	db.Create(&clubDomain.Club{
+		ID:       clubID,
+		Name:     "Cancellation Club",
+		Timezone: "UTC",
+	})
+
+	// 1. Create User
+	db.Create(&userRepo.UserModel{ID: userID.String(), ClubID: clubID, Name: "U Cancel", Email: "cancel@test.com", MedicalCertStatus: "VALID"})
 
 	bookingID := uuid.New()
-	startTime := time.Now().Add(24 * time.Hour).Truncate(time.Hour)
+	startTime := time.Now().Add(48 * time.Hour).Truncate(24 * time.Hour).Add(10 * time.Hour)
 	endTime := startTime.Add(time.Hour)
 
-	db.Create(&domain.Booking{
+	db.Create(&bookingDomain.Booking{
 		ID:         bookingID,
 		UserID:     userID,
 		FacilityID: facID,

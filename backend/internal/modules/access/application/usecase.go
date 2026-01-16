@@ -33,12 +33,25 @@ type EntryRequest struct {
 	UserID     string     `json:"user_id"`
 	FacilityID *uuid.UUID `json:"facility_id"`
 	Direction  string     `json:"direction"` // IN, OUT
+	EventID    string     `json:"event_id"`  // Required for Idempotency
+	DeviceID   string     `json:"device_id"` // Optional metadata
+	Timestamp  *time.Time `json:"timestamp"` // Optional offline sync time
 }
 
 func (uc *AccessUseCases) RequestEntry(ctx context.Context, clubID string, req EntryRequest) (*domain.AccessLog, error) {
 	// 1. Validate Input
 	if req.UserID == "" {
 		return nil, errors.New("user_id required")
+	}
+	if req.EventID == "" {
+		return nil, errors.New("event_id required")
+	}
+
+	// 1.1 Idempotency Check
+	existingLog, err := uc.accessRepo.GetByEventID(ctx, clubID, req.EventID)
+	if err == nil && existingLog != nil {
+		// Log already exists, return it as success (Idempotent)
+		return existingLog, nil
 	}
 
 	// 2. Validate User Exists
@@ -90,15 +103,22 @@ func (uc *AccessUseCases) logAccess(ctx context.Context, clubID string, req Entr
 		dir = domain.AccessDirectionOut
 	}
 
+	timestamp := time.Now()
+	if req.Timestamp != nil {
+		timestamp = *req.Timestamp
+	}
+
 	log := &domain.AccessLog{
 		ID:         uuid.New(),
 		ClubID:     clubID,
 		UserID:     req.UserID,
 		FacilityID: req.FacilityID,
+		DeviceID:   req.DeviceID,
+		EventID:    req.EventID,
 		Direction:  dir,
 		Status:     status,
 		Reason:     reason,
-		Timestamp:  time.Now(),
+		Timestamp:  timestamp,
 		CreatedAt:  time.Now(),
 	}
 

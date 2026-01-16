@@ -12,6 +12,8 @@ import (
 	bookingApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
+	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
+	clubRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository"
 	facilitiesRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
 	paymentApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/application"
 	paymentDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
@@ -67,8 +69,8 @@ func TestPaymentFailureFlow(t *testing.T) {
 	db := database.GetDB()
 
 	// Clean tables
-	_ = db.Migrator().DropTable(&paymentDomain.Payment{}, &bookingDomain.Booking{})
-	_ = db.AutoMigrate(&paymentDomain.Payment{}, &bookingDomain.Booking{})
+	_ = db.Migrator().DropTable(&paymentDomain.Payment{}, &bookingDomain.Booking{}, &clubDomain.Club{})
+	_ = db.AutoMigrate(&paymentDomain.Payment{}, &bookingDomain.Booking{}, &clubDomain.Club{})
 
 	// Wire Payment
 	repo := paymentRepo.NewPostgresPaymentRepository(db)
@@ -80,15 +82,21 @@ func TestPaymentFailureFlow(t *testing.T) {
 	rRepo := bookingRepo.NewPostgresRecurringRepository(db)
 	fRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
 	uRepo := userRepo.NewPostgresUserRepository(db)
+	cRepo := clubRepo.NewPostgresClubRepository(db)
 	// Mock Notifier & Refund
 	sharedMock := &SharedMockNotifier{}
-	bookingUC := bookingApp.NewBookingUseCases(bRepo, rRepo, fRepo, uRepo, sharedMock, sharedMock)
+	bookingUC := bookingApp.NewBookingUseCases(bRepo, rRepo, fRepo, cRepo, uRepo, sharedMock, sharedMock)
 	uc.RegisterResponder("BOOKING", bookingUC)
 
 	h := paymentHttp.NewPaymentHandler(uc)
 
 	r := gin.New()
 	clubID := "test-club-payment"
+	db.Create(&clubDomain.Club{
+		ID:       clubID,
+		Name:     "Payment Failure Club",
+		Timezone: "UTC",
+	})
 
 	// Data Setup
 	paymentID := uuid.MustParse("00000000-0000-0000-0000-000000000001")

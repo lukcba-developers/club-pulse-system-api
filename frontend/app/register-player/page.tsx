@@ -55,9 +55,10 @@ function RegisterForm() {
             return;
         }
 
-        if (formData.password.length < 8) {
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(formData.password)) {
             setStatus("error");
-            setErrorMessage("La contraseña debe tener al menos 8 caracteres.");
+            setErrorMessage("La contraseña debe tener al menos 8 caracteres, incluir una mayúscula y un número.");
             return;
         }
 

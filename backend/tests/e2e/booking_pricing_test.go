@@ -14,6 +14,8 @@ import (
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
+	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
+	clubRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	facilityRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
@@ -28,7 +30,7 @@ func TestBookingPricing(t *testing.T) {
 	db := database.GetDB()
 
 	// Ensure Schema
-	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &facilityRepo.FacilityModel{}, &bookingDomain.Booking{})
+	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &facilityRepo.FacilityModel{}, &bookingDomain.Booking{}, &clubDomain.Club{})
 
 	// Clear DB
 	db.Exec("TRUNCATE TABLE bookings CASCADE")
@@ -41,9 +43,10 @@ func TestBookingPricing(t *testing.T) {
 	rRepo := bookingRepo.NewPostgresRecurringRepository(db)
 	fRepo := facilityRepo.NewPostgresFacilityRepository(db)
 	uRepo := userRepo.NewPostgresUserRepository(db)
+	cRepo := clubRepo.NewPostgresClubRepository(db)
 	mockNotifier := &SharedMockNotifier{}
 
-	useCases := bookingApp.NewBookingUseCases(bRepo, rRepo, fRepo, uRepo, mockNotifier, mockNotifier)
+	useCases := bookingApp.NewBookingUseCases(bRepo, rRepo, fRepo, cRepo, uRepo, mockNotifier, mockNotifier)
 	handler := bookingHttp.NewBookingHandler(useCases)
 
 	r := gin.New()
@@ -60,6 +63,13 @@ func TestBookingPricing(t *testing.T) {
 	// Setup Data
 	clubID := "test-club-1"
 	userID := "11111111-1111-1111-1111-111111111111"
+
+	// 0. Create Club
+	db.Create(&clubDomain.Club{
+		ID:       clubID,
+		Name:     "Test Club",
+		Timezone: "UTC",
+	})
 
 	// 1. Create User
 	validCert := userDomain.MedicalCertStatusValid // Create variable to take address
@@ -92,7 +102,7 @@ func TestBookingPricing(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("Create Booking with Guests and Verify Price", func(t *testing.T) {
-		startTime := time.Now().Add(24 * time.Hour).Truncate(time.Hour)
+		startTime := time.Now().Add(48 * time.Hour).Truncate(24 * time.Hour).Add(10 * time.Hour)
 		endTime := startTime.Add(2 * time.Hour) // 2 Hours
 
 		// Guest Details: 2 Guests

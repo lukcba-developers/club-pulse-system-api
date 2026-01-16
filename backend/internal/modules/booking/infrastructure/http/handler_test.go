@@ -15,6 +15,7 @@ import (
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
 	handler "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
+	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	notificationService "github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
@@ -73,6 +74,10 @@ func (m *MockBookingRepo) ListExpired(ctx context.Context) ([]domain.Booking, er
 	return args.Get(0).([]domain.Booking), args.Error(1)
 }
 
+func (m *MockBookingRepo) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
+}
+
 type MockRecurringRepo struct{ mock.Mock }
 
 func (m *MockRecurringRepo) Create(ctx context.Context, r *domain.RecurringRule) error {
@@ -93,6 +98,14 @@ func (m *MockRecurringRepo) Delete(ctx context.Context, clubID string, id uuid.U
 type MockFacilityRepo struct{ mock.Mock }
 
 func (m *MockFacilityRepo) GetByID(ctx context.Context, clubID, id string) (*facilityDomain.Facility, error) {
+	args := m.Called(ctx, clubID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*facilityDomain.Facility), args.Error(1)
+}
+
+func (m *MockFacilityRepo) GetByIDForUpdate(ctx context.Context, clubID, id string) (*facilityDomain.Facility, error) {
 	args := m.Called(ctx, clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -178,6 +191,28 @@ func (m *MockRefundService) Refund(ctx context.Context, clubID string, refID uui
 	return m.Called(ctx, clubID, refID, refType).Error(0)
 }
 
+type MockClubRepo struct{ mock.Mock }
+
+func (m *MockClubRepo) Create(ctx context.Context, club *clubDomain.Club) error { return nil }
+func (m *MockClubRepo) GetByID(ctx context.Context, id string) (*clubDomain.Club, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*clubDomain.Club), args.Error(1)
+}
+func (m *MockClubRepo) GetBySlug(ctx context.Context, slug string) (*clubDomain.Club, error) {
+	return nil, nil
+}
+func (m *MockClubRepo) GetMemberEmails(ctx context.Context, clubID string) ([]string, error) {
+	return nil, nil
+}
+func (m *MockClubRepo) List(ctx context.Context, limit, offset int) ([]clubDomain.Club, error) {
+	return nil, nil
+}
+func (m *MockClubRepo) Update(ctx context.Context, club *clubDomain.Club) error { return nil }
+func (m *MockClubRepo) Delete(ctx context.Context, id string) error             { return nil }
+
 // --- Setup ---
 
 func setupRouter(h *handler.BookingHandler, clubID, userID, role string) *gin.Engine {
@@ -204,9 +239,10 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 	mockUserRepo := new(MockUserRepo)
 	mockNotificationSender := new(MockNotificationSender)
 	mockRefundService := new(MockRefundService)
+	mockClubRepo := new(MockClubRepo)
 
 	uc := application.NewBookingUseCases(
-		mockBookingRepo, mockRecurringRepo, mockFacilityRepo,
+		mockBookingRepo, mockRecurringRepo, mockFacilityRepo, mockClubRepo,
 		mockUserRepo, mockNotificationSender, mockRefundService,
 	)
 	h := handler.NewBookingHandler(uc)
@@ -224,7 +260,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 			ID: userID, MedicalCertStatus: &medicalStatus,
 		}, nil).Once()
 
-		mockFacilityRepo.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
+		mockFacilityRepo.On("GetByIDForUpdate", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive, HourlyRate: 10,
 		}, nil).Once()
 
@@ -249,7 +285,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		bookingID := uuid.New()
 
 		mockBookingRepo.On("GetByID", mock.Anything, clubID, bookingID).Return(&domain.Booking{
-			ID: bookingID, UserID: uuid.MustParse(userID), Status: domain.BookingStatusConfirmed,
+			ID: bookingID, UserID: uuid.MustParse(userID), Status: domain.BookingStatusConfirmed, StartTime: time.Now().Add(48 * time.Hour),
 		}, nil).Once()
 		mockBookingRepo.On("Update", mock.Anything, mock.Anything).Return(nil).Once()
 		mockRefundService.On("Refund", mock.Anything, clubID, bookingID, "BOOKING").Return(nil).Once()
@@ -273,6 +309,9 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 	t.Run("Get Availability", func(t *testing.T) {
 		r := setupRouter(h, clubID, userID, userDomain.RoleMember)
 		facilityID := uuid.New().String()
+		mockClubRepo.On("GetByID", mock.Anything, clubID).Return(&clubDomain.Club{
+			ID: clubID, Timezone: "UTC",
+		}, nil).Once()
 		mockFacilityRepo.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive, OpeningTime: "08:00", ClosingTime: "22:00",
 		}, nil).Once()
@@ -419,7 +458,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 
 	t.Run("Cancel Booking - Service Error", func(t *testing.T) {
 		r := setupRouter(h, clubID, userID, userDomain.RoleMember)
-		mockBookingRepo.On("GetByID", mock.Anything, clubID, mock.Anything).Return(&domain.Booking{ID: uuid.New(), UserID: uuid.MustParse(userID)}, nil).Once()
+		mockBookingRepo.On("GetByID", mock.Anything, clubID, mock.Anything).Return(&domain.Booking{ID: uuid.New(), UserID: uuid.MustParse(userID), StartTime: time.Now().Add(48 * time.Hour)}, nil).Once()
 		mockBookingRepo.On("Update", mock.Anything, mock.Anything).Return(fmt.Errorf("db error")).Once()
 
 		req, _ := http.NewRequest("DELETE", "/api/v1/bookings/"+uuid.New().String(), nil)
@@ -503,7 +542,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		mockUserRepo.On("GetByID", mock.Anything, clubID, userID).Return(&userDomain.User{
 			ID: userID, MedicalCertStatus: &medicalStatus,
 		}, nil).Once()
-		mockFacilityRepo.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
+		mockFacilityRepo.On("GetByIDForUpdate", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive,
 		}, nil).Once()
 		mockBookingRepo.On("HasTimeConflict", mock.Anything, clubID, uuid.MustParse(facilityID), mock.Anything, mock.Anything).Return(false, nil).Once()
@@ -539,7 +578,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		mockUserRepo.On("GetByID", mock.Anything, clubID, userID).Return(&userDomain.User{
 			ID: userID, MedicalCertStatus: &medicalStatus,
 		}, nil).Once()
-		mockFacilityRepo.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
+		mockFacilityRepo.On("GetByIDForUpdate", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive,
 		}, nil).Once()
 		mockBookingRepo.On("HasTimeConflict", mock.Anything, clubID, uuid.MustParse(facilityID), mock.Anything, mock.Anything).Return(true, nil).Once()
@@ -558,7 +597,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		r := setupRouter(h, clubID, userID, userDomain.RoleMember)
 		facilityID := uuid.New().String()
 
-		mockFacilityRepo.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
+		mockFacilityRepo.On("GetByIDForUpdate", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusMaintenance,
 		}, nil).Once()
 
@@ -578,7 +617,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		r := setupRouter(h, clubID, uniqueUserID, userDomain.RoleMember)
 		facilityID := uuid.New().String()
 
-		mockFacilityRepo.On("GetByID", mock.Anything, clubID, mock.Anything).Return(&facilityDomain.Facility{
+		mockFacilityRepo.On("GetByIDForUpdate", mock.Anything, clubID, mock.Anything).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive,
 		}, nil).Once()
 		mockBookingRepo.On("HasTimeConflict", mock.Anything, clubID, mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Once()
@@ -632,7 +671,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		mockUserRepo.On("GetByID", mock.Anything, clubID, userID).Return(&userDomain.User{
 			ID: userID, MedicalCertStatus: &status,
 		}, nil).Once()
-		mockFacilityRepo.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
+		mockFacilityRepo.On("GetByIDForUpdate", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive,
 		}, nil).Once()
 		mockBookingRepo.On("HasTimeConflict", mock.Anything, clubID, facilityID, mock.Anything, mock.Anything).Return(false, nil).Once()

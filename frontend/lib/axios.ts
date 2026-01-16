@@ -1,4 +1,9 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+
+interface CustomAxiosError extends AxiosError {
+    errorType?: string;
+    config: InternalAxiosRequestConfig & { _retry?: boolean };
+}
 import { v4 as uuidv4 } from 'uuid';
 
 // Create generic axios instance
@@ -73,31 +78,42 @@ api.interceptors.request.use(
 
 // Response Interceptor
 api.interceptors.response.use(
-    (response) => {
-        // Check for traceparent in response to continue tracing if needed
-        const traceId = response.config.headers['traceparent'] || response.config.headers['X-Request-ID'];
-        console.groupCollapsed(`[API Response] ${response.status} ${response.config.url} [Trace: ${traceId ? traceId.toString().substring(0, 8) : 'N/A'}]`);
-        console.log('Data:', response.data);
-        console.groupEnd();
-        return response;
-    },
     (error: unknown) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const axiosError = error as any;
+        const axiosError = error as CustomAxiosError;
         const status = axiosError.response?.status;
         const url = axiosError.config?.url;
-        const responseData = axiosError.response?.data;
+        const responseData = axiosError.response?.data as { type?: string } | undefined;
 
         // Extract error type from backend response for humanization
-        // Backend sends: { type: "booking_conflict", error: "..." }
         if (responseData?.type) {
             axiosError.errorType = responseData.type;
         }
 
-        // Skip logging for 401/403 as they are handled by AuthContext (session expiry)
+        // Automatic Token Refresh Logic
+        if (status === 401 && responseData?.type === 'TOKEN_EXPIRED' && !axiosError.config._retry) {
+            axiosError.config._retry = true;
+            console.log('[API Auth] Token expired. Attempting refresh...');
+
+            return api.post('/auth/refresh', { refresh_token: 'cookie' })
+                .then((res) => {
+                    if (res.status === 200) {
+                        console.log('[API Auth] Refresh successful. Retrying original request.');
+                        return api(axiosError.config);
+                    }
+                    return Promise.reject(error);
+                })
+                .catch((refreshError) => {
+                    console.error('[API Auth] Refresh failed. Redirecting to login.');
+                    // Optional: Clear storage/redirect if needed
+                    // window.location.href = '/login';
+                    return Promise.reject(refreshError);
+                });
+        }
+
+        // Skip logging for 401/403 as they are handled by AuthContext or refresh logic
         if (status === 401 || status === 403) {
             console.groupCollapsed(`[API Auth] ${status} ${url}`);
-            console.log('Session expired or invalid token. Redirecting/Clearing session.');
+            console.log('Session expired or invalid token.');
             console.groupEnd();
         } else {
             console.group(`[API Error] ${status || 'Net'} ${url}`);

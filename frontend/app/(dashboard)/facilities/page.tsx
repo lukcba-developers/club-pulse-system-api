@@ -9,19 +9,7 @@ import Link from 'next/link';
 import api from '@/lib/axios';
 import { BookingModal } from '@/components/booking-modal';
 
-interface Facility {
-    id: string;
-    name: string;
-    type: string;
-    status: string;
-    capacity: number;
-    hourly_rate: number;
-    opening_time: string;
-    closing_time: string;
-    location: {
-        address?: string;
-    };
-}
+import { Facility } from '@/types/facility';
 
 export default function FacilitiesPage() {
     const [facilities, setFacilities] = useState<Facility[]>([]);
@@ -95,10 +83,10 @@ export default function FacilitiesPage() {
                                         <span className="mr-2">🕐</span>
                                         Horario: {fac.opening_time} - {fac.closing_time}
                                     </div>
-                                    {fac.location?.address && (
+                                    {fac.location?.name && (
                                         <div className="flex items-center text-muted-foreground">
                                             <MapPin className="mr-2 h-4 w-4" />
-                                            {fac.location.address}
+                                            {fac.location.name}
                                         </div>
                                     )}
                                 </div>

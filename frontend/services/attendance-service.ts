@@ -4,6 +4,7 @@ export interface AttendanceRecord {
     user_id: string;
     status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
     has_debt?: boolean;
+    scanned_at?: string; // ISO Date for offline sync
     user?: {
         name: string;
         email?: string;
@@ -25,11 +26,12 @@ export const attendanceService = {
         return response.data;
     },
 
-    markAttendance: async (listId: string, userId: string, status: string, notes: string = '') => {
+    markAttendance: async (listId: string, userId: string, status: string, notes: string = '', scannedAt?: string) => {
         await api.post(`/attendance/${listId}/records`, {
             user_id: userId,
             status,
-            notes
+            notes,
+            scanned_at: scannedAt
         });
     },
 

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/access/domain"
 	"gorm.io/gorm"
@@ -27,4 +28,15 @@ func (r *PostgresAccessRepository) GetByUserID(ctx context.Context, clubID strin
 		Limit(limit).
 		Find(&logs).Error
 	return logs, err
+}
+
+func (r *PostgresAccessRepository) GetByEventID(ctx context.Context, clubID string, eventID string) (*domain.AccessLog, error) {
+	var log domain.AccessLog
+	if err := r.db.WithContext(ctx).Where("event_id = ? AND club_id = ?", eventID, clubID).First(&log).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &log, nil
 }
