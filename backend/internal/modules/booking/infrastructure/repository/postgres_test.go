@@ -147,7 +147,32 @@ func (s *BookingRepositoryTestSuite) TestHasTimeConflict() {
 
 	conflict, err := s.repo.HasTimeConflict(context.Background(), "c1", fID, now.Add(30*time.Minute), now.Add(90*time.Minute))
 	s.NoError(err)
-	s.True(conflict)
+	s.True(conflict, "Should conflict with overlapping end")
+
+	// Case 2: Exact match
+	conflict, err = s.repo.HasTimeConflict(context.Background(), "c1", fID, now, now.Add(1*time.Hour))
+	s.NoError(err)
+	s.True(conflict, "Should conflict with exact match")
+
+	// Case 3: Enclosed
+	conflict, err = s.repo.HasTimeConflict(context.Background(), "c1", fID, now.Add(10*time.Minute), now.Add(50*time.Minute))
+	s.NoError(err)
+	s.True(conflict, "Should conflict with enclosed interval")
+
+	// Case 4: Enclosing
+	conflict, err = s.repo.HasTimeConflict(context.Background(), "c1", fID, now.Add(-10*time.Minute), now.Add(70*time.Minute))
+	s.NoError(err)
+	s.True(conflict, "Should conflict with enclosing interval")
+
+	// Case 5: Adjacent (End touches Start) - Should NOT conflict usually
+	conflict, err = s.repo.HasTimeConflict(context.Background(), "c1", fID, now.Add(-1*time.Hour), now)
+	s.NoError(err)
+	s.False(conflict, "Should not conflict if end touches start")
+
+	// Case 6: Adjacent (Start touches End)
+	conflict, err = s.repo.HasTimeConflict(context.Background(), "c1", fID, now.Add(1*time.Hour), now.Add(2*time.Hour))
+	s.NoError(err)
+	s.False(conflict, "Should not conflict if start touches end")
 }
 
 func (s *BookingRepositoryTestSuite) TestGetNotFound() {

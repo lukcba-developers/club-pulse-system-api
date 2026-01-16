@@ -107,15 +107,15 @@ type MockSubscriptionRepo struct {
 func (m *MockSubscriptionRepo) Create(ctx context.Context, s *domain.Subscription) error {
 	return m.Called(ctx, s).Error(0)
 }
-func (m *MockSubscriptionRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Subscription, error) {
-	args := m.Called(ctx, id)
+func (m *MockSubscriptionRepo) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Subscription, error) {
+	args := m.Called(ctx, clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.Subscription), args.Error(1)
 }
-func (m *MockSubscriptionRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Subscription, error) {
-	args := m.Called(ctx, userID)
+func (m *MockSubscriptionRepo) GetByUserID(ctx context.Context, clubID string, userID uuid.UUID) ([]domain.Subscription, error) {
+	args := m.Called(ctx, clubID, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

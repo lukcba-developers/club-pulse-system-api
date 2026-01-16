@@ -71,6 +71,10 @@ import (
 	teamApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/application"
 	teamHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/infrastructure/http"
 	teamRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/team/infrastructure/repository"
+
+	gamificationApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/gamification/application"
+	gamificationHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/gamification/infrastructure/http"
+	gamificationRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/gamification/infrastructure/repository"
 )
 
 type App struct {
@@ -313,6 +317,13 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 
 	teamHandler := teamHttp.NewTeamHandler(teamUseCase, playerStatusService, travelEventService)
 	teamHttp.RegisterRoutes(api, teamHandler, authMiddleware, tenantMiddleware)
+
+	// --- Module: Gamification ---
+	badgeRepository := gamificationRepo.NewPostgresBadgeRepository(db)
+	badgeService := gamificationApp.NewBadgeService(badgeRepository, userRepository)
+	leaderboardService := gamificationApp.NewLeaderboardService(userRepository) // Leaderboard reads from UserRepo stats
+	gamHandler := gamificationHttp.NewGamificationHandler(badgeService, leaderboardService)
+	gamHandler.RegisterRoutes(api) // It registers under /gamification group internally using "r" which is v1 (api)
 
 	// --- Module: Club (Sponsors, Ads) ---
 	// Note: clubRepository was already initialized above for super admin,

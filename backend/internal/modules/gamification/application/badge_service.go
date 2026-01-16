@@ -117,13 +117,13 @@ func (s *BadgeService) AwardReferralBadge(ctx context.Context, clubID, userID st
 }
 
 // GetUserBadges returns all badges earned by a user.
-func (s *BadgeService) GetUserBadges(ctx context.Context, userID string) ([]domain.UserBadge, error) {
-	return s.badgeRepo.GetUserBadges(ctx, userID)
+func (s *BadgeService) GetUserBadges(ctx context.Context, clubID, userID string) ([]domain.UserBadge, error) {
+	return s.badgeRepo.GetUserBadges(ctx, clubID, userID)
 }
 
 // GetFeaturedBadges returns the user's featured badges (max 3).
-func (s *BadgeService) GetFeaturedBadges(ctx context.Context, userID string) ([]domain.UserBadge, error) {
-	return s.badgeRepo.GetFeaturedBadges(ctx, userID)
+func (s *BadgeService) GetFeaturedBadges(ctx context.Context, clubID, userID string) ([]domain.UserBadge, error) {
+	return s.badgeRepo.GetFeaturedBadges(ctx, clubID, userID)
 }
 
 // GetAllBadges returns all badges available in a club.
@@ -132,10 +132,10 @@ func (s *BadgeService) GetAllBadges(ctx context.Context, clubID string) ([]domai
 }
 
 // SetFeaturedBadge toggles whether a badge is featured on the user's profile.
-func (s *BadgeService) SetFeaturedBadge(ctx context.Context, userID string, badgeID uuid.UUID, featured bool) error {
+func (s *BadgeService) SetFeaturedBadge(ctx context.Context, clubID, userID string, badgeID uuid.UUID, featured bool) error {
 	if featured {
 		// Check if user already has 3 featured badges
-		current, err := s.badgeRepo.GetFeaturedBadges(ctx, userID)
+		current, err := s.badgeRepo.GetFeaturedBadges(ctx, clubID, userID)
 		if err != nil {
 			return err
 		}
@@ -144,13 +144,13 @@ func (s *BadgeService) SetFeaturedBadge(ctx context.Context, userID string, badg
 		}
 	}
 
-	return s.badgeRepo.SetFeatured(ctx, userID, badgeID, featured)
+	return s.badgeRepo.SetFeatured(ctx, clubID, userID, badgeID, featured)
 }
 
 // awardBadgeIfNotOwned awards a badge to a user if they don't already have it.
 func (s *BadgeService) awardBadgeIfNotOwned(ctx context.Context, clubID, userID, badgeCode string) error {
 	// Check if user already has this badge
-	hasBadge, err := s.badgeRepo.HasBadge(ctx, userID, badgeCode)
+	hasBadge, err := s.badgeRepo.HasBadge(ctx, clubID, userID, badgeCode)
 	if err != nil {
 		return err
 	}

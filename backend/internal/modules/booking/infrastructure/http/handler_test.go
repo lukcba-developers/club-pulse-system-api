@@ -66,8 +66,8 @@ func (m *MockBookingRepo) GetNextInLine(ctx context.Context, clubID string, rID 
 	}
 	return args.Get(0).(*domain.Waitlist), args.Error(1)
 }
-func (m *MockBookingRepo) ListExpired(ctx context.Context) ([]domain.Booking, error) {
-	args := m.Called(ctx)
+func (m *MockBookingRepo) ListExpired(ctx context.Context, clubID string) ([]domain.Booking, error) {
+	args := m.Called(ctx, clubID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -116,8 +116,8 @@ func (m *MockFacilityRepo) HasConflict(ctx context.Context, clubID, fID string, 
 	args := m.Called(ctx, clubID, fID, s, e)
 	return args.Bool(0), args.Error(1)
 }
-func (m *MockFacilityRepo) ListMaintenanceByFacility(ctx context.Context, fID string) ([]*facilityDomain.MaintenanceTask, error) {
-	args := m.Called(ctx, fID)
+func (m *MockFacilityRepo) ListMaintenanceByFacility(ctx context.Context, clubID, fID string) ([]*facilityDomain.MaintenanceTask, error) {
+	args := m.Called(ctx, clubID, fID)
 	return args.Get(0).([]*facilityDomain.MaintenanceTask), args.Error(1)
 }
 func (m *MockFacilityRepo) Create(ctx context.Context, f *facilityDomain.Facility) error { return nil }
@@ -131,20 +131,26 @@ func (m *MockFacilityRepo) SemanticSearch(ctx context.Context, clubID string, em
 func (m *MockFacilityRepo) UpdateEmbedding(ctx context.Context, fID string, emb []float32) error {
 	return nil
 }
-func (m *MockFacilityRepo) CreateEquipment(ctx context.Context, e *facilityDomain.Equipment) error {
+func (m *MockFacilityRepo) CreateEquipment(ctx context.Context, clubID string, e *facilityDomain.Equipment) error {
 	return nil
 }
-func (m *MockFacilityRepo) GetEquipmentByID(ctx context.Context, id string) (*facilityDomain.Equipment, error) {
+func (m *MockFacilityRepo) GetEquipmentByID(ctx context.Context, clubID, id string) (*facilityDomain.Equipment, error) {
 	return nil, nil
 }
-func (m *MockFacilityRepo) ListEquipmentByFacility(ctx context.Context, fID string) ([]*facilityDomain.Equipment, error) {
+func (m *MockFacilityRepo) ListEquipmentByFacility(ctx context.Context, clubID, fID string) ([]*facilityDomain.Equipment, error) {
 	return nil, nil
 }
-func (m *MockFacilityRepo) UpdateEquipment(ctx context.Context, e *facilityDomain.Equipment) error {
+func (m *MockFacilityRepo) UpdateEquipment(ctx context.Context, clubID string, e *facilityDomain.Equipment) error {
 	return nil
 }
 func (m *MockFacilityRepo) LoanEquipmentAtomic(ctx context.Context, l *facilityDomain.EquipmentLoan, eID string) error {
 	return nil
+}
+func (m *MockFacilityRepo) CreateMaintenance(ctx context.Context, clubID string, task *facilityDomain.MaintenanceTask) error {
+	return nil
+}
+func (m *MockFacilityRepo) GetMaintenanceByID(ctx context.Context, clubID, id string) (*facilityDomain.MaintenanceTask, error) {
+	return nil, nil
 }
 
 type MockUserRepo struct{ mock.Mock }
@@ -170,7 +176,7 @@ func (m *MockUserRepo) FindChildren(ctx context.Context, clubID, pID string) ([]
 func (m *MockUserRepo) CreateIncident(ctx context.Context, i *userDomain.IncidentLog) error {
 	return nil
 }
-func (m *MockUserRepo) GetByEmail(ctx context.Context, email string) (*userDomain.User, error) {
+func (m *MockUserRepo) GetByEmail(ctx context.Context, clubID, email string) (*userDomain.User, error) {
 	return nil, nil
 }
 func (m *MockUserRepo) ListByIDs(ctx context.Context, clubID string, ids []string) ([]userDomain.User, error) {
@@ -315,7 +321,7 @@ func TestBookingHandler_Endpoints(t *testing.T) {
 		mockFacilityRepo.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive, OpeningTime: "08:00", ClosingTime: "22:00",
 		}, nil).Once()
-		mockFacilityRepo.On("ListMaintenanceByFacility", mock.Anything, facilityID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
+		mockFacilityRepo.On("ListMaintenanceByFacility", mock.Anything, clubID, facilityID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
 		mockBookingRepo.On("ListByFacilityAndDate", mock.Anything, clubID, uuid.MustParse(facilityID), mock.Anything).Return([]domain.Booking{}, nil).Once()
 
 		req, _ := http.NewRequest("GET", "/api/v1/bookings/availability?facility_id="+facilityID+"&date=2024-05-20", nil)

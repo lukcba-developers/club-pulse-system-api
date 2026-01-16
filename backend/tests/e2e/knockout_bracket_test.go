@@ -219,6 +219,6 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 		var resp map[string]string
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
-		assert.Contains(t, resp["error"], "KNOCKOUT")
+		assert.Contains(t, resp["error"], "knockout")
 	})
 }

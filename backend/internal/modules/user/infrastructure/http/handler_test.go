@@ -72,8 +72,8 @@ func (m *MockUserRepo) CreateIncident(ctx context.Context, incident *domain.Inci
 	return args.Error(0)
 }
 
-func (m *MockUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-	args := m.Called(ctx, email)
+func (m *MockUserRepo) GetByEmail(ctx context.Context, clubID, email string) (*domain.User, error) {
+	args := m.Called(ctx, clubID, email)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -323,7 +323,7 @@ func TestUserHandler_Public(t *testing.T) {
 	r := setupRouter(h, "club-1", "user-1", domain.RoleMember)
 
 	t.Run("Register Dependent Public", func(t *testing.T) {
-		mockRepo.On("GetByEmail", mock.Anything, "dad@me.com").Return(nil, nil).Once()
+		mockRepo.On("GetByEmail", mock.Anything, "club-1", "dad@me.com").Return(nil, nil).Once()
 		mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil).Twice()
 		body, _ := json.Marshal(application.RegisterDependentDTO{
 			ParentEmail:     "dad@me.com",

@@ -95,7 +95,7 @@ type UserRepository interface {
 	FindChildren(ctx context.Context, clubID, parentID string) ([]User, error)
 	Create(ctx context.Context, user *User) error
 	CreateIncident(ctx context.Context, incident *IncidentLog) error
-	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByEmail(ctx context.Context, clubID, email string) (*User, error)
 	// GDPR Article 17 - Right to erasure
 	AnonymizeForGDPR(ctx context.Context, clubID, id string) error
 }

@@ -164,9 +164,8 @@ func (uc *UserUseCases) RegisterDependent(ctx context.Context, clubID string, dt
 		return nil, errors.New("child name is required")
 	}
 
-	// NOTE: GetByEmail currently doesn't scope by clubID which is a tenant isolation issue.
-	// This should be addressed in the repository layer. For now, we trust the existing implementation.
-	parent, err := uc.repo.GetByEmail(ctx, dto.ParentEmail)
+	// GetByEmail now scopes by clubID for proper tenant isolation
+	parent, err := uc.repo.GetByEmail(ctx, clubID, dto.ParentEmail)
 	if err != nil {
 		return nil, err
 	}

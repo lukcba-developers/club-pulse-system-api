@@ -108,16 +108,16 @@ type FacilityRepository interface {
 
 	// Maintenance Extensions
 	HasConflict(ctx context.Context, clubID, facilityID string, startTime, endTime time.Time) (bool, error)
-	ListMaintenanceByFacility(ctx context.Context, facilityID string) ([]*MaintenanceTask, error)
+	ListMaintenanceByFacility(ctx context.Context, clubID, facilityID string) ([]*MaintenanceTask, error)
 
 	// Semantic Search Extensions
 	SemanticSearch(ctx context.Context, clubID string, embedding []float32, limit int) ([]*FacilityWithSimilarity, error)
 	UpdateEmbedding(ctx context.Context, facilityID string, embedding []float32) error
 
 	// Equipment Management
-	CreateEquipment(ctx context.Context, equipment *Equipment) error
-	GetEquipmentByID(ctx context.Context, id string) (*Equipment, error)
-	ListEquipmentByFacility(ctx context.Context, facilityID string) ([]*Equipment, error)
-	UpdateEquipment(ctx context.Context, equipment *Equipment) error
+	CreateEquipment(ctx context.Context, clubID string, equipment *Equipment) error
+	GetEquipmentByID(ctx context.Context, clubID, id string) (*Equipment, error)
+	ListEquipmentByFacility(ctx context.Context, clubID, facilityID string) ([]*Equipment, error)
+	UpdateEquipment(ctx context.Context, clubID string, equipment *Equipment) error
 	LoanEquipmentAtomic(ctx context.Context, loan *EquipmentLoan, equipmentID string) error
 }

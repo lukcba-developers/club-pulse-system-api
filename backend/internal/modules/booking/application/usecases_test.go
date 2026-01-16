@@ -83,8 +83,8 @@ func (m *MockBookingRepo) GetNextInLine(ctx context.Context, clubID string, reso
 	return args.Get(0).(*bookingDomain.Waitlist), args.Error(1)
 }
 
-func (m *MockBookingRepo) ListExpired(ctx context.Context) ([]bookingDomain.Booking, error) {
-	args := m.Called(ctx)
+func (m *MockBookingRepo) ListExpired(ctx context.Context, clubID string) ([]bookingDomain.Booking, error) {
+	args := m.Called(ctx, clubID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -136,9 +136,22 @@ func (m *MockFacilityRepo) HasConflict(ctx context.Context, clubID, facilityID s
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockFacilityRepo) ListMaintenanceByFacility(ctx context.Context, facilityID string) ([]*facilityDomain.MaintenanceTask, error) {
-	args := m.Called(ctx, facilityID)
+func (m *MockFacilityRepo) ListMaintenanceByFacility(ctx context.Context, clubID, facilityID string) ([]*facilityDomain.MaintenanceTask, error) {
+	args := m.Called(ctx, clubID, facilityID)
 	return args.Get(0).([]*facilityDomain.MaintenanceTask), args.Error(1)
+}
+
+func (m *MockFacilityRepo) CreateMaintenance(ctx context.Context, clubID string, task *facilityDomain.MaintenanceTask) error {
+	args := m.Called(ctx, clubID, task)
+	return args.Error(0)
+}
+
+func (m *MockFacilityRepo) GetMaintenanceByID(ctx context.Context, clubID, id string) (*facilityDomain.MaintenanceTask, error) {
+	args := m.Called(ctx, clubID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*facilityDomain.MaintenanceTask), args.Error(1)
 }
 
 func (m *MockFacilityRepo) SemanticSearch(ctx context.Context, clubID string, embedding []float32, limit int) ([]*facilityDomain.FacilityWithSimilarity, error) {
@@ -151,26 +164,26 @@ func (m *MockFacilityRepo) UpdateEmbedding(ctx context.Context, facilityID strin
 	return args.Error(0)
 }
 
-func (m *MockFacilityRepo) CreateEquipment(ctx context.Context, equipment *facilityDomain.Equipment) error {
-	args := m.Called(ctx, equipment)
+func (m *MockFacilityRepo) CreateEquipment(ctx context.Context, clubID string, equipment *facilityDomain.Equipment) error {
+	args := m.Called(ctx, clubID, equipment)
 	return args.Error(0)
 }
 
-func (m *MockFacilityRepo) GetEquipmentByID(ctx context.Context, id string) (*facilityDomain.Equipment, error) {
-	args := m.Called(ctx, id)
+func (m *MockFacilityRepo) GetEquipmentByID(ctx context.Context, clubID, id string) (*facilityDomain.Equipment, error) {
+	args := m.Called(ctx, clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*facilityDomain.Equipment), args.Error(1)
 }
 
-func (m *MockFacilityRepo) ListEquipmentByFacility(ctx context.Context, facilityID string) ([]*facilityDomain.Equipment, error) {
-	args := m.Called(ctx, facilityID)
+func (m *MockFacilityRepo) ListEquipmentByFacility(ctx context.Context, clubID, facilityID string) ([]*facilityDomain.Equipment, error) {
+	args := m.Called(ctx, clubID, facilityID)
 	return args.Get(0).([]*facilityDomain.Equipment), args.Error(1)
 }
 
-func (m *MockFacilityRepo) UpdateEquipment(ctx context.Context, equipment *facilityDomain.Equipment) error {
-	args := m.Called(ctx, equipment)
+func (m *MockFacilityRepo) UpdateEquipment(ctx context.Context, clubID string, equipment *facilityDomain.Equipment) error {
+	args := m.Called(ctx, clubID, equipment)
 	return args.Error(0)
 }
 
@@ -269,8 +282,8 @@ func (m *MockUserRepo) CreateIncident(ctx context.Context, incident *userDomain.
 	return args.Error(0)
 }
 
-func (m *MockUserRepo) GetByEmail(ctx context.Context, email string) (*userDomain.User, error) {
-	args := m.Called(ctx, email)
+func (m *MockUserRepo) GetByEmail(ctx context.Context, clubID, email string) (*userDomain.User, error) {
+	args := m.Called(ctx, clubID, email)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -603,8 +616,40 @@ func TestGetAvailability(t *testing.T) {
 			OpeningTime: "08:00",
 			ClosingTime: "22:00",
 		}, nil).Once()
-		mfr.On("ListMaintenanceByFacility", mock.Anything, facilityID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
+		mfr.On("ListMaintenanceByFacility", mock.Anything, clubID, facilityID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
 		mbr.On("ListByFacilityAndDate", mock.Anything, clubID, uuid.MustParse(facilityID), mock.Anything).Return([]bookingDomain.Booking{}, nil).Once()
+
+		slots, err := uc.GetAvailability(context.Background(), clubID, facilityID, date)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, slots)
+	})
+}
+
+func TestGetAvailabilityDetailed(t *testing.T) {
+	clubID := "test-club"
+	facilityID := uuid.New().String()
+	date := time.Now().AddDate(0, 0, 1)
+	mfr := new(MockFacilityRepo)
+	mbr := new(MockBookingRepo)
+	mcr := new(MockClubRepo)
+	uc := application.NewBookingUseCases(mbr, nil, mfr, mcr, nil, nil, nil)
+
+	t.Run("With Bookings and Maintenance", func(t *testing.T) {
+		mcr.On("GetByID", mock.Anything, clubID).Return(&clubDomain.Club{
+			ID:       clubID,
+			Timezone: "UTC",
+		}, nil).Once()
+		mfr.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
+			ID: facilityID, Status: facilityDomain.FacilityStatusActive,
+			OpeningTime: "08:00", ClosingTime: "10:00",
+		}, nil).Once()
+		mfr.On("ListMaintenanceByFacility", mock.Anything, clubID, facilityID).Return([]*facilityDomain.MaintenanceTask{
+			{StartTime: time.Now().AddDate(0, 0, 1)},
+		}, nil).Once()
+
+		mbr.On("ListByFacilityAndDate", mock.Anything, clubID, uuid.MustParse(facilityID), mock.Anything).Return([]bookingDomain.Booking{
+			{StartTime: time.Now().AddDate(0, 0, 1), EndTime: time.Now().AddDate(0, 0, 1).Add(1 * time.Hour)},
+		}, nil).Once()
 
 		slots, err := uc.GetAvailability(context.Background(), clubID, facilityID, date)
 		assert.NoError(t, err)
@@ -638,7 +683,6 @@ func TestCreateRecurringRule(t *testing.T) {
 
 func TestJoinWaitlist(t *testing.T) {
 	clubID := "test-club"
-
 	mbr := new(MockBookingRepo)
 	uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil, nil)
 
@@ -768,39 +812,6 @@ func TestListBookings(t *testing.T) {
 	})
 }
 
-func TestGetAvailabilityDetailed(t *testing.T) {
-	clubID := "test-club"
-	facilityID := uuid.New().String()
-	date := time.Now().AddDate(0, 0, 1)
-	mfr := new(MockFacilityRepo)
-	mbr := new(MockBookingRepo)
-	mcr := new(MockClubRepo)
-	uc := application.NewBookingUseCases(mbr, nil, mfr, mcr, nil, nil, nil)
-
-	t.Run("With Bookings and Maintenance", func(t *testing.T) {
-		mcr.On("GetByID", mock.Anything, clubID).Return(&clubDomain.Club{
-			ID:       clubID,
-			Timezone: "UTC",
-		}, nil).Once()
-		mfr.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
-			ID: facilityID, Status: facilityDomain.FacilityStatusActive,
-			OpeningTime: "08:00", ClosingTime: "10:00",
-		}, nil).Once()
-
-		mfr.On("ListMaintenanceByFacility", mock.Anything, facilityID).Return([]*facilityDomain.MaintenanceTask{
-			{StartTime: time.Now().AddDate(0, 0, 1)},
-		}, nil).Once()
-
-		mbr.On("ListByFacilityAndDate", mock.Anything, clubID, uuid.MustParse(facilityID), mock.Anything).Return([]bookingDomain.Booking{
-			{StartTime: time.Now().AddDate(0, 0, 1), EndTime: time.Now().AddDate(0, 0, 1).Add(1 * time.Hour)},
-		}, nil).Once()
-
-		slots, err := uc.GetAvailability(context.Background(), clubID, facilityID, date)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, slots)
-	})
-}
-
 func TestCreateBooking_MedicalFail(t *testing.T) {
 	clubID := "test-club"
 	userID := uuid.New().String()
@@ -891,7 +902,7 @@ func TestGetAvailabilityExtra(t *testing.T) {
 		mfr.On("GetByID", mock.Anything, clubID, facilityID.String()).Return(&facilityDomain.Facility{
 			ID: facilityID.String(), Status: facilityDomain.FacilityStatusActive, OpeningTime: "08:00", ClosingTime: "10:00",
 		}, nil).Once()
-		mfr.On("ListMaintenanceByFacility", mock.Anything, facilityID.String()).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
+		mfr.On("ListMaintenanceByFacility", mock.Anything, clubID, facilityID.String()).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
 
 		startTime := date.Add(8 * time.Hour)
 		mbr.On("ListByFacilityAndDate", mock.Anything, clubID, facilityID, mock.MatchedBy(func(d time.Time) bool {
@@ -1056,7 +1067,7 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 			OpeningTime: "08:00",
 			ClosingTime: "22:00",
 		}, nil).Once()
-		fr.On("ListMaintenanceByFacility", mock.Anything, fID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
+		fr.On("ListMaintenanceByFacility", mock.Anything, clubID, fID).Return([]*facilityDomain.MaintenanceTask{}, nil).Once()
 
 		now := time.Now().Truncate(24 * time.Hour).Add(10 * time.Hour) // 10:00 AM
 		mr.On("ListByFacilityAndDate", mock.Anything, clubID, uuid.MustParse(fID), mock.Anything).Return([]bookingDomain.Booking{

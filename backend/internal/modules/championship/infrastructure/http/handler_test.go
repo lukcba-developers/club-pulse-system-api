@@ -75,13 +75,13 @@ func (m *MockChampionshipRepo) GetGroup(ctx context.Context, clubID, id string) 
 	return args.Get(0).(*domain.Group), args.Error(1)
 }
 
-func (m *MockChampionshipRepo) CreateMatch(ctx context.Context, match *domain.TournamentMatch) error {
-	args := m.Called(ctx, match)
+func (m *MockChampionshipRepo) CreateMatch(ctx context.Context, clubID string, match *domain.TournamentMatch) error {
+	args := m.Called(ctx, clubID, match)
 	return args.Error(0)
 }
 
-func (m *MockChampionshipRepo) CreateMatchesBatch(ctx context.Context, matches []domain.TournamentMatch) error {
-	args := m.Called(ctx, matches)
+func (m *MockChampionshipRepo) CreateMatchesBatch(ctx context.Context, clubID string, matches []domain.TournamentMatch) error {
+	args := m.Called(ctx, clubID, matches)
 	return args.Error(0)
 }
 
@@ -119,8 +119,8 @@ func (m *MockChampionshipRepo) GetStandings(ctx context.Context, clubID, groupID
 	return args.Get(0).([]domain.Standing), args.Error(1)
 }
 
-func (m *MockChampionshipRepo) RegisterTeam(ctx context.Context, s *domain.Standing) error {
-	args := m.Called(ctx, s)
+func (m *MockChampionshipRepo) RegisterTeam(ctx context.Context, clubID string, s *domain.Standing) error {
+	args := m.Called(ctx, clubID, s)
 	return args.Error(0)
 }
 
@@ -129,8 +129,8 @@ func (m *MockChampionshipRepo) UpdateStanding(ctx context.Context, s *domain.Sta
 	return args.Error(0)
 }
 
-func (m *MockChampionshipRepo) UpdateStandingsBatch(ctx context.Context, s []domain.Standing) error {
-	args := m.Called(ctx, s)
+func (m *MockChampionshipRepo) UpdateStandingsBatch(ctx context.Context, clubID string, s []domain.Standing) error {
+	args := m.Called(ctx, clubID, s)
 	return args.Error(0)
 }
 
@@ -364,7 +364,7 @@ func TestChampionshipHandler_StandingsAndFixture(t *testing.T) {
 		mockRepo.On("GetStandings", mock.Anything, cID, "g1").Return([]domain.Standing{{TeamID: uuid.New()}, {TeamID: uuid.New()}}, nil).Once()
 		mockRepo.On("GetGroup", mock.Anything, cID, "g1").Return(&domain.Group{ID: uuid.New()}, nil).Once()
 		mockRepo.On("GetStage", mock.Anything, cID, mock.Anything).Return(&domain.TournamentStage{}, nil).Once()
-		mockRepo.On("CreateMatchesBatch", mock.Anything, mock.Anything).Return(nil).Once()
+		mockRepo.On("CreateMatchesBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 		req, _ := http.NewRequest("POST", "/api/v1/championships/groups/g1/fixture", nil)
 		resp := httptest.NewRecorder()
@@ -468,6 +468,7 @@ func TestChampionshipHandler_StagesAndResults(t *testing.T) {
 		mID := uuid.New()
 		mockRepo.On("UpdateMatchResult", mock.Anything, cID, mID.String(), 2.0, 1.0).Return(nil).Once()
 		mockRepo.On("GetMatch", mock.Anything, cID, mID.String()).Return(&domain.TournamentMatch{ID: mID}, nil).Once()
+		mockRepo.On("GetTeamMembers", mock.Anything, mock.Anything).Return([]string{}, nil).Maybe()
 
 		body, _ := json.Marshal(application.UpdateMatchResultInput{MatchID: mID.String(), HomeScore: 2.0, AwayScore: 1.0})
 		req, _ := http.NewRequest("POST", "/api/v1/championships/matches/result", bytes.NewBuffer(body))
@@ -479,7 +480,7 @@ func TestChampionshipHandler_StagesAndResults(t *testing.T) {
 	t.Run("Generate Knockout", func(t *testing.T) {
 		sID := uuid.New()
 		mockRepo.On("GetStage", mock.Anything, cID, sID.String()).Return(&domain.TournamentStage{Type: domain.StageKnockout}, nil).Once()
-		mockRepo.On("CreateMatchesBatch", mock.Anything, mock.Anything).Return(nil).Once()
+		mockRepo.On("CreateMatchesBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 		body, _ := json.Marshal(application.GenerateKnockoutBracketInput{SeedOrder: []string{uuid.New().String(), uuid.New().String()}})
 		req, _ := http.NewRequest("POST", "/api/v1/championships/stages/"+sID.String()+"/knockout", bytes.NewBuffer(body))

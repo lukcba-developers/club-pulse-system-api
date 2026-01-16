@@ -22,7 +22,7 @@ type NewsRepository interface {
 	CreateNews(ctx context.Context, news *News) error
 	GetNewsByClub(ctx context.Context, clubID string, limit, offset int) ([]News, error)
 	GetPublicNewsByClub(ctx context.Context, clubID string, limit, offset int) ([]News, error)
-	GetNewsByID(ctx context.Context, id uuid.UUID) (*News, error)
-	UpdateNews(ctx context.Context, news *News) error
-	DeleteNews(ctx context.Context, id uuid.UUID) error
+	GetNewsByID(ctx context.Context, clubID string, id uuid.UUID) (*News, error)
+	UpdateNews(ctx context.Context, clubID string, news *News) error
+	DeleteNews(ctx context.Context, clubID string, id uuid.UUID) error
 }

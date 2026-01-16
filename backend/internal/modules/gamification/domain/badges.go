@@ -74,10 +74,10 @@ type BadgeRepository interface {
 
 	// UserBadge operations
 	AwardBadge(ctx context.Context, userBadge *UserBadge) error
-	GetUserBadges(ctx context.Context, userID string) ([]UserBadge, error)
-	HasBadge(ctx context.Context, userID string, badgeCode string) (bool, error)
-	SetFeatured(ctx context.Context, userID string, badgeID uuid.UUID, featured bool) error
-	GetFeaturedBadges(ctx context.Context, userID string) ([]UserBadge, error)
+	GetUserBadges(ctx context.Context, clubID, userID string) ([]UserBadge, error)
+	HasBadge(ctx context.Context, clubID, userID string, badgeCode string) (bool, error)
+	SetFeatured(ctx context.Context, clubID, userID string, badgeID uuid.UUID, featured bool) error
+	GetFeaturedBadges(ctx context.Context, clubID, userID string) ([]UserBadge, error)
 }
 
 // PredefinedBadges contains the default badges for the system.

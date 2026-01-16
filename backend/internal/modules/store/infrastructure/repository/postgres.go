@@ -20,9 +20,9 @@ func (r *PostgresStoreRepository) CreateProduct(ctx context.Context, product *do
 	return r.db.WithContext(ctx).Create(product).Error
 }
 
-func (r *PostgresStoreRepository) GetProduct(ctx context.Context, id string) (*domain.Product, error) {
+func (r *PostgresStoreRepository) GetProduct(ctx context.Context, clubID, id string) (*domain.Product, error) {
 	var product domain.Product
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&product).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ? AND club_id = ?", id, clubID).First(&product).Error; err != nil {
 		return nil, err
 	}
 	// Status populated by AfterFind hook
@@ -55,7 +55,7 @@ func (r *PostgresStoreRepository) CreateOrderWithStockUpdate(ctx context.Context
 		// 1. Decrement Stock
 		for _, item := range items {
 			result := tx.Model(&domain.Product{}).
-				Where("id = ? AND stock_quantity >= ?", item.ProductID, item.Quantity).
+				Where("id = ? AND club_id = ? AND stock_quantity >= ?", item.ProductID, order.ClubID, item.Quantity).
 				UpdateColumn("stock_quantity", gorm.Expr("stock_quantity - ?", item.Quantity))
 
 			if result.Error != nil {
@@ -77,9 +77,9 @@ func (r *PostgresStoreRepository) CreateOrderWithStockUpdate(ctx context.Context
 
 // DecreaseStock decrements the stock of a product by quantity.
 // It ensures stock doesn't go below zero (optional business rule).
-func (r *PostgresStoreRepository) DecreaseStock(ctx context.Context, productID string, quantity int) error {
+func (r *PostgresStoreRepository) DecreaseStock(ctx context.Context, clubID, productID string, quantity int) error {
 	result := r.db.WithContext(ctx).Model(&domain.Product{}).
-		Where("id = ? AND stock_quantity >= ?", productID, quantity).
+		Where("id = ? AND club_id = ? AND stock_quantity >= ?", productID, clubID, quantity).
 		UpdateColumn("stock_quantity", gorm.Expr("stock_quantity - ?", quantity))
 
 	if result.Error != nil {

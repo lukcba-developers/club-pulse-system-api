@@ -199,7 +199,18 @@ func (r *PostgresFacilityRepository) AutoMigrateMaintenance() error {
 	return r.db.AutoMigrate(&MaintenanceTaskModel{}, &EquipmentModel{})
 }
 
-func (r *PostgresFacilityRepository) CreateMaintenance(task *domain.MaintenanceTask) error {
+func (r *PostgresFacilityRepository) CreateMaintenance(ctx context.Context, clubID string, task *domain.MaintenanceTask) error {
+	// SECURITY FIX (VUL-005): Validate facility ownership
+	var facilityCount int64
+	if err := r.db.WithContext(ctx).Table("facilities").
+		Where("id = ? AND club_id = ?", task.FacilityID, clubID).
+		Count(&facilityCount).Error; err != nil {
+		return err
+	}
+	if facilityCount == 0 {
+		return errors.New("facility does not belong to the tenant")
+	}
+
 	model := MaintenanceTaskModel{
 		ID:          task.ID,
 		FacilityID:  task.FacilityID,
@@ -214,12 +225,17 @@ func (r *PostgresFacilityRepository) CreateMaintenance(task *domain.MaintenanceT
 		CreatedAt:   task.CreatedAt,
 		UpdatedAt:   task.UpdatedAt,
 	}
-	return r.db.Create(&model).Error
+
+	return r.db.WithContext(ctx).Create(&model).Error
 }
 
-func (r *PostgresFacilityRepository) GetMaintenanceByID(id string) (*domain.MaintenanceTask, error) {
+func (r *PostgresFacilityRepository) GetMaintenanceByID(ctx context.Context, clubID, id string) (*domain.MaintenanceTask, error) {
 	var model MaintenanceTaskModel
-	if err := r.db.First(&model, "id = ?", id).Error; err != nil {
+	// SECURITY FIX (VUL-005): Join with facilities to validate club_id
+	if err := r.db.WithContext(ctx).Table("maintenance_tasks").
+		Joins("JOIN facilities ON facilities.id = maintenance_tasks.facility_id").
+		Where("maintenance_tasks.id = ? AND facilities.club_id = ?", id, clubID).
+		First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -241,7 +257,20 @@ func (r *PostgresFacilityRepository) GetMaintenanceByID(id string) (*domain.Main
 	}, nil
 }
 
-func (r *PostgresFacilityRepository) ListMaintenanceByFacility(ctx context.Context, facilityID string) ([]*domain.MaintenanceTask, error) {
+func (r *PostgresFacilityRepository) ListMaintenanceByFacility(ctx context.Context, clubID, facilityID string) ([]*domain.MaintenanceTask, error) {
+	// SECURITY FIX (VUL-005): Validate facility ownership first
+	var facilityCount int64
+	if err := r.db.WithContext(ctx).Table("facilities").
+		Where("id = ? AND club_id = ?", facilityID, clubID).
+		Count(&facilityCount).Error; err != nil {
+		return nil, err
+	}
+	if facilityCount == 0 {
+		// If facility isn't found for this club, return empty or error.
+		// Returning empty is safer.
+		return []*domain.MaintenanceTask{}, nil
+	}
+
 	var models []MaintenanceTaskModel
 	if err := r.db.WithContext(ctx).Where("facility_id = ?", facilityID).Find(&models).Error; err != nil {
 		return nil, err
@@ -268,19 +297,21 @@ func (r *PostgresFacilityRepository) ListMaintenanceByFacility(ctx context.Conte
 
 func (r *PostgresFacilityRepository) HasConflict(ctx context.Context, clubID, facilityID string, startTime, endTime time.Time) (bool, error) {
 	var count int64
-	// Check for any maintenance task that overlaps and is active.
-	// Tasks are linked to facility. We trust facilityID matches clubID via previous lookups or join if strictly necessary.
-	// But maintenance tasks don't have ClubID on them explicitly, they rely on FacilityID.
-	// So just filtering by FacilityID is technically enough if we trust the facilityID belongs to the club.
-	// However, for strictness, we could join or check facility. But keeping it simple as Facility ownership is verified by ID.
+	// SECURITY FIX (VUL-005): Enforce facility ownership check
+	// We check join with facilities table implicitly or explicitly.
+	// Explicit check:
+	// Count maintenance tasks where facility_id = X AND facility_id IN (SELECT id FROM facilities WHERE club_id = Y)
+
 	db := r.db
 	if tx := database.GetTx(ctx); tx != nil {
 		db = tx
 	}
-	err := db.WithContext(ctx).Model(&MaintenanceTaskModel{}).
-		Where("facility_id = ?", facilityID).
-		Where("status IN ?", []string{string(domain.MaintenanceStatusScheduled), string(domain.MaintenanceStatusInProgress)}).
-		Where("start_time < ? AND end_time > ?", endTime, startTime).
+
+	err := db.WithContext(ctx).Table("maintenance_tasks").
+		Joins("JOIN facilities ON facilities.id = maintenance_tasks.facility_id").
+		Where("maintenance_tasks.facility_id = ? AND facilities.club_id = ?", facilityID, clubID).
+		Where("maintenance_tasks.status IN ?", []string{string(domain.MaintenanceStatusScheduled), string(domain.MaintenanceStatusInProgress)}).
+		Where("maintenance_tasks.start_time < ? AND maintenance_tasks.end_time > ?", endTime, startTime).
 		Count(&count).Error
 
 	if err != nil {
@@ -291,7 +322,18 @@ func (r *PostgresFacilityRepository) HasConflict(ctx context.Context, clubID, fa
 
 // Implement EquipmentRepository
 
-func (r *PostgresFacilityRepository) CreateEquipment(ctx context.Context, equipment *domain.Equipment) error {
+func (r *PostgresFacilityRepository) CreateEquipment(ctx context.Context, clubID string, equipment *domain.Equipment) error {
+	// SECURITY FIX (VUL-005): Validate facility ownership
+	var facilityCount int64
+	if err := r.db.WithContext(ctx).Table("facilities").
+		Where("id = ? AND club_id = ?", equipment.FacilityID, clubID).
+		Count(&facilityCount).Error; err != nil {
+		return err
+	}
+	if facilityCount == 0 {
+		return errors.New("facility does not belong to the tenant")
+	}
+
 	model := EquipmentModel{
 		ID:           equipment.ID,
 		FacilityID:   equipment.FacilityID,
@@ -306,9 +348,13 @@ func (r *PostgresFacilityRepository) CreateEquipment(ctx context.Context, equipm
 	return r.db.WithContext(ctx).Create(&model).Error
 }
 
-func (r *PostgresFacilityRepository) GetEquipmentByID(ctx context.Context, id string) (*domain.Equipment, error) {
+func (r *PostgresFacilityRepository) GetEquipmentByID(ctx context.Context, clubID, id string) (*domain.Equipment, error) {
 	var model EquipmentModel
-	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
+	// SECURITY FIX (VUL-005): Join with facilities
+	if err := r.db.WithContext(ctx).Table("equipment").
+		Joins("JOIN facilities ON facilities.id = equipment.facility_id").
+		Where("equipment.id = ? AND facilities.club_id = ?", id, clubID).
+		First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -317,7 +363,18 @@ func (r *PostgresFacilityRepository) GetEquipmentByID(ctx context.Context, id st
 	return r.toDomainEquipment(model), nil
 }
 
-func (r *PostgresFacilityRepository) ListEquipmentByFacility(ctx context.Context, facilityID string) ([]*domain.Equipment, error) {
+func (r *PostgresFacilityRepository) ListEquipmentByFacility(ctx context.Context, clubID, facilityID string) ([]*domain.Equipment, error) {
+	// SECURITY FIX (VUL-005): Validate facility ownership
+	var facilityCount int64
+	if err := r.db.WithContext(ctx).Table("facilities").
+		Where("id = ? AND club_id = ?", facilityID, clubID).
+		Count(&facilityCount).Error; err != nil {
+		return nil, err
+	}
+	if facilityCount == 0 {
+		return []*domain.Equipment{}, nil
+	}
+
 	var models []EquipmentModel
 	if err := r.db.WithContext(ctx).Where("facility_id = ?", facilityID).Find(&models).Error; err != nil {
 		return nil, err
@@ -329,7 +386,19 @@ func (r *PostgresFacilityRepository) ListEquipmentByFacility(ctx context.Context
 	return equipments, nil
 }
 
-func (r *PostgresFacilityRepository) UpdateEquipment(ctx context.Context, equipment *domain.Equipment) error {
+func (r *PostgresFacilityRepository) UpdateEquipment(ctx context.Context, clubID string, equipment *domain.Equipment) error {
+	// SECURITY FIX (VUL-005): Validate ownership
+	var count int64
+	if err := r.db.WithContext(ctx).Table("equipment").
+		Joins("JOIN facilities ON facilities.id = equipment.facility_id").
+		Where("equipment.id = ? AND facilities.club_id = ?", equipment.ID, clubID).
+		Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
 	model := EquipmentModel{
 		ID:           equipment.ID,
 		FacilityID:   equipment.FacilityID,
@@ -341,6 +410,8 @@ func (r *PostgresFacilityRepository) UpdateEquipment(ctx context.Context, equipm
 		CreatedAt:    equipment.CreatedAt,
 		UpdatedAt:    time.Now(),
 	}
+	// Use Save or Updates, but strictly we already validated presence.
+	// Since we are replacing the struct values:
 	return r.db.WithContext(ctx).Save(&model).Error
 }
 
@@ -465,7 +536,7 @@ func float32SliceToVectorString(v []float32) string {
 }
 
 // GetImpactedUsers returns a list of user IDs that have bookings during the maintenance window
-func (r *PostgresFacilityRepository) GetImpactedUsers(facilityID string, start, end time.Time) ([]string, error) {
+func (r *PostgresFacilityRepository) GetImpactedUsers(ctx context.Context, facilityID string, start, end time.Time) ([]string, error) {
 	var userIDs []string
 
 	// We use standard SQL check for overlap: (StartA < EndB) and (EndA > StartB)
@@ -479,7 +550,7 @@ func (r *PostgresFacilityRepository) GetImpactedUsers(facilityID string, start, 
 		AND end_time > ?
 	`
 
-	if err := r.db.Raw(query, facilityID, end, start).Scan(&userIDs).Error; err != nil {
+	if err := r.db.WithContext(ctx).Raw(query, facilityID, end, start).Scan(&userIDs).Error; err != nil {
 		return nil, err
 	}
 

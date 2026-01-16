@@ -68,9 +68,10 @@ func (h *GamificationHandler) ListBadges(c *gin.Context) {
 // @Success 200 {array} domain.UserBadge
 // @Router /gamification/badges/my [get]
 func (h *GamificationHandler) GetMyBadges(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	userID := c.GetString("userID")
 
-	badges, err := h.badgeService.GetUserBadges(c.Request.Context(), userID)
+	badges, err := h.badgeService.GetUserBadges(c.Request.Context(), clubID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -87,9 +88,10 @@ func (h *GamificationHandler) GetMyBadges(c *gin.Context) {
 // @Success 200 {array} domain.UserBadge
 // @Router /gamification/badges/featured/{user_id} [get]
 func (h *GamificationHandler) GetFeaturedBadges(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	userID := c.Param("user_id")
 
-	badges, err := h.badgeService.GetFeaturedBadges(c.Request.Context(), userID)
+	badges, err := h.badgeService.GetFeaturedBadges(c.Request.Context(), clubID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -113,6 +115,7 @@ type SetFeaturedBadgeRequest struct {
 // @Success 200 {object} map[string]string
 // @Router /gamification/badges/{badge_id}/feature [put]
 func (h *GamificationHandler) SetFeaturedBadge(c *gin.Context) {
+	clubID := c.GetString("clubID")
 	userID := c.GetString("userID")
 	badgeIDStr := c.Param("badge_id")
 
@@ -128,7 +131,7 @@ func (h *GamificationHandler) SetFeaturedBadge(c *gin.Context) {
 		return
 	}
 
-	if err := h.badgeService.SetFeaturedBadge(c.Request.Context(), userID, badgeID, req.Featured); err != nil {
+	if err := h.badgeService.SetFeaturedBadge(c.Request.Context(), clubID, userID, badgeID, req.Featured); err != nil {
 		if err == application.ErrMaxFeaturedBadges {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

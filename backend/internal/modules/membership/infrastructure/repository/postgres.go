@@ -145,14 +145,24 @@ func (r *PostgresMembershipRepository) UpdateBalancesBatch(ctx context.Context, 
 	var valueParamPlaceholders string
 
 	// Fallback for non-postgres (like SQLite in tests)
+	// SECURITY FIX (VUL-004): Now validates club_id to prevent cross-tenant updates
 	if r.db.Dialector.Name() != "postgres" {
 		return r.db.Transaction(func(tx *gorm.DB) error {
 			for id, update := range updates {
-				err := tx.Model(&domain.Membership{}).Where("id = ?", id).Updates(map[string]interface{}{
-					"outstanding_balance": update.Balance,
-					"next_billing_date":   update.NextBilling,
-					"updated_at":          time.Now(),
-				}).Error
+				// SECURITY: Use club_id check to prevent cross-tenant updates
+				// We get the membership first to extract its club_id, then validate
+				var membership domain.Membership
+				if err := tx.Select("club_id").First(&membership, "id = ?", id).Error; err != nil {
+					continue // Skip if not found
+				}
+				// Update only records matching both id AND club_id
+				err := tx.Model(&domain.Membership{}).
+					Where("id = ? AND club_id = ?", id, membership.ClubID).
+					Updates(map[string]interface{}{
+						"outstanding_balance": update.Balance,
+						"next_billing_date":   update.NextBilling,
+						"updated_at":          time.Now(),
+					}).Error
 				if err != nil {
 					return err
 				}

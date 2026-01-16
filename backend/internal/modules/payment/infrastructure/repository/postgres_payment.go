@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"gorm.io/gorm"
 )
 
@@ -46,9 +47,10 @@ func (r *PostgresPaymentRepository) Update(ctx context.Context, payment *domain.
 	return nil
 }
 
-func (r *PostgresPaymentRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Payment, error) {
+// SECURITY FIX (VUL-003): Added clubID parameter for tenant isolation
+func (r *PostgresPaymentRepository) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Payment, error) {
 	var payment domain.Payment
-	if err := r.db.WithContext(ctx).First(&payment, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Scopes(database.TenantScope(clubID)).First(&payment, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -57,7 +59,22 @@ func (r *PostgresPaymentRepository) GetByID(ctx context.Context, id uuid.UUID) (
 	return &payment, nil
 }
 
-func (r *PostgresPaymentRepository) GetByExternalID(ctx context.Context, externalID string) (*domain.Payment, error) {
+// SECURITY FIX (VUL-003): Added clubID parameter for tenant isolation
+func (r *PostgresPaymentRepository) GetByExternalID(ctx context.Context, clubID string, externalID string) (*domain.Payment, error) {
+	var payment domain.Payment
+	if err := r.db.WithContext(ctx).Scopes(database.TenantScope(clubID)).First(&payment, "external_id = ?", externalID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &payment, nil
+}
+
+// GetByExternalIDForWebhook is ONLY for webhook processing where clubID is unknown.
+// SECURITY: This is safe because webhook signature is validated before this call,
+// and the clubID from the returned payment is used for subsequent tenant-scoped operations.
+func (r *PostgresPaymentRepository) GetByExternalIDForWebhook(ctx context.Context, externalID string) (*domain.Payment, error) {
 	var payment domain.Payment
 	if err := r.db.WithContext(ctx).First(&payment, "external_id = ?", externalID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -73,7 +90,7 @@ func (r *PostgresPaymentRepository) List(ctx context.Context, clubID string, fil
 	var total int64
 
 	// Create base query with mandatory club_id
-	query := r.db.WithContext(ctx).Model(&domain.Payment{}).Where("club_id = ?", clubID)
+	query := r.db.WithContext(ctx).Model(&domain.Payment{}).Scopes(database.TenantScope(clubID))
 
 	// Apply filters if present
 	if filter.PayerID != uuid.Nil {

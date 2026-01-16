@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -217,6 +219,27 @@ func TestAuthUseCases_Login(t *testing.T) {
 		setupMocks    func(repo *MockAuthRepo, ts *MockTokenService)
 		expectedError string
 	}{
+		{
+			name: "Success",
+			dto: application.LoginDTO{
+				Email:    "test@example.com",
+				Password: "SecurePass123!",
+			},
+			setupMocks: func(repo *MockAuthRepo, ts *MockTokenService) {
+				hash, _ := bcrypt.GenerateFromPassword([]byte("SecurePass123!"), bcrypt.MinCost)
+				user := &domain.User{
+					ID:       "user-id",
+					Email:    "test@example.com",
+					Password: string(hash),
+					ClubID:   clubID,
+				}
+				repo.On("FindUserByEmail", mock.Anything, "test@example.com", clubID).Return(user, nil)
+				ts.On("GenerateToken", user).Return(&domain.Token{AccessToken: "access", RefreshToken: "refresh"}, nil)
+				repo.On("SaveRefreshToken", mock.Anything, mock.Anything).Return(nil)
+				repo.On("LogAuthentication", mock.Anything, mock.Anything).Return(nil)
+			},
+			expectedError: "",
+		},
 		{
 			name: "Fail_UserNotFound",
 			dto: application.LoginDTO{

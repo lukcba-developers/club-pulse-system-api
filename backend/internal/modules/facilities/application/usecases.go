@@ -160,7 +160,7 @@ func (uc *FacilityUseCases) AddEquipment(ctx context.Context, clubID, facilityID
 		UpdatedAt:  time.Now(),
 	}
 
-	if err := uc.repo.CreateEquipment(ctx, equipment); err != nil {
+	if err := uc.repo.CreateEquipment(ctx, clubID, equipment); err != nil {
 		return nil, err
 	}
 	return equipment, nil
@@ -177,25 +177,18 @@ func (uc *FacilityUseCases) ListEquipment(ctx context.Context, clubID, facilityI
 		return nil, errors.New("facility not found")
 	}
 
-	return uc.repo.ListEquipmentByFacility(ctx, facilityID)
+	return uc.repo.ListEquipmentByFacility(ctx, clubID, facilityID)
 }
 
 func (uc *FacilityUseCases) LoanEquipment(ctx context.Context, clubID, userID, equipmentID string, expectedReturn time.Time) (*domain.EquipmentLoan, error) {
 	// 1. Get Equipment
-	// Note: GetEquipmentByID doesn't take ClubID, so we should verify ownership ideally.
-	// But Equipment is linked to Facility. We can check Facility -> Club.
-	eq, err := uc.repo.GetEquipmentByID(ctx, equipmentID)
+	// Join with facilities to validate clubID
+	eq, err := uc.repo.GetEquipmentByID(ctx, clubID, equipmentID)
 	if err != nil {
 		return nil, err
 	}
 	if eq == nil {
 		return nil, errors.New("equipment not found")
-	}
-
-	// Verify Club (Indirectly via Facility)
-	fac, err := uc.repo.GetByID(ctx, clubID, eq.FacilityID)
-	if err != nil || fac == nil {
-		return nil, errors.New("unauthorized access to equipment (club mismatch)")
 	}
 
 	if eq.Status != "available" {
@@ -217,7 +210,6 @@ func (uc *FacilityUseCases) LoanEquipment(ctx context.Context, clubID, userID, e
 	if err := uc.repo.LoanEquipmentAtomic(ctx, loan, equipmentID); err != nil {
 		return nil, err
 	}
-	// Note: We don't need to manually update loanRepo or repo.UpdateEquipment as Atomic method does it.
 
 	return loan, nil
 }
@@ -232,13 +224,9 @@ func (uc *FacilityUseCases) ReturnLoan(ctx context.Context, clubID, loanID, cond
 	}
 
 	// Verify Club via Equipment -> Facility
-	eq, err := uc.repo.GetEquipmentByID(ctx, loan.EquipmentID)
+	eq, err := uc.repo.GetEquipmentByID(ctx, clubID, loan.EquipmentID)
 	if err != nil || eq == nil {
-		return errors.New("equipment not found for loan")
-	}
-	fac, err := uc.repo.GetByID(ctx, clubID, eq.FacilityID)
-	if err != nil || fac == nil {
-		return errors.New("unauthorized (club mismatch)")
+		return errors.New("equipment not found for loan or unauthorized")
 	}
 
 	if loan.Status != domain.LoanStatusActive && loan.Status != domain.LoanStatusOverdue {
@@ -260,7 +248,7 @@ func (uc *FacilityUseCases) ReturnLoan(ctx context.Context, clubID, loanID, cond
 	if condition != "" {
 		eq.Condition = domain.EquipmentCondition(condition) // assuming valid enum string
 	}
-	if err := uc.repo.UpdateEquipment(ctx, eq); err != nil {
+	if err := uc.repo.UpdateEquipment(ctx, clubID, eq); err != nil {
 		return err
 	}
 

@@ -57,26 +57,26 @@ func (m *MockFacilityRepo) HasConflict(ctx context.Context, clubID, facilityID s
 	args := m.Called(ctx, clubID, facilityID, startTime, endTime)
 	return args.Bool(0), args.Error(1)
 }
-func (m *MockFacilityRepo) CreateEquipment(ctx context.Context, equipment *domain.Equipment) error {
-	args := m.Called(ctx, equipment)
+func (m *MockFacilityRepo) CreateEquipment(ctx context.Context, clubID string, equipment *domain.Equipment) error {
+	args := m.Called(ctx, clubID, equipment)
 	return args.Error(0)
 }
-func (m *MockFacilityRepo) GetEquipmentByID(ctx context.Context, id string) (*domain.Equipment, error) {
-	args := m.Called(ctx, id)
+func (m *MockFacilityRepo) GetEquipmentByID(ctx context.Context, clubID, id string) (*domain.Equipment, error) {
+	args := m.Called(ctx, clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.Equipment), args.Error(1)
 }
-func (m *MockFacilityRepo) ListEquipmentByFacility(ctx context.Context, facilityID string) ([]*domain.Equipment, error) {
-	args := m.Called(ctx, facilityID)
+func (m *MockFacilityRepo) ListEquipmentByFacility(ctx context.Context, clubID, facilityID string) ([]*domain.Equipment, error) {
+	args := m.Called(ctx, clubID, facilityID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.Equipment), args.Error(1)
 }
-func (m *MockFacilityRepo) UpdateEquipment(ctx context.Context, equipment *domain.Equipment) error {
-	args := m.Called(ctx, equipment)
+func (m *MockFacilityRepo) UpdateEquipment(ctx context.Context, clubID string, equipment *domain.Equipment) error {
+	args := m.Called(ctx, clubID, equipment)
 	return args.Error(0)
 }
 func (m *MockFacilityRepo) LoanEquipmentAtomic(ctx context.Context, loan *domain.EquipmentLoan, equipmentID string) error {
@@ -94,12 +94,23 @@ func (m *MockFacilityRepo) UpdateEmbedding(ctx context.Context, facilityID strin
 	args := m.Called(ctx, facilityID, embedding)
 	return args.Error(0)
 }
-func (m *MockFacilityRepo) ListMaintenanceByFacility(ctx context.Context, facilityID string) ([]*domain.MaintenanceTask, error) {
-	args := m.Called(ctx, facilityID)
+func (m *MockFacilityRepo) ListMaintenanceByFacility(ctx context.Context, clubID, facilityID string) ([]*domain.MaintenanceTask, error) {
+	args := m.Called(ctx, clubID, facilityID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.MaintenanceTask), args.Error(1)
+}
+func (m *MockFacilityRepo) CreateMaintenance(ctx context.Context, clubID string, task *domain.MaintenanceTask) error {
+	args := m.Called(ctx, clubID, task)
+	return args.Error(0)
+}
+func (m *MockFacilityRepo) GetMaintenanceByID(ctx context.Context, clubID, id string) (*domain.MaintenanceTask, error) {
+	args := m.Called(ctx, clubID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.MaintenanceTask), args.Error(1)
 }
 
 type MockLoanRepo struct {
@@ -198,7 +209,7 @@ func TestFacilityHandler_Equipment(t *testing.T) {
 
 	t.Run("AddEquipment", func(t *testing.T) {
 		mockRepo.On("GetByID", mock.Anything, "club-1", "fac-1").Return(&domain.Facility{ID: "fac-1"}, nil).Once()
-		mockRepo.On("CreateEquipment", mock.Anything, mock.Anything).Return(nil).Once()
+		mockRepo.On("CreateEquipment", mock.Anything, "club-1", mock.Anything).Return(nil).Once()
 
 		input := application.AddEquipmentDTO{
 			Name:      "Ball",
@@ -215,12 +226,24 @@ func TestFacilityHandler_Equipment(t *testing.T) {
 	})
 
 	t.Run("LoanEquipment", func(t *testing.T) {
-		mockRepo.On("GetEquipmentByID", mock.Anything, "eq-1").Return(&domain.Equipment{
+		mockRepo.On("GetEquipmentByID", mock.Anything, "club-1", "eq-1").Return(&domain.Equipment{
 			ID: "eq-1", FacilityID: "fac-1", Status: "available",
 		}, nil).Once()
-		mockRepo.On("GetByID", mock.Anything, "club-1", "fac-1").Return(&domain.Facility{
-			ID: "fac-1", ClubID: "club-1",
-		}, nil).Once()
+		// GetByID call removed in logic?
+		// Logic:
+		// eq, err := uc.repo.GetEquipmentByID(ctx, clubID, equipmentID)
+		// Check ownership? Only via GetEquipmentByID logic inside UseCase "Verify Club via Equipment -> Facility".
+		// UseCases.LoanEquipment(ctx, clubID, ...).
+		// It calls uc.repo.GetEquipmentByID(ctx, clubID, equipmentID).
+		// If that passes, it calls LoanEquipmentAtomic.
+		// So checking Fac ownership separately is NOT done if I removed it from UseCase.
+		// Let's check UseCase.LoanEquipment in Step 467.
+		// "eq, err := uc.repo.GetEquipmentByID(ctx, clubID, equipmentID)"
+		// "if err != nil { return nil, err }"
+		// "return loan, uc.repo.LoanEquipmentAtomic(ctx, loan, equipmentID)"
+		// There is NO "GetByID" call for facility anymore!
+		// So I must REMOVE `mockRepo.On("GetByID", ...)` from this test.
+
 		mockRepo.On("LoanEquipmentAtomic", mock.Anything, mock.Anything, "eq-1").Return(nil).Once()
 
 		input := map[string]string{

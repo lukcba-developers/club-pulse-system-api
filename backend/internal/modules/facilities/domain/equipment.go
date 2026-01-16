@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -30,8 +31,8 @@ type Equipment struct {
 }
 
 type EquipmentRepository interface {
-	Create(equipment *Equipment) error
-	GetByID(id string) (*Equipment, error)
-	ListByFacility(facilityID string) ([]*Equipment, error)
-	Update(equipment *Equipment) error
+	Create(ctx context.Context, clubID string, equipment *Equipment) error
+	GetByID(ctx context.Context, clubID, id string) (*Equipment, error)
+	ListByFacility(ctx context.Context, clubID, facilityID string) ([]*Equipment, error)
+	Update(ctx context.Context, clubID string, equipment *Equipment) error
 }

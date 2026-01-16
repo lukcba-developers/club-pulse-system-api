@@ -61,6 +61,7 @@ func (TestScholarship) TableName() string { return "scholarships" }
 
 type TestSubscription struct {
 	ID              uuid.UUID `gorm:"type:uuid;primary_key"`
+	ClubID          string    `gorm:"index"` // SECURITY FIX (VUL-002): Tenant isolation
 	UserID          uuid.UUID
 	MembershipID    uuid.UUID
 	Amount          decimal.Decimal `gorm:"type:decimal(10,2)"`
@@ -164,6 +165,7 @@ func TestPostgresMembershipRepositories(t *testing.T) {
 
 		sub := &domain.Subscription{
 			ID:              uuid.New(),
+			ClubID:          clubID, // SECURITY FIX (VUL-002): Add tenant ID
 			UserID:          uID,
 			MembershipID:    mID,
 			Amount:          decimal.NewFromInt(50),
@@ -176,7 +178,7 @@ func TestPostgresMembershipRepositories(t *testing.T) {
 		err := subRepo.Create(context.Background(), sub)
 		assert.NoError(t, err)
 
-		saved, err := subRepo.GetByID(context.Background(), sub.ID)
+		saved, err := subRepo.GetByID(context.Background(), clubID, sub.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, sub.Amount.String(), saved.Amount.String())
 
@@ -185,12 +187,12 @@ func TestPostgresMembershipRepositories(t *testing.T) {
 		err = subRepo.Update(context.Background(), sub)
 		assert.NoError(t, err)
 
-		updated, err := subRepo.GetByID(context.Background(), sub.ID)
+		updated, err := subRepo.GetByID(context.Background(), clubID, sub.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, domain.SubscriptionCancelled, updated.Status)
 
 		// Get By User
-		list, err := subRepo.GetByUserID(context.Background(), uID)
+		list, err := subRepo.GetByUserID(context.Background(), clubID, uID)
 		assert.NoError(t, err)
 		assert.Len(t, list, 1)
 	})
