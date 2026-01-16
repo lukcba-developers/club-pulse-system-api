@@ -78,6 +78,9 @@ api.interceptors.request.use(
 
 // Response Interceptor
 api.interceptors.response.use(
+    // Success handler - just pass through successful responses
+    (response) => response,
+    // Error handler
     (error: unknown) => {
         const axiosError = error as CustomAxiosError;
         const status = axiosError.response?.status;

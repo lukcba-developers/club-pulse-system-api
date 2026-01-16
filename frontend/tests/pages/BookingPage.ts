@@ -30,21 +30,20 @@ export class BookingPage {
             await route.fulfill({ status: 200, json });
         });
 
-        // 2. Mock Facilities API
+        // 2. Mock Facilities API - Return array directly (axios.get returns response.data)
         await this.page.route('**/facilities*', async route => {
-            const json = {
-                data: [
-                    {
-                        id: 'cam-1',
-                        name: 'Cancha 1',
-                        type: 'padel',
-                        price_per_hour: 2000,
-                        status: 'active',
-                        capacity: 4,
-                        location: { name: 'Sede Central' }
-                    }
-                ]
-            };
+            // facilityService.list() expects response.data to be Facility[] directly
+            const json = [
+                {
+                    id: 'cam-1',
+                    name: 'Cancha 1',
+                    type: 'padel',
+                    hourly_rate: 2000,
+                    status: 'active',
+                    capacity: 4,
+                    location: { name: 'Sede Central' }
+                }
+            ];
             await route.fulfill({ status: 200, json });
         });
 
@@ -61,9 +60,19 @@ export class BookingPage {
             await route.fulfill({ status: 200, json });
         });
 
-        // 4. Mock Booking Creation
+        // 4. Mock Booking endpoints (POST for creation, GET for list)
+        await this.page.route('**/bookings/all*', async route => {
+            // getClubBookings expects { data: Booking[] }
+            await route.fulfill({ status: 200, json: { data: [] } });
+        });
+
         await this.page.route('**/bookings', async route => {
-            await route.fulfill({ status: 201, json: { message: "Created" } });
+            if (route.request().method() === 'POST') {
+                await route.fulfill({ status: 201, json: { message: "Created" } });
+            } else {
+                // getMyBookings expects { data: Booking[] }
+                await route.fulfill({ status: 200, json: { data: [] } });
+            }
         });
     }
 
