@@ -125,8 +125,10 @@ func (uc *PaymentUseCases) ProcessWebhook(ctx context.Context, webhookReq Proces
 	}
 
 	// 2. SECURITY FIX: Find existing payment by external_id (from gateway)
-	// This ensures we get the club_id from our DB, not from an untrusted source
-	existing, err := uc.repo.GetByExternalID(ctx, updatedPayment.ExternalID)
+	// Uses GetByExternalIDForWebhook which doesn't require clubID - safe because:
+	// 1) Webhook signature was validated above
+	// 2) We extract clubID from the found payment for subsequent operations
+	existing, err := uc.repo.GetByExternalIDForWebhook(ctx, updatedPayment.ExternalID)
 	if err != nil {
 		log.Printf("Payment lookup failed for external_id %s: %v", updatedPayment.ExternalID, err)
 		return nil, errors.New("database lookup failed")

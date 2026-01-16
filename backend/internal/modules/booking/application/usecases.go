@@ -583,8 +583,9 @@ func (uc *BookingUseCases) ListRecurringRules(ctx context.Context, clubID string
 
 // ExpirePayments finds pending bookings with expired payment timers and marks them as EXPIRED.
 // This should be called by a background cron job.
-func (uc *BookingUseCases) ExpirePayments(ctx context.Context) error {
-	expiredBookings, err := uc.repo.ListExpired(ctx)
+// SECURITY FIX (VUL-001): Added clubID parameter to ensure tenant isolation.
+func (uc *BookingUseCases) ExpirePayments(ctx context.Context, clubID string) error {
+	expiredBookings, err := uc.repo.ListExpired(ctx, clubID)
 	if err != nil {
 		return err
 	}

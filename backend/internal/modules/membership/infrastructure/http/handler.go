@@ -187,8 +187,8 @@ func (h *MembershipHandler) ListSubscriptions(c *gin.Context) {
 	}
 
 	uid := uuid.MustParse(userID.(string))
-	// Context implies fetching for current user
-	subscriptions, err := h.useCases.ListUserSubscriptions(c.Request.Context(), uid)
+	clubID := c.GetString("clubID") // SECURITY FIX (VUL-002): Get tenant ID
+	subscriptions, err := h.useCases.ListUserSubscriptions(c.Request.Context(), clubID, uid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -22,11 +22,14 @@ type mockPaymentRepo struct {
 }
 
 func (m *mockPaymentRepo) Create(ctx context.Context, p *domain.Payment) error { return nil }
-func (m *mockPaymentRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Payment, error) {
+func (m *mockPaymentRepo) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Payment, error) {
 	return nil, nil
 }
 func (m *mockPaymentRepo) Update(ctx context.Context, p *domain.Payment) error { return nil }
-func (m *mockPaymentRepo) GetByExternalID(ctx context.Context, ext string) (*domain.Payment, error) {
+func (m *mockPaymentRepo) GetByExternalID(ctx context.Context, clubID string, ext string) (*domain.Payment, error) {
+	return nil, nil
+}
+func (m *mockPaymentRepo) GetByExternalIDForWebhook(ctx context.Context, ext string) (*domain.Payment, error) {
 	return nil, nil
 }
 func (m *mockPaymentRepo) List(ctx context.Context, clubID string, filter domain.PaymentFilter) ([]*domain.Payment, int64, error) {

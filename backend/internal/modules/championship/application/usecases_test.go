@@ -476,3 +476,148 @@ func TestChampionshipUseCases_Scheduling(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to book court")
 	})
 }
+
+func TestChampionshipUseCases_TeamManagement(t *testing.T) {
+	repo := new(MockChampionshipRepo)
+	uc := application.NewChampionshipUseCases(repo, nil, nil)
+	// team struct misses ClubID so we don't pass one relevant for now,
+	// but context is needed.
+
+	t.Run("CreateTeam Success", func(t *testing.T) {
+		repo.On("CreateTeam", mock.Anything, mock.Anything).Return(nil).Once()
+
+		team, err := uc.CreateTeam(context.TODO(), application.CreateTeamInput{
+			Name: "Team A",
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, team)
+		assert.Equal(t, "Team A", team.Name)
+	})
+
+	t.Run("CreateTeam RepoError", func(t *testing.T) {
+		repo.On("CreateTeam", mock.Anything, mock.Anything).Return(errors.New("db error")).Once()
+		_, err := uc.CreateTeam(context.TODO(), application.CreateTeamInput{Name: "Team A"})
+		assert.Error(t, err)
+	})
+
+	t.Run("AddMember Success", func(t *testing.T) {
+		repo.On("AddMember", mock.Anything, "team-1", "user-1").Return(nil).Once()
+		err := uc.AddMember(context.TODO(), "club-1", "team-1", "user-1")
+		assert.NoError(t, err)
+	})
+
+	t.Run("AddMember RepoError", func(t *testing.T) {
+		repo.On("AddMember", mock.Anything, "team-1", "user-1").Return(errors.New("db error")).Once()
+		err := uc.AddMember(context.TODO(), "club-1", "team-1", "user-1")
+		assert.Error(t, err)
+	})
+}
+
+func TestChampionshipUseCases_HeadToHead(t *testing.T) {
+	repo := new(MockChampionshipRepo)
+	uc := application.NewChampionshipUseCases(repo, nil, nil)
+	cID := "club-1"
+	gID := uuid.New().String()
+	tA := uuid.New()
+	tB := uuid.New()
+
+	t.Run("GetHeadToHeadHistory Success", func(t *testing.T) {
+		hScore1 := 2.0
+		aScore1 := 1.0 // A wins
+		hScore2 := 1.0
+		aScore2 := 1.0 // Draw
+
+		matches := []domain.TournamentMatch{
+			{
+				HomeTeamID: tA, AwayTeamID: tB,
+				HomeScore: &hScore1, AwayScore: &aScore1, Status: domain.MatchCompleted,
+			},
+			{
+				HomeTeamID: tB, AwayTeamID: tA,
+				HomeScore: &hScore2, AwayScore: &aScore2, Status: domain.MatchCompleted,
+			},
+			{
+				HomeTeamID: uuid.New(), AwayTeamID: tA, // Irrelevant match
+				HomeScore: &hScore1, AwayScore: &aScore1, Status: domain.MatchCompleted,
+			},
+		}
+
+		repo.On("GetMatchesByGroup", mock.Anything, cID, gID).Return(matches, nil).Once()
+
+		res, err := uc.GetHeadToHeadHistory(context.TODO(), cID, gID, tA.String(), tB.String())
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(res.Matches))
+		assert.Equal(t, 1, res.TeamAWins)
+		assert.Equal(t, 0, res.TeamBWins)
+		assert.Equal(t, 1, res.Draws)
+		assert.Equal(t, 3, res.TeamAGoals) // 2 + 1
+		assert.Equal(t, 2, res.TeamBGoals) // 1 + 1
+	})
+}
+
+func TestChampionshipUseCases_Tiebreakers(t *testing.T) {
+	repo := new(MockChampionshipRepo)
+	uc := application.NewChampionshipUseCases(repo, nil, nil)
+	cID := "club-1"
+	gID := uuid.New().String()
+
+	tA := uuid.New()
+	tB := uuid.New()
+	tC := uuid.New()
+
+	t.Run("Standings Sorting (Points > GD > GF)", func(t *testing.T) {
+		// Mock Matches to create the scenario
+		// A: 3pts, GD +2, GF 3  (Won 3-1)
+		// B: 3pts, GD +1, GF 2  (Won 2-1)
+		// C: 3pts, GD +2, GF 5  (Won 5-3)
+
+		s3 := 3.0
+		s1 := 1.0
+		s2 := 2.0
+		s5 := 5.0
+
+		matches := []domain.TournamentMatch{
+			{HomeTeamID: tA, AwayTeamID: uuid.New(), HomeScore: &s3, AwayScore: &s1, Status: domain.MatchCompleted},
+			{HomeTeamID: tB, AwayTeamID: uuid.New(), HomeScore: &s2, AwayScore: &s1, Status: domain.MatchCompleted},
+			{HomeTeamID: tC, AwayTeamID: uuid.New(), HomeScore: &s5, AwayScore: &s3, Status: domain.MatchCompleted},
+		}
+
+		// Initial empty standings
+		repo.On("GetStandings", mock.Anything, cID, gID).Return([]domain.Standing{
+			{TeamID: tA}, {TeamID: tB}, {TeamID: tC},
+		}, nil).Once()
+
+		repo.On("GetMatchesByGroup", mock.Anything, cID, gID).Return(matches, nil).Once()
+		repo.On("GetGroup", mock.Anything, cID, gID).Return(&domain.Group{StageID: uuid.New()}, nil).Once()
+		repo.On("GetStage", mock.Anything, cID, mock.Anything).Return(&domain.TournamentStage{TournamentID: uuid.New()}, nil).Once()
+		repo.On("GetTournament", mock.Anything, cID, mock.Anything).Return(&domain.Tournament{Settings: []byte(`{"tiebreaker_criteria": ["GOAL_DIFF", "GOALS_FOR"]}`)}, nil).Once()
+		repo.On("GetMatch", mock.Anything, cID, mock.Anything).Return(&domain.TournamentMatch{GroupID: &[]uuid.UUID{uuid.MustParse(gID)}[0]}, nil).Once()
+
+		// User stats update mocks (once per match * 2 teams = 6 calls? No, UpdateMatchResult only calls for the specific match updated)
+		// But here we are calling UpdateMatchResult just to trigger the recalc.
+		// Wait, UpdateMatchResult calls recalculateStandings at the end.
+		repo.On("UpdateMatchResult", mock.Anything, cID, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+
+		// The key assertion: verify the order of standings passed to UpdateStandingsBatch
+		repo.On("UpdateStandingsBatch", mock.Anything, mock.MatchedBy(func(standings []domain.Standing) bool {
+			if len(standings) < 3 {
+				return false
+			}
+			// Expected Order: C (1st), A (2nd), B (3rd)
+			// C: +2 GD, 5 GF
+			// A: +2 GD, 3 GF
+			// B: +1 GD
+
+			// Let's print logic if it fails
+			// But we trust usage
+			return standings[0].TeamID == tC && standings[1].TeamID == tA && standings[2].TeamID == tB
+		})).Return(nil).Once()
+
+		// We trigger via UpdateMatchResult, passing one of the matches or dummy data,
+		// as long as it triggers the recalc flow.
+		err := uc.UpdateMatchResult(context.TODO(), application.UpdateMatchResultInput{
+			ClubID: cID, MatchID: uuid.New().String(), HomeScore: 1, AwayScore: 0,
+		})
+		assert.NoError(t, err)
+	})
+}

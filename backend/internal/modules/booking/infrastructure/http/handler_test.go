@@ -66,8 +66,8 @@ func (m *MockBookingRepo) GetNextInLine(ctx context.Context, clubID string, rID 
 	}
 	return args.Get(0).(*domain.Waitlist), args.Error(1)
 }
-func (m *MockBookingRepo) ListExpired(ctx context.Context) ([]domain.Booking, error) {
-	args := m.Called(ctx)
+func (m *MockBookingRepo) ListExpired(ctx context.Context, clubID string) ([]domain.Booking, error) {
+	args := m.Called(ctx, clubID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

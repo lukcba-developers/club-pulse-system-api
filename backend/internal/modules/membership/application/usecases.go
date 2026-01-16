@@ -140,11 +140,9 @@ func NewSubscriptionUseCases(repo domain.SubscriptionRepository) *SubscriptionUs
 	return &SubscriptionUseCases{repo: repo}
 }
 
-func (uc *MembershipUseCases) ListUserSubscriptions(ctx context.Context, userID uuid.UUID) ([]domain.Subscription, error) {
-	// Note: Subscriptions are usually global or per-club? Check domain.
-	// Current repository generic GetByUserID doesn't filter by club.
-	// Assuming subscriptions are linked to memberships which are linked to clubs.
-	return uc.subscriptionRepo.GetByUserID(ctx, userID)
+// SECURITY FIX (VUL-002): Added clubID for tenant isolation
+func (uc *MembershipUseCases) ListUserSubscriptions(ctx context.Context, clubID string, userID uuid.UUID) ([]domain.Subscription, error) {
+	return uc.subscriptionRepo.GetByUserID(ctx, clubID, userID)
 }
 
 // ListAllMemberships returns all memberships for admin view

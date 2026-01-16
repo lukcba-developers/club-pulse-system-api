@@ -29,7 +29,7 @@ func (r *PostgresBookingRepository) Create(ctx context.Context, booking *domain.
 
 func (r *PostgresBookingRepository) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Booking, error) {
 	var booking domain.Booking
-	if err := r.db.WithContext(ctx).First(&booking, "id = ? AND club_id = ?", id, clubID).Error; err != nil {
+	if err := r.db.WithContext(ctx).Scopes(database.TenantScope(clubID)).First(&booking, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -40,7 +40,7 @@ func (r *PostgresBookingRepository) GetByID(ctx context.Context, clubID string, 
 
 func (r *PostgresBookingRepository) List(ctx context.Context, clubID string, filter map[string]interface{}) ([]domain.Booking, error) {
 	var bookings []domain.Booking
-	query := r.db.WithContext(ctx).Model(&domain.Booking{}).Where("club_id = ?", clubID)
+	query := r.db.WithContext(ctx).Model(&domain.Booking{}).Scopes(database.TenantScope(clubID))
 
 	for key, value := range filter {
 		query = query.Where(key+" = ?", value)
@@ -146,9 +146,10 @@ func (r *PostgresBookingRepository) GetNextInLine(ctx context.Context, clubID st
 	return &entry, nil
 }
 
-func (r *PostgresBookingRepository) ListExpired(ctx context.Context) ([]domain.Booking, error) {
+func (r *PostgresBookingRepository) ListExpired(ctx context.Context, clubID string) ([]domain.Booking, error) {
 	var bookings []domain.Booking
 	err := r.db.WithContext(ctx).Model(&domain.Booking{}).
+		Where("club_id = ?", clubID). // SECURITY FIX (VUL-001): Filter by tenant
 		Where("status = ?", domain.BookingStatusPendingPayment).
 		Where("payment_expiry < ?", time.Now()).
 		Find(&bookings).Error

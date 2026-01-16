@@ -59,8 +59,11 @@ type PaymentFilter struct {
 type PaymentRepository interface {
 	Create(ctx context.Context, payment *Payment) error
 	Update(ctx context.Context, payment *Payment) error
-	GetByID(ctx context.Context, id uuid.UUID) (*Payment, error)
-	GetByExternalID(ctx context.Context, externalID string) (*Payment, error)
+	GetByID(ctx context.Context, clubID string, id uuid.UUID) (*Payment, error)              // SECURITY FIX (VUL-003): Added clubID
+	GetByExternalID(ctx context.Context, clubID string, externalID string) (*Payment, error) // SECURITY FIX (VUL-003): Added clubID
+	// GetByExternalIDForWebhook is ONLY for webhook processing from external gateways.
+	// Safe because: 1) webhook signature is validated first, 2) clubID is extracted from result for subsequent ops.
+	GetByExternalIDForWebhook(ctx context.Context, externalID string) (*Payment, error)
 	List(ctx context.Context, clubID string, filter PaymentFilter) ([]*Payment, int64, error)
 }
 
