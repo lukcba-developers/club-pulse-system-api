@@ -429,7 +429,7 @@ func (uc *BookingUseCases) GetAvailability(ctx context.Context, clubID, facility
 	}
 
 	// 1.5. OPTIMIZATION: Fetch Maintenance Tasks Upfront (Avoid N+1)
-	allMaintenance, err := uc.facilityRepo.ListMaintenanceByFacility(ctx, facilityID)
+	allMaintenance, err := uc.facilityRepo.ListMaintenanceByFacility(ctx, clubID, facilityID)
 	if err != nil {
 		return nil, err
 	}

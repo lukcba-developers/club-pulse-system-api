@@ -136,9 +136,22 @@ func (m *MockFacilityRepo) HasConflict(ctx context.Context, clubID, facilityID s
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockFacilityRepo) ListMaintenanceByFacility(ctx context.Context, facilityID string) ([]*facilityDomain.MaintenanceTask, error) {
-	args := m.Called(ctx, facilityID)
+func (m *MockFacilityRepo) ListMaintenanceByFacility(ctx context.Context, clubID, facilityID string) ([]*facilityDomain.MaintenanceTask, error) {
+	args := m.Called(ctx, clubID, facilityID)
 	return args.Get(0).([]*facilityDomain.MaintenanceTask), args.Error(1)
+}
+
+func (m *MockFacilityRepo) CreateMaintenance(ctx context.Context, clubID string, task *facilityDomain.MaintenanceTask) error {
+	args := m.Called(ctx, clubID, task)
+	return args.Error(0)
+}
+
+func (m *MockFacilityRepo) GetMaintenanceByID(ctx context.Context, clubID, id string) (*facilityDomain.MaintenanceTask, error) {
+	args := m.Called(ctx, clubID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*facilityDomain.MaintenanceTask), args.Error(1)
 }
 
 func (m *MockFacilityRepo) SemanticSearch(ctx context.Context, clubID string, embedding []float32, limit int) ([]*facilityDomain.FacilityWithSimilarity, error) {
@@ -151,26 +164,26 @@ func (m *MockFacilityRepo) UpdateEmbedding(ctx context.Context, facilityID strin
 	return args.Error(0)
 }
 
-func (m *MockFacilityRepo) CreateEquipment(ctx context.Context, equipment *facilityDomain.Equipment) error {
-	args := m.Called(ctx, equipment)
+func (m *MockFacilityRepo) CreateEquipment(ctx context.Context, clubID string, equipment *facilityDomain.Equipment) error {
+	args := m.Called(ctx, clubID, equipment)
 	return args.Error(0)
 }
 
-func (m *MockFacilityRepo) GetEquipmentByID(ctx context.Context, id string) (*facilityDomain.Equipment, error) {
-	args := m.Called(ctx, id)
+func (m *MockFacilityRepo) GetEquipmentByID(ctx context.Context, clubID, id string) (*facilityDomain.Equipment, error) {
+	args := m.Called(ctx, clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*facilityDomain.Equipment), args.Error(1)
 }
 
-func (m *MockFacilityRepo) ListEquipmentByFacility(ctx context.Context, facilityID string) ([]*facilityDomain.Equipment, error) {
-	args := m.Called(ctx, facilityID)
+func (m *MockFacilityRepo) ListEquipmentByFacility(ctx context.Context, clubID, facilityID string) ([]*facilityDomain.Equipment, error) {
+	args := m.Called(ctx, clubID, facilityID)
 	return args.Get(0).([]*facilityDomain.Equipment), args.Error(1)
 }
 
-func (m *MockFacilityRepo) UpdateEquipment(ctx context.Context, equipment *facilityDomain.Equipment) error {
-	args := m.Called(ctx, equipment)
+func (m *MockFacilityRepo) UpdateEquipment(ctx context.Context, clubID string, equipment *facilityDomain.Equipment) error {
+	args := m.Called(ctx, clubID, equipment)
 	return args.Error(0)
 }
 

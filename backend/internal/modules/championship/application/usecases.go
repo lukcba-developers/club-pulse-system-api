@@ -295,7 +295,9 @@ func (uc *ChampionshipUseCases) UpdateMatchResult(ctx context.Context, input Upd
 		return nil // Not a group match
 	}
 
-	return uc.recalculateStandings(ctx, input.ClubID, match.GroupID.String())
+	// Safe dereference as we checked for nil
+	groupID := (*match.GroupID).String()
+	return uc.recalculateStandings(ctx, input.ClubID, groupID)
 }
 
 func (uc *ChampionshipUseCases) GetMyMatches(ctx context.Context, clubID, userID string) ([]domain.TournamentMatch, error) {

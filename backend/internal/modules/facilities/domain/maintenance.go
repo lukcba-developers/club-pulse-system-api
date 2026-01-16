@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -39,12 +40,13 @@ type MaintenanceTask struct {
 }
 
 // Repository Interface extension for Maintenance
+// Repository Interface extension for Maintenance
 type MaintenanceRepository interface {
-	Create(task *MaintenanceTask) error
-	GetByID(id string) (*MaintenanceTask, error)
-	ListByFacility(facilityID string) ([]*MaintenanceTask, error)
+	Create(ctx context.Context, clubID string, task *MaintenanceTask) error
+	GetByID(ctx context.Context, clubID, id string) (*MaintenanceTask, error)
+	ListByFacility(ctx context.Context, clubID, facilityID string) ([]*MaintenanceTask, error)
 	// HasConflict checks if there is any active maintenance overlapping with the given time range
-	HasConflict(facilityID string, startTime, endTime time.Time) (bool, error)
+	HasConflict(ctx context.Context, clubID, facilityID string, startTime, endTime time.Time) (bool, error)
 	// GetImpactedUsers returns a list of user IDs that have bookings during the maintenance window
-	GetImpactedUsers(facilityID string, start, end time.Time) ([]string, error)
+	GetImpactedUsers(ctx context.Context, facilityID string, start, end time.Time) ([]string, error)
 }

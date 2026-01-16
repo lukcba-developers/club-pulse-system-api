@@ -138,6 +138,10 @@ func TestFacilityRepository(t *testing.T) {
 
 	t.Run("Maintenance", func(t *testing.T) {
 		facID := uuid.New().String()
+		// Create facility first for validation
+		fac := &domain.Facility{ID: facID, ClubID: "club-1", Name: "MaintFac", Status: "active"}
+		_ = repo.Create(ctx, fac)
+
 		id := uuid.New().String()
 		task := &domain.MaintenanceTask{
 			ID:         id,
@@ -148,14 +152,15 @@ func TestFacilityRepository(t *testing.T) {
 			EndTime:    time.Now().Add(2 * time.Hour),
 		}
 
-		_ = repo.CreateMaintenance(task)
+		err := repo.CreateMaintenance(ctx, "club-1", task)
+		assert.NoError(t, err)
 
-		fetched, err := repo.GetMaintenanceByID(id)
+		fetched, err := repo.GetMaintenanceByID(ctx, "club-1", id)
 		assert.NoError(t, err)
 		assert.NotNil(t, fetched)
 		assert.Equal(t, "Fix", fetched.Title)
 
-		tasks, _ := repo.ListMaintenanceByFacility(ctx, facID)
+		tasks, _ := repo.ListMaintenanceByFacility(ctx, "club-1", facID)
 		assert.Len(t, tasks, 1)
 
 		conflict, _ := repo.HasConflict(ctx, "club-1", facID, time.Now().Add(90*time.Minute), time.Now().Add(3*time.Hour))
@@ -164,19 +169,25 @@ func TestFacilityRepository(t *testing.T) {
 
 	t.Run("Equipment", func(t *testing.T) {
 		facID := uuid.New().String()
+		// Create facility first
+		fac := &domain.Facility{ID: facID, ClubID: "club-1", Name: "EqFac", Status: "active"}
+		_ = repo.Create(ctx, fac)
+
 		eqID := uuid.New().String()
 		eq := &domain.Equipment{ID: eqID, FacilityID: facID, Name: "A", Status: "available"}
-		_ = repo.CreateEquipment(ctx, eq)
+		_ = repo.CreateEquipment(ctx, "club-1", eq)
 
-		fetched, _ := repo.GetEquipmentByID(ctx, eqID)
+		fetched, _ := repo.GetEquipmentByID(ctx, "club-1", eqID)
+		assert.NotNil(t, fetched)
 		assert.Equal(t, "A", fetched.Name)
 
 		eq.Name = "B"
-		_ = repo.UpdateEquipment(ctx, eq)
-		fetched, _ = repo.GetEquipmentByID(ctx, eqID)
+		_ = repo.UpdateEquipment(ctx, "club-1", eq)
+		fetched, _ = repo.GetEquipmentByID(ctx, "club-1", eqID)
+		assert.NotNil(t, fetched)
 		assert.Equal(t, "B", fetched.Name)
 
-		list, _ := repo.ListEquipmentByFacility(ctx, facID)
+		list, _ := repo.ListEquipmentByFacility(ctx, "club-1", facID)
 		assert.Len(t, list, 1)
 
 		// Atomic Loan
@@ -184,12 +195,15 @@ func TestFacilityRepository(t *testing.T) {
 		err := repo.LoanEquipmentAtomic(ctx, loan, eqID)
 		assert.NoError(t, err)
 
-		eq, _ = repo.GetEquipmentByID(ctx, eqID)
+		eq, _ = repo.GetEquipmentByID(ctx, "club-1", eqID)
 		assert.Equal(t, "loaned", eq.Status)
 	})
 
 	t.Run("GetImpactedUsers", func(t *testing.T) {
 		facID := "fac-impact"
+		// Need facility for some checks maybe? But GetImpactedUsers might be pure SQL on bookings.
+		// Checking implementation... postgres.go not shown completely.
+		// But usually it joins bookings.
 		start := time.Now().Add(1 * time.Hour)
 		end := time.Now().Add(2 * time.Hour)
 
@@ -199,7 +213,7 @@ func TestFacilityRepository(t *testing.T) {
 		db.Create(&TestBooking{ID: "b3", FacilityID: facID, UserID: "user-3", Status: "CANCELLED", StartTime: start, EndTime: end})
 		db.Create(&TestBooking{ID: "b4", FacilityID: facID, UserID: "user-1", Status: "CONFIRMED", StartTime: start, EndTime: end}) // Duplicate user
 
-		users, err := repo.GetImpactedUsers(facID, start, end)
+		users, err := repo.GetImpactedUsers(ctx, facID, start, end)
 		assert.NoError(t, err)
 		assert.Len(t, users, 2) // user-1 and user-2
 		assert.Contains(t, users, "user-1")
