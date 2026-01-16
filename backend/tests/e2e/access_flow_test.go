@@ -110,6 +110,8 @@ func TestAccessFlow(t *testing.T) {
 	// 4. Test Case 1: Denied (No Membership)
 	reqBody := application.EntryRequest{
 		UserID:    userID,
+		EventID:   uuid.New().String(),
+		DeviceID:  "TEST_DEVICE",
 		Direction: "IN",
 	}
 	w := httptest.NewRecorder()
@@ -159,6 +161,9 @@ func TestAccessFlow(t *testing.T) {
 	}
 	_ = memR.Create(context.Background(), membership)
 
+	// Refresh EventID for new request
+	reqBody.EventID = uuid.New().String()
+	jsonBody, _ = json.Marshal(reqBody)
 	w2 := httptest.NewRecorder()
 	req2, _ := http.NewRequest("POST", "/api/v1/access/entry", bytes.NewBuffer(jsonBody))
 	r.ServeHTTP(w2, req2)
@@ -174,6 +179,8 @@ func TestAccessFlow(t *testing.T) {
 	db.Save(membership) // Update directly to simulate debt
 
 	w3 := httptest.NewRecorder()
+	reqBody.EventID = uuid.New().String()
+	jsonBody, _ = json.Marshal(reqBody)
 	req3, _ := http.NewRequest("POST", "/api/v1/access/entry", bytes.NewBuffer(jsonBody))
 	r.ServeHTTP(w3, req3)
 

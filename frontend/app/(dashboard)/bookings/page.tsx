@@ -3,11 +3,17 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2, CalendarX, Clock, Calendar } from 'lucide-react';
+import { Loader2, CalendarX, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { BookingExpiryTimer } from '@/components/booking-expiry-timer';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,14 +26,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-interface Booking {
-    id: string;
-    facility_id: string;
-    start_time: string;
-    end_time: string;
-    status: string;
-    payment_expiry?: string;
-}
+import { Booking } from '@/types/booking';
 
 interface Facility {
     id: string;
@@ -90,12 +89,23 @@ export default function BookingsPage() {
             setBookings(prev => prev.filter(b => b.id !== id));
             // Show success message (would be better with a toast context)
             // For now we just remove from list silently - the UI update indicates success
-        } catch (err) {
-            console.error("Failed to cancel booking", err);
-            alert("No se pudo cancelar la reserva");
+        } catch (error: unknown) {
+            console.error("Failed to cancel booking", error);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const err = error as any;
+            // Mostrar mensaje de error del backend si existe (ej. "payment provider error")
+            const msg = err.response?.data?.error || "No se pudo cancelar la reserva";
+            alert(msg);
         } finally {
             setCancellingId(null);
         }
+    };
+
+    const isCancellable = (startTime: string) => {
+        const start = new Date(startTime);
+        const now = new Date();
+        const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+        return hoursDiff >= 24;
     };
 
     if (authLoading || loading) {
@@ -153,14 +163,31 @@ export default function BookingsPage() {
 
                                 <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
                                     <div className="flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-gray-400" />
-                                        <span className="capitalize">
-                                            {format(startDate, 'PPP', { locale: es })} <br />
+                                        <div className="flex flex-col">
+                                            <span className="capitalize">
+                                                {format(startDate, 'PPP', { locale: es })}
+                                            </span>
                                             <span className="text-gray-500 text-xs">
                                                 {format(startDate, 'p', { locale: es })} - {format(endDate, 'p', { locale: es })}
                                             </span>
-                                        </span>
+                                        </div>
                                     </div>
+
+                                    {(Number(booking.total_price) > 0 || (booking.guest_details && booking.guest_details.length > 0)) && (
+                                        <div className="pt-2 border-t border-gray-100 dark:border-zinc-800 flex justify-between items-center text-xs">
+                                            {Number(booking.total_price) > 0 && (
+                                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                                    Precio: ${booking.total_price}
+                                                </span>
+                                            )}
+                                            {booking.guest_details && booking.guest_details.length > 0 && (
+                                                <span className="text-muted-foreground">
+                                                    {booking.guest_details.length} Invitado(s)
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {booking.status === 'PENDING_PAYMENT' && booking.payment_expiry && (
                                         <div className="mt-3 bg-amber-50 dark:bg-amber-900/10 p-2 rounded border border-amber-100 dark:border-amber-900/20">
                                             <BookingExpiryTimer
@@ -176,21 +203,35 @@ export default function BookingsPage() {
 
                                 <div className="mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800 flex justify-end">
                                     <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button
-                                                variant="destructive"
-                                                size="sm"
-                                                disabled={cancellingId === booking.id}
-                                                className="w-full sm:w-auto"
-                                            >
-                                                {cancellingId === booking.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                ) : (
-                                                    <CalendarX className="h-4 w-4 mr-2" />
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span tabIndex={0} className="w-full sm:w-auto block"> {/* Wrapper for disabled button tooltip */}
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                disabled={cancellingId === booking.id || !isCancellable(booking.start_time)}
+                                                                className="w-full sm:w-auto"
+                                                            >
+                                                                {cancellingId === booking.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                                ) : (
+                                                                    <CalendarX className="h-4 w-4 mr-2" />
+                                                                )}
+                                                                Cancelar Reserva
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                {!isCancellable(booking.start_time) && (
+                                                    <TooltipContent>
+                                                        <p>Solo se puede cancelar con 24hs de anticipación</p>
+                                                    </TooltipContent>
                                                 )}
-                                                Cancelar Reserva
-                                            </Button>
-                                        </AlertDialogTrigger>
+                                            </Tooltip>
+                                        </TooltipProvider>
+
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>

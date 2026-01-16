@@ -14,6 +14,8 @@ import (
 	bookingApp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
 	bookingHttp "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/http"
 	bookingRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/infrastructure/repository"
+	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
+	clubRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/infrastructure/repository"
 	facilitiesRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/infrastructure/repository"
 	userDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/domain"
 	userRepo "github.com/lukcba/club-pulse-system-api/backend/internal/modules/user/infrastructure/repository"
@@ -30,20 +32,21 @@ func TestMultiTenantIsolation(t *testing.T) {
 	// Clean
 	db.Exec("TRUNCATE TABLE bookings CASCADE")
 	// Ensure UserStats and Wallet exist (Booking flow might access them)
-	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{})
+	_ = db.AutoMigrate(&userRepo.UserModel{}, &userDomain.UserStats{}, &userDomain.Wallet{}, &clubDomain.Club{})
 
 	// Dependencies
 	bookRepo := bookingRepo.NewPostgresBookingRepository(db)
 	recRepo := bookingRepo.NewPostgresRecurringRepository(db)
 	facRepo := facilitiesRepo.NewPostgresFacilityRepository(db)
 	usRepo := userRepo.NewPostgresUserRepository(db)
+	clRepo := clubRepo.NewPostgresClubRepository(db)
 
 	// Add proper Auth migration (Fixes missing google_id column)
 	authRepo := authRepository.NewPostgresAuthRepository(db)
 	_ = authRepo.Migrate()
 
 	sharedMock := &SharedMockNotifier{}
-	bookUC := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, usRepo, sharedMock, sharedMock)
+	bookUC := bookingApp.NewBookingUseCases(bookRepo, recRepo, facRepo, clRepo, usRepo, sharedMock, sharedMock)
 	bookH := bookingHttp.NewBookingHandler(bookUC)
 
 	r := gin.New()
@@ -57,6 +60,19 @@ func TestMultiTenantIsolation(t *testing.T) {
 			c.Next()
 		}
 	}
+
+	// Create Club A
+	db.Create(&clubDomain.Club{
+		ID:       "club-a",
+		Name:     "Club A",
+		Timezone: "UTC",
+	})
+	// Create Club B
+	db.Create(&clubDomain.Club{
+		ID:       "club-b",
+		Name:     "Club B",
+		Timezone: "UTC",
+	})
 
 	// Route for Club A
 	userIDClubA := uuid.New().String()

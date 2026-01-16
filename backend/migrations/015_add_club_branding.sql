@@ -1,0 +1,23 @@
+-- +migrate Up
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS primary_color VARCHAR(20);
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS secondary_color VARCHAR(20);
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS slug VARCHAR(255);
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255);
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50);
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS social_links JSONB;
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS timezone VARCHAR(100) DEFAULT 'UTC';
+
+-- Create unique index on slug if not exists
+CREATE UNIQUE INDEX IF NOT EXISTS idx_clubs_slug ON clubs (slug);
+
+-- +migrate Down
+DROP INDEX IF EXISTS idx_clubs_slug;
+ALTER TABLE clubs DROP COLUMN IF EXISTS timezone;
+ALTER TABLE clubs DROP COLUMN IF EXISTS social_links;
+ALTER TABLE clubs DROP COLUMN IF EXISTS contact_phone;
+ALTER TABLE clubs DROP COLUMN IF EXISTS contact_email;
+ALTER TABLE clubs DROP COLUMN IF EXISTS slug;
+ALTER TABLE clubs DROP COLUMN IF EXISTS logo_url;
+ALTER TABLE clubs DROP COLUMN IF EXISTS secondary_color;
+ALTER TABLE clubs DROP COLUMN IF EXISTS primary_color;

@@ -1,4 +1,5 @@
 import api from '../lib/axios';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface AccessResult {
     status: 'GRANTED' | 'DENIED';
@@ -12,7 +13,9 @@ export const accessService = {
         const response = await api.post<AccessResult>('/access/entry', {
             user_id: userId,
             direction: 'IN',
-            device_id: deviceId
+            device_id: deviceId,
+            event_id: uuidv4(), // Generate unique event ID for idempotency
+            timestamp: new Date().toISOString() // Send client timestamp for offline sync accuracy
         });
         return response.data;
     },

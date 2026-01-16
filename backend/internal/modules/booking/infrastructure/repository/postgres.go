@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
+	"github.com/lukcba/club-pulse-system-api/backend/internal/platform/database"
 	"gorm.io/gorm"
 )
 
@@ -19,7 +20,11 @@ func NewPostgresBookingRepository(db *gorm.DB) domain.BookingRepository {
 }
 
 func (r *PostgresBookingRepository) Create(ctx context.Context, booking *domain.Booking) error {
-	return r.db.WithContext(ctx).Create(booking).Error
+	db := r.db
+	if tx := database.GetTx(ctx); tx != nil {
+		db = tx
+	}
+	return db.WithContext(ctx).Create(booking).Error
 }
 
 func (r *PostgresBookingRepository) GetByID(ctx context.Context, clubID string, id uuid.UUID) (*domain.Booking, error) {
@@ -57,7 +62,11 @@ func (r *PostgresBookingRepository) HasTimeConflict(ctx context.Context, clubID 
 	var count int64
 	// Check for any confirmed booking that overlaps with [start, end)
 	// Overlap condition: (ExistingStart < NewEnd) AND (ExistingEnd > NewStart)
-	err := r.db.WithContext(ctx).Model(&domain.Booking{}).
+	db := r.db
+	if tx := database.GetTx(ctx); tx != nil {
+		db = tx
+	}
+	err := db.WithContext(ctx).Model(&domain.Booking{}).
 		Where("club_id = ?", clubID).
 		Where("facility_id = ?", facilityID).
 		Where("status IN (?)", []domain.BookingStatus{domain.BookingStatusConfirmed, domain.BookingStatusPendingPayment}).
@@ -147,4 +156,10 @@ func (r *PostgresBookingRepository) ListExpired(ctx context.Context) ([]domain.B
 		return nil, err
 	}
 	return bookings, nil
+}
+func (r *PostgresBookingRepository) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := database.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
 }

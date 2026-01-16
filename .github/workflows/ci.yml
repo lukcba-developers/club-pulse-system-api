@@ -113,6 +113,13 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
           NEXT_PUBLIC_DEFAULT_CLUB_ID: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
 
+      - name: Prepare Standalone Server for E2E
+        run: |
+          cd frontend
+          # Copy static assets to standalone directory (required for standalone server)
+          cp -r .next/static .next/standalone/frontend/.next/static
+          cp -r public .next/standalone/frontend/public
+
       - name: Install Playwright Browsers
         run: |
           cd frontend
@@ -125,3 +132,5 @@ jobs:
         env:
           CI: true
           TEST_API_URL: http://localhost:8080/api/v1
+          NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+          NEXT_PUBLIC_DEFAULT_CLUB_ID: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11

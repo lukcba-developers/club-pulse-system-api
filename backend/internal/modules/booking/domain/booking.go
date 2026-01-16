@@ -97,6 +97,7 @@ type BookingRepository interface {
 	AddToWaitlist(ctx context.Context, entry *Waitlist) error
 	GetNextInLine(ctx context.Context, clubID string, resourceID uuid.UUID, date time.Time) (*Waitlist, error)
 	ListExpired(ctx context.Context) ([]Booking, error)
+	RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 type RefundService interface {

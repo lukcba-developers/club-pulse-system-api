@@ -139,16 +139,26 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 // @Router       /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	type LogoutDTO struct {
-		RefreshToken string `json:"refresh_token" binding:"required"`
+		RefreshToken string `json:"refresh_token"`
 	}
 	var dto LogoutDTO
-	if err := c.ShouldBindJSON(&dto); err != nil {
+	_ = c.ShouldBindJSON(&dto) // Ignore bind error, check cookie next
+
+	refreshToken := dto.RefreshToken
+	if refreshToken == "" || refreshToken == "cookie" {
+		// Try to get from cookie
+		if cookieToken, err := c.Cookie("refresh_token"); err == nil {
+			refreshToken = cookieToken
+		}
+	}
+
+	if refreshToken == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Refresh token required"})
 		return
 	}
 
 	clubID := c.GetString("clubID")
-	if err := h.useCase.Logout(c.Request.Context(), dto.RefreshToken, clubID); err != nil {
+	if err := h.useCase.Logout(c.Request.Context(), refreshToken, clubID); err != nil {
 		handleError(c, err)
 		return
 	}

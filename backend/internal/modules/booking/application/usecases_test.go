@@ -12,6 +12,7 @@ import (
 
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/application"
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
+	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	paymentDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
@@ -90,6 +91,11 @@ func (m *MockBookingRepo) ListExpired(ctx context.Context) ([]bookingDomain.Book
 	return args.Get(0).([]bookingDomain.Booking), args.Error(1)
 }
 
+func (m *MockBookingRepo) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	// For testing, we just run the function directly
+	return fn(ctx)
+}
+
 type MockFacilityRepo struct {
 	mock.Mock
 }
@@ -100,6 +106,14 @@ func (m *MockFacilityRepo) Create(ctx context.Context, facility *facilityDomain.
 }
 
 func (m *MockFacilityRepo) GetByID(ctx context.Context, clubID, id string) (*facilityDomain.Facility, error) {
+	args := m.Called(ctx, clubID, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*facilityDomain.Facility), args.Error(1)
+}
+
+func (m *MockFacilityRepo) GetByIDForUpdate(ctx context.Context, clubID, id string) (*facilityDomain.Facility, error) {
 	args := m.Called(ctx, clubID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -273,6 +287,53 @@ func (m *MockUserRepo) AnonymizeForGDPR(ctx context.Context, clubID, id string) 
 	return args.Error(0)
 }
 
+// --- Mock Club Repo ---
+
+type MockClubRepo struct {
+	mock.Mock
+}
+
+func (m *MockClubRepo) Create(ctx context.Context, club *clubDomain.Club) error {
+	args := m.Called(ctx, club)
+	return args.Error(0)
+}
+
+func (m *MockClubRepo) GetByID(ctx context.Context, id string) (*clubDomain.Club, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*clubDomain.Club), args.Error(1)
+}
+
+func (m *MockClubRepo) GetBySlug(ctx context.Context, slug string) (*clubDomain.Club, error) {
+	args := m.Called(ctx, slug)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*clubDomain.Club), args.Error(1)
+}
+
+func (m *MockClubRepo) GetMemberEmails(ctx context.Context, clubID string) ([]string, error) {
+	args := m.Called(ctx, clubID)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockClubRepo) List(ctx context.Context, limit, offset int) ([]clubDomain.Club, error) {
+	args := m.Called(ctx, limit, offset)
+	return args.Get(0).([]clubDomain.Club), args.Error(1)
+}
+
+func (m *MockClubRepo) Update(ctx context.Context, club *clubDomain.Club) error {
+	args := m.Called(ctx, club)
+	return args.Error(0)
+}
+
+func (m *MockClubRepo) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
 // --- Tests ---
 
 func TestCreateBooking(t *testing.T) {
@@ -308,10 +369,13 @@ func TestCreateBooking(t *testing.T) {
 					MedicalCertExpiry: &now,
 				}, nil).Once()
 
-				// 1. Get Facility -> Active
-				mfr.On("GetByID", mock.Anything, "test-club", facilityID).Return(&facilityDomain.Facility{
-					ID:     facilityID,
-					Status: facilityDomain.FacilityStatusActive,
+				// 1. Get Facility (Locked) -> Active
+				// Note: CreateBooking now calls GetByIDForUpdate inside the txn
+				mfr.On("GetByIDForUpdate", mock.Anything, "test-club", facilityID).Return(&facilityDomain.Facility{
+					ID:         facilityID,
+					Status:     facilityDomain.FacilityStatusActive,
+					HourlyRate: 10.0,
+					GuestFee:   5.0,
 				}, nil).Once()
 
 				// 2. Check Conflict -> False
@@ -329,7 +393,7 @@ func TestCreateBooking(t *testing.T) {
 			expectedError: "",
 			checkResult: func(t *testing.T, booking *bookingDomain.Booking) {
 				assert.NotNil(t, booking)
-				assert.Equal(t, bookingDomain.BookingStatusConfirmed, booking.Status)
+				assert.Equal(t, bookingDomain.BookingStatusPendingPayment, booking.Status)
 			},
 		},
 		{
@@ -341,7 +405,8 @@ func TestCreateBooking(t *testing.T) {
 				EndTime:    endTime,
 			},
 			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo) {
-				mfr.On("GetByID", mock.Anything, "test-club", facilityID).Return(&facilityDomain.Facility{
+				// 1. Get Facility (Locked)
+				mfr.On("GetByIDForUpdate", mock.Anything, "test-club", facilityID).Return(&facilityDomain.Facility{
 					ID:     facilityID,
 					Status: facilityDomain.FacilityStatusActive,
 				}, nil).Once()
@@ -366,7 +431,7 @@ func TestCreateBooking(t *testing.T) {
 				EndTime:    endTime,
 			},
 			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo) {
-				mfr.On("GetByID", mock.Anything, "test-club", facilityID).Return(&facilityDomain.Facility{
+				mfr.On("GetByIDForUpdate", mock.Anything, "test-club", facilityID).Return(&facilityDomain.Facility{
 					ID:     facilityID,
 					Status: facilityDomain.FacilityStatusActive,
 				}, nil).Once()
@@ -403,7 +468,7 @@ func TestCreateBooking(t *testing.T) {
 				EndTime:    endTime,
 			},
 			setupMocks: func(mbr *MockBookingRepo, mfr *MockFacilityRepo, mns *MockNotificationSender, mur *MockUserRepo) {
-				mfr.On("GetByID", mock.Anything, "test-club", facilityID).Return(nil, nil).Once()
+				mfr.On("GetByIDForUpdate", mock.Anything, "test-club", facilityID).Return(nil, nil).Once()
 			},
 			expectedError: "facility not found",
 			checkResult: func(t *testing.T, booking *bookingDomain.Booking) {
@@ -421,7 +486,8 @@ func TestCreateBooking(t *testing.T) {
 			mockUserRepo := new(MockUserRepo)
 			mockNotificationSender := new(MockNotificationSender)
 			mockRefundService := new(MockRefundService)
-			useCase := application.NewBookingUseCases(mockBookingRepo, mockRecurringRepo, mockFacilityRepo, mockUserRepo, mockNotificationSender, mockRefundService)
+			mockClubRepo := new(MockClubRepo)
+			useCase := application.NewBookingUseCases(mockBookingRepo, mockRecurringRepo, mockFacilityRepo, mockClubRepo, mockUserRepo, mockNotificationSender, mockRefundService)
 
 			if tc.setupMocks != nil {
 				tc.setupMocks(mockBookingRepo, mockFacilityRepo, mockNotificationSender, mockUserRepo)
@@ -465,7 +531,7 @@ func TestCancelBooking(t *testing.T) {
 					ID:        bookingID,
 					UserID:    uuid.MustParse(userID),
 					Status:    bookingDomain.BookingStatusConfirmed,
-					StartTime: time.Now().Add(24 * time.Hour),
+					StartTime: time.Now().Add(25 * time.Hour), // Safe margin > 24h
 				}, nil).Once()
 				mbr.On("Update", mock.Anything, mock.Anything).Return(nil).Once()
 				mbr.On("GetNextInLine", mock.Anything, clubID, mock.Anything, mock.Anything).Return(nil, nil).Once()
@@ -483,13 +549,25 @@ func TestCancelBooking(t *testing.T) {
 			},
 			expectedError: "unauthorized to cancel",
 		},
+		{
+			name: "Fail: Too late to cancel (<24h)",
+			setupMocks: func(mbr *MockBookingRepo, mrs *MockRefundService) {
+				mbr.On("GetByID", mock.Anything, clubID, bookingID).Return(&bookingDomain.Booking{
+					ID:        bookingID,
+					UserID:    uuid.MustParse(userID),
+					Status:    bookingDomain.BookingStatusConfirmed,
+					StartTime: time.Now().Add(23 * time.Hour), // < 24h
+				}, nil).Once()
+			},
+			expectedError: "less than 24 hours",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mbr := new(MockBookingRepo)
 			mrs := new(MockRefundService)
-			uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, mrs)
+			uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil, mrs)
 			tc.setupMocks(mbr, mrs)
 
 			err := uc.CancelBooking(context.Background(), clubID, bookingID.String(), userID)
@@ -511,9 +589,14 @@ func TestGetAvailability(t *testing.T) {
 
 	mbr := new(MockBookingRepo)
 	mfr := new(MockFacilityRepo)
-	uc := application.NewBookingUseCases(mbr, nil, mfr, nil, nil, nil)
+	mcr := new(MockClubRepo)
+	uc := application.NewBookingUseCases(mbr, nil, mfr, mcr, nil, nil, nil)
 
 	t.Run("Success: Returns slots", func(t *testing.T) {
+		mcr.On("GetByID", mock.Anything, clubID).Return(&clubDomain.Club{
+			ID:       clubID,
+			Timezone: "UTC",
+		}, nil).Once()
 		mfr.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID:          facilityID,
 			Status:      facilityDomain.FacilityStatusActive,
@@ -534,7 +617,7 @@ func TestCreateRecurringRule(t *testing.T) {
 	facilityID := uuid.New().String()
 
 	mrr := new(MockRecurringRepo)
-	uc := application.NewBookingUseCases(nil, mrr, nil, nil, nil, nil)
+	uc := application.NewBookingUseCases(nil, mrr, nil, nil, nil, nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		mrr.On("Create", mock.Anything, mock.Anything).Return(nil).Once()
@@ -557,7 +640,7 @@ func TestJoinWaitlist(t *testing.T) {
 	clubID := "test-club"
 
 	mbr := new(MockBookingRepo)
-	uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil)
+	uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		mbr.On("AddToWaitlist", mock.Anything, mock.Anything).Return(nil).Once()
@@ -575,7 +658,7 @@ func TestJoinWaitlist(t *testing.T) {
 func TestListClubBookings(t *testing.T) {
 	clubID := "test-club"
 	mbr := new(MockBookingRepo)
-	uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil)
+	uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		mbr.On("ListAll", mock.Anything, clubID, mock.Anything, mock.Anything, mock.Anything).Return([]bookingDomain.Booking{}, nil).Once()
@@ -594,7 +677,7 @@ func TestOnPaymentStatusChanged(t *testing.T) {
 	mns := new(MockNotificationSender)
 	mns.On("Send", mock.Anything, mock.Anything).Return(nil).Maybe()
 
-	uc := application.NewBookingUseCases(mbr, nil, nil, mur, mns, nil)
+	uc := application.NewBookingUseCases(mbr, nil, nil, nil, mur, mns, nil)
 
 	t.Run("Payment Completed", func(t *testing.T) {
 		status := bookingDomain.BookingStatusPendingPayment
@@ -650,7 +733,7 @@ func TestGenerateBookingsFromRules(t *testing.T) {
 	clubID := "test-club"
 	mrr := new(MockRecurringRepo)
 	mbr := new(MockBookingRepo)
-	uc := application.NewBookingUseCases(mbr, mrr, nil, nil, nil, nil)
+	uc := application.NewBookingUseCases(mbr, mrr, nil, nil, nil, nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		startDate := time.Now()
@@ -675,7 +758,7 @@ func TestListBookings(t *testing.T) {
 	clubID := "test-club"
 	userID := uuid.New().String()
 	mbr := new(MockBookingRepo)
-	uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil)
+	uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		mbr.On("List", mock.Anything, clubID, mock.Anything).Return([]bookingDomain.Booking{}, nil).Once()
@@ -691,9 +774,14 @@ func TestGetAvailabilityDetailed(t *testing.T) {
 	date := time.Now().AddDate(0, 0, 1)
 	mfr := new(MockFacilityRepo)
 	mbr := new(MockBookingRepo)
-	uc := application.NewBookingUseCases(mbr, nil, mfr, nil, nil, nil)
+	mcr := new(MockClubRepo)
+	uc := application.NewBookingUseCases(mbr, nil, mfr, mcr, nil, nil, nil)
 
 	t.Run("With Bookings and Maintenance", func(t *testing.T) {
+		mcr.On("GetByID", mock.Anything, clubID).Return(&clubDomain.Club{
+			ID:       clubID,
+			Timezone: "UTC",
+		}, nil).Once()
 		mfr.On("GetByID", mock.Anything, clubID, facilityID).Return(&facilityDomain.Facility{
 			ID: facilityID, Status: facilityDomain.FacilityStatusActive,
 			OpeningTime: "08:00", ClosingTime: "10:00",
@@ -723,7 +811,7 @@ func TestCreateBooking_MedicalFail(t *testing.T) {
 	mn.On("Send", mock.Anything, mock.Anything).Return(nil).Maybe()
 	mfr := new(MockFacilityRepo)
 	mbr := new(MockBookingRepo)
-	uc := application.NewBookingUseCases(mbr, nil, mfr, mur, mn, nil)
+	uc := application.NewBookingUseCases(mbr, nil, mfr, nil, mur, mn, nil)
 
 	t.Run("CreateBooking_ZeroPrice", func(t *testing.T) {
 		mr := new(MockBookingRepo)
@@ -731,7 +819,8 @@ func TestCreateBooking_MedicalFail(t *testing.T) {
 		ur := new(MockUserRepo)
 		mn := new(MockNotificationSender)
 		mn.On("Send", mock.Anything, mock.Anything).Return(nil).Maybe()
-		uCases := application.NewBookingUseCases(mr, nil, fr, ur, mn, nil)
+		mcr := new(MockClubRepo)
+		uCases := application.NewBookingUseCases(mr, nil, fr, mcr, ur, mn, nil)
 
 		facilityID := uuid.New()
 		uID := uuid.New()
@@ -741,7 +830,7 @@ func TestCreateBooking_MedicalFail(t *testing.T) {
 		ur.On("GetByID", mock.Anything, clubID, uID.String()).Return(&userDomain.User{
 			ID: uID.String(), MedicalCertStatus: &medicalStatus,
 		}, nil).Once()
-		fr.On("GetByID", mock.Anything, clubID, facilityID.String()).Return(&facilityDomain.Facility{
+		fr.On("GetByIDForUpdate", mock.Anything, clubID, facilityID.String()).Return(&facilityDomain.Facility{
 			ID:         facilityID.String(),
 			Status:     facilityDomain.FacilityStatusActive,
 			HourlyRate: 0,
@@ -765,7 +854,7 @@ func TestCreateBooking_MedicalFail(t *testing.T) {
 		mur.On("GetByID", mock.Anything, clubID, userID).Return(&userDomain.User{
 			ID: userID, MedicalCertStatus: &status,
 		}, nil).Once()
-		mfr.On("GetByID", mock.Anything, clubID, facilityID.String()).Return(&facilityDomain.Facility{
+		mfr.On("GetByIDForUpdate", mock.Anything, clubID, facilityID.String()).Return(&facilityDomain.Facility{
 			ID: facilityID.String(), Status: facilityDomain.FacilityStatusActive,
 		}, nil).Once()
 
@@ -788,10 +877,17 @@ func TestGetAvailabilityExtra(t *testing.T) {
 	facilityID := uuid.New()
 	mbr := new(MockBookingRepo)
 	mfr := new(MockFacilityRepo)
-	uc := application.NewBookingUseCases(mbr, nil, mfr, nil, nil, nil)
+	mcr := new(MockClubRepo)
+	uc := application.NewBookingUseCases(mbr, nil, mfr, mcr, nil, nil, nil)
 
 	t.Run("Complex Availability - Multiple Bookings", func(t *testing.T) {
 		date := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+		// Relaxed expectation for ClubRepo to debug
+		mcr.On("GetByID", mock.Anything, mock.Anything).Return(&clubDomain.Club{
+			ID:       clubID,
+			Timezone: "UTC",
+		}, nil).Maybe()
+
 		mfr.On("GetByID", mock.Anything, clubID, facilityID.String()).Return(&facilityDomain.Facility{
 			ID: facilityID.String(), Status: facilityDomain.FacilityStatusActive, OpeningTime: "08:00", ClosingTime: "10:00",
 		}, nil).Once()
@@ -822,7 +918,7 @@ func TestGetAvailabilityExtra(t *testing.T) {
 func TestRecurringRuleEdgeCases(t *testing.T) {
 	clubID := "test-club"
 	mrr := new(MockRecurringRepo)
-	uc := application.NewBookingUseCases(nil, mrr, nil, nil, nil, nil)
+	uc := application.NewBookingUseCases(nil, mrr, nil, nil, nil, nil, nil)
 
 	t.Run("RecurringRuleEdgeCases/Create_Recurring_Rule_-_Invalid_Dates", func(t *testing.T) {
 		dto := application.CreateRecurringRuleDTO{
@@ -840,7 +936,7 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 		mr := new(MockBookingRepo)
 		ur := new(MockUserRepo)
 		mn := new(MockNotificationSender)
-		uCases := application.NewBookingUseCases(mr, nil, nil, ur, mn, nil)
+		uCases := application.NewBookingUseCases(mr, nil, nil, nil, ur, mn, nil)
 		bookingID := uuid.New()
 		uID := uuid.New()
 
@@ -880,10 +976,10 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 		mr := new(MockBookingRepo)
 		fr := new(MockFacilityRepo)
 		ur := new(MockUserRepo)
-		uCases := application.NewBookingUseCases(mr, nil, fr, ur, nil, nil)
+		uCases := application.NewBookingUseCases(mr, nil, fr, nil, ur, nil, nil)
 		uID := uuid.New().String()
 
-		fr.On("GetByID", mock.Anything, clubID, mock.Anything).Return(&facilityDomain.Facility{
+		fr.On("GetByIDForUpdate", mock.Anything, clubID, mock.Anything).Return(&facilityDomain.Facility{
 			ID:     uuid.New().String(),
 			Status: facilityDomain.FacilityStatusActive,
 		}, nil).Once()
@@ -912,10 +1008,10 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 		mr := new(MockBookingRepo)
 		fr := new(MockFacilityRepo)
 		ur := new(MockUserRepo)
-		uCases := application.NewBookingUseCases(mr, nil, fr, ur, nil, nil)
+		uCases := application.NewBookingUseCases(mr, nil, fr, nil, ur, nil, nil)
 		uID := uuid.New().String()
 
-		fr.On("GetByID", mock.Anything, clubID, mock.Anything).Return(&facilityDomain.Facility{
+		fr.On("GetByIDForUpdate", mock.Anything, clubID, mock.Anything).Return(&facilityDomain.Facility{
 			ID:     uuid.New().String(),
 			Status: facilityDomain.FacilityStatusActive,
 		}, nil).Once()
@@ -945,7 +1041,14 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 	t.Run("GetAvailability_DetailedStatus", func(t *testing.T) {
 		mr := new(MockBookingRepo)
 		fr := new(MockFacilityRepo)
-		uCases := application.NewBookingUseCases(mr, nil, fr, nil, nil, nil)
+		ur := new(MockUserRepo)
+		mcr := new(MockClubRepo)
+		uCases := application.NewBookingUseCases(mr, nil, fr, mcr, ur, nil, nil)
+
+		mcr.On("GetByID", mock.Anything, clubID).Return(&clubDomain.Club{
+			ID:       clubID,
+			Timezone: "UTC",
+		}, nil).Maybe()
 		fID := uuid.New().String()
 
 		fr.On("GetByID", mock.Anything, clubID, fID).Return(&facilityDomain.Facility{
@@ -966,7 +1069,7 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 	})
 
 	t.Run("CreateRecurringRule_InvalidFacilityID", func(t *testing.T) {
-		uCases := application.NewBookingUseCases(nil, nil, nil, nil, nil, nil)
+		uCases := application.NewBookingUseCases(nil, nil, nil, nil, nil, nil, nil)
 		dto := application.CreateRecurringRuleDTO{
 			FacilityID: "invalid-uuid",
 			Type:       bookingDomain.RecurrenceTypeFixed,
@@ -984,7 +1087,7 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 		mr := new(MockBookingRepo)
 		ur := new(MockUserRepo)
 		mn := new(MockNotificationSender)
-		uCases := application.NewBookingUseCases(mr, nil, nil, ur, mn, nil)
+		uCases := application.NewBookingUseCases(mr, nil, nil, nil, ur, mn, nil)
 		bookingID := uuid.New()
 		uID := uuid.New()
 
@@ -1003,7 +1106,7 @@ func TestRecurringRuleEdgeCases(t *testing.T) {
 	})
 
 	t.Run("CreateRecurringRule_InvalidDate", func(t *testing.T) {
-		uCases := application.NewBookingUseCases(nil, nil, nil, nil, nil, nil)
+		uCases := application.NewBookingUseCases(nil, nil, nil, nil, nil, nil, nil)
 		dto := application.CreateRecurringRuleDTO{
 			FacilityID: uuid.New().String(),
 			Type:       bookingDomain.RecurrenceTypeFixed,
@@ -1022,7 +1125,7 @@ func TestListClubBookings_Extra(t *testing.T) {
 	clubID := "test-club"
 	t.Run("GetAvailability_RepoError", func(t *testing.T) {
 		fr := new(MockFacilityRepo)
-		uCases := application.NewBookingUseCases(nil, nil, fr, nil, nil, nil)
+		uCases := application.NewBookingUseCases(nil, nil, fr, nil, nil, nil, nil)
 		fID := uuid.New().String()
 		fr.On("GetByID", mock.Anything, clubID, fID).Return(nil, fmt.Errorf("db error")).Once()
 
@@ -1032,7 +1135,7 @@ func TestListClubBookings_Extra(t *testing.T) {
 
 	t.Run("OnPaymentStatusChanged_NonCompleted", func(t *testing.T) {
 		mr := new(MockBookingRepo)
-		uCases := application.NewBookingUseCases(mr, nil, nil, nil, nil, nil)
+		uCases := application.NewBookingUseCases(mr, nil, nil, nil, nil, nil, nil)
 		bookingID := uuid.New()
 		mr.On("GetByID", mock.Anything, clubID, bookingID).Return(&bookingDomain.Booking{ID: bookingID}, nil).Once()
 		mr.On("Update", mock.Anything, mock.Anything).Return(nil).Once()
@@ -1043,7 +1146,8 @@ func TestListClubBookings_Extra(t *testing.T) {
 
 	t.Run("GenerateBookingsFromRules_RepoError", func(t *testing.T) {
 		rr := new(MockRecurringRepo)
-		uCases := application.NewBookingUseCases(nil, rr, nil, nil, nil, nil)
+		fr := new(MockFacilityRepo)
+		uCases := application.NewBookingUseCases(nil, rr, fr, nil, nil, nil, nil)
 		rr.On("GetAllActive", mock.Anything, clubID).Return(nil, fmt.Errorf("db error")).Once()
 
 		err := uCases.GenerateBookingsFromRules(context.Background(), clubID, 4)
@@ -1052,7 +1156,7 @@ func TestListClubBookings_Extra(t *testing.T) {
 
 	t.Run("ListBookings_RepoError", func(t *testing.T) {
 		mbr := new(MockBookingRepo)
-		uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil)
+		uc := application.NewBookingUseCases(mbr, nil, nil, nil, nil, nil, nil)
 		uID := uuid.New().String()
 		mbr.On("List", mock.Anything, clubID, mock.Anything).Return(nil, fmt.Errorf("db error")).Once()
 
@@ -1062,7 +1166,7 @@ func TestListClubBookings_Extra(t *testing.T) {
 
 	t.Run("CreateRecurringRule_FacilityError", func(t *testing.T) {
 		fr := new(MockFacilityRepo)
-		uCases := application.NewBookingUseCases(nil, nil, fr, nil, nil, nil)
+		uCases := application.NewBookingUseCases(nil, nil, fr, nil, nil, nil, nil)
 		fID := uuid.New().String()
 		fr.On("GetByID", mock.Anything, clubID, fID).Return(nil, fmt.Errorf("db error")).Once()
 
@@ -1075,7 +1179,7 @@ func TestListClubBookings_Extra(t *testing.T) {
 	t.Run("CreateRecurringRule_CreateError", func(t *testing.T) {
 		fr := new(MockFacilityRepo)
 		rr := new(MockRecurringRepo)
-		uCases := application.NewBookingUseCases(nil, rr, fr, nil, nil, nil)
+		uCases := application.NewBookingUseCases(nil, rr, fr, nil, nil, nil, nil)
 		fID := uuid.New().String()
 		fr.On("GetByID", mock.Anything, clubID, fID).Return(&facilityDomain.Facility{ID: fID}, nil).Once()
 		rr.On("Create", mock.Anything, mock.Anything).Return(fmt.Errorf("db error")).Once()
@@ -1088,7 +1192,7 @@ func TestListClubBookings_Extra(t *testing.T) {
 
 	t.Run("OnPaymentStatusChanged_RepoError", func(t *testing.T) {
 		mr := new(MockBookingRepo)
-		uCases := application.NewBookingUseCases(mr, nil, nil, nil, nil, nil)
+		uCases := application.NewBookingUseCases(mr, nil, nil, nil, nil, nil, nil)
 		bookingID := uuid.New()
 		mr.On("GetByID", mock.Anything, clubID, bookingID).Return(nil, fmt.Errorf("db error")).Once()
 
@@ -1098,7 +1202,7 @@ func TestListClubBookings_Extra(t *testing.T) {
 
 	t.Run("ListClubBookings_RepoError", func(t *testing.T) {
 		mr := new(MockBookingRepo)
-		uCases := application.NewBookingUseCases(mr, nil, nil, nil, nil, nil)
+		uCases := application.NewBookingUseCases(mr, nil, nil, nil, nil, nil, nil)
 		mr.On("ListAll", mock.Anything, clubID, mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("db error")).Once()
 
 		_, err := uCases.ListClubBookings(context.Background(), clubID, "", nil, nil)
@@ -1113,13 +1217,13 @@ func TestListClubBookings_Extra(t *testing.T) {
 		mn.On("Send", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 		status := userDomain.MedicalCertStatusValid
-		uCases := application.NewBookingUseCases(mr, nil, fr, ur, mn, nil)
+		uCases := application.NewBookingUseCases(mr, nil, fr, nil, ur, mn, nil)
 
 		fID := uuid.New()
 		uID := uuid.New()
 
 		ur.On("GetByID", mock.Anything, clubID, uID.String()).Return(&userDomain.User{ID: uID.String(), MedicalCertStatus: &status}, nil).Once()
-		fr.On("GetByID", mock.Anything, clubID, fID.String()).Return(&facilityDomain.Facility{
+		fr.On("GetByIDForUpdate", mock.Anything, clubID, fID.String()).Return(&facilityDomain.Facility{
 			ID: fID.String(), Status: facilityDomain.FacilityStatusActive, HourlyRate: 50.0,
 		}, nil).Once()
 		mr.On("HasTimeConflict", mock.Anything, clubID, fID, mock.Anything, mock.Anything).Return(false, nil).Once()
@@ -1141,13 +1245,13 @@ func TestListClubBookings_Extra(t *testing.T) {
 		mn.On("Send", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 		status := userDomain.MedicalCertStatusValid
-		uCases := application.NewBookingUseCases(mr, nil, fr, ur, mn, nil)
+		uCases := application.NewBookingUseCases(mr, nil, fr, nil, ur, mn, nil)
 
 		fID := uuid.New()
 		uID := uuid.New()
 
 		ur.On("GetByID", mock.Anything, clubID, uID.String()).Return(&userDomain.User{ID: uID.String(), MedicalCertStatus: &status}, nil).Once()
-		fr.On("GetByID", mock.Anything, clubID, fID.String()).Return(&facilityDomain.Facility{
+		fr.On("GetByIDForUpdate", mock.Anything, clubID, fID.String()).Return(&facilityDomain.Facility{
 			ID: fID.String(), Status: facilityDomain.FacilityStatusActive,
 		}, nil).Once()
 		mr.On("HasTimeConflict", mock.Anything, clubID, fID, mock.Anything, mock.Anything).Return(false, nil).Once()
@@ -1162,7 +1266,7 @@ func TestListClubBookings_Extra(t *testing.T) {
 
 	t.Run("JoinWaitlist_RepoError", func(t *testing.T) {
 		mr := new(MockBookingRepo)
-		uc := application.NewBookingUseCases(mr, nil, nil, nil, nil, nil)
+		uc := application.NewBookingUseCases(mr, nil, nil, nil, nil, nil, nil)
 		fID := uuid.New().String()
 		uID := uuid.New().String()
 		mr.On("AddToWaitlist", mock.Anything, mock.Anything).Return(fmt.Errorf("db error")).Once()

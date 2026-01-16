@@ -41,8 +41,9 @@ type AttendanceRecordModel struct {
 	ID               uuid.UUID `gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
 	AttendanceListID uuid.UUID
 	UserID           string
-	Status           string // PRESENT, ABSENT, LATE
+	Status           string // PRESENT, ABSENT, LATE, EXCUSED
 	Notes            string
+	ScannedAt        *time.Time
 }
 
 func (AttendanceRecordModel) TableName() string {
@@ -110,6 +111,7 @@ func (r *PostgresAttendanceRepository) UpsertRecord(ctx context.Context, record 
 		UserID:           record.UserID,
 		Status:           string(record.Status),
 		Notes:            record.Notes,
+		ScannedAt:        record.ScannedAt,
 	}
 	// On Conflict Update
 	// Postgres: ON CONFLICT (id) DO UPDATE
@@ -132,6 +134,7 @@ func (r *PostgresAttendanceRepository) mapToDomain(model *AttendanceListModel) *
 			UserID:           rec.UserID,
 			Status:           domain.AttendanceStatus(rec.Status),
 			Notes:            rec.Notes,
+			ScannedAt:        rec.ScannedAt,
 		}
 	}
 	return &domain.AttendanceList{

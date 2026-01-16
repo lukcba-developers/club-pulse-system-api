@@ -19,12 +19,12 @@ export class RecurringRulePage {
     }
 
     async mockApis() {
-        // 1. Mock Facilities
+        // 1. Mock Facilities - Return array directly (facilityService.list expects this)
         await this.page.route('**/facilities*', async route => {
             await route.fulfill({
                 status: 200,
                 json: [
-                    { id: 'cam-1', name: 'Cancha 1', type: 'padel' }
+                    { id: 'cam-1', name: 'Cancha 1', type: 'padel', hourly_rate: 2000, status: 'active' }
                 ]
             });
         });

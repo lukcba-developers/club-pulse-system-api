@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	bookingDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/booking/domain"
+	clubDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/club/domain"
 	facilityDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/facilities/domain"
 	"github.com/lukcba/club-pulse-system-api/backend/internal/modules/notification/service"
 	paymentDomain "github.com/lukcba/club-pulse-system-api/backend/internal/modules/payment/domain"
@@ -42,6 +43,7 @@ type BookingUseCases struct {
 	repo          bookingDomain.BookingRepository
 	recurringRepo bookingDomain.RecurringRepository
 	facilityRepo  facilityDomain.FacilityRepository
+	clubRepo      clubDomain.ClubRepository
 	userRepo      userDomain.UserRepository
 	notifier      service.NotificationSender
 	refundSvc     bookingDomain.RefundService
@@ -51,6 +53,7 @@ func NewBookingUseCases(
 	repo bookingDomain.BookingRepository,
 	recurringRepo bookingDomain.RecurringRepository,
 	facilityRepo facilityDomain.FacilityRepository,
+	clubRepo clubDomain.ClubRepository,
 	userRepo userDomain.UserRepository,
 	notifier service.NotificationSender,
 	refundSvc bookingDomain.RefundService,
@@ -59,6 +62,7 @@ func NewBookingUseCases(
 		repo:          repo,
 		recurringRepo: recurringRepo,
 		facilityRepo:  facilityRepo,
+		clubRepo:      clubRepo,
 		userRepo:      userRepo,
 		notifier:      notifier,
 		refundSvc:     refundSvc,
@@ -96,56 +100,73 @@ func (uc *BookingUseCases) CreateBooking(ctx context.Context, clubID string, dto
 		}
 	}
 
-	// 2. Business Rule Validation (Facility Status & Conflicts)
-	facility, err := uc.validateBookingRules(ctx, clubID, dto.FacilityID, facilityID, dto.StartTime, dto.EndTime)
+	// 2. Business Logic Execution (Transactional)
+	var booking *bookingDomain.Booking
+
+	err = uc.repo.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// 2.1 Lock Facility
+		facility, err := uc.facilityRepo.GetByIDForUpdate(txCtx, clubID, dto.FacilityID)
+		if err != nil {
+			return err
+		}
+		if facility == nil {
+			return errors.New("facility not found")
+		}
+		if facility.Status != facilityDomain.FacilityStatusActive {
+			return errors.New("facility is not active")
+		}
+
+		// 2.2 Check Conflicts
+		if err := uc.checkBookingConflicts(txCtx, clubID, facilityID, dto.StartTime, dto.EndTime); err != nil {
+			return err
+		}
+
+		// 2.3 Validate User Medical Certificate
+		if err := uc.validateUserHealth(txCtx, clubID, userID.String()); err != nil {
+			return err
+		}
+
+		// 2.4 Calculate Price
+		dtoDuration := dto.EndTime.Sub(dto.StartTime).Hours()
+		basePrice := decimal.NewFromFloat(facility.HourlyRate).Mul(decimal.NewFromFloat(dtoDuration))
+		guestPrice := decimal.NewFromFloat(facility.GuestFee).Mul(decimal.NewFromFloat(float64(len(dto.GuestDetails))))
+		totalPrice := basePrice.Add(guestPrice)
+
+		// 2.5 Entity Construction
+		initialStatus := bookingDomain.BookingStatusConfirmed
+		var paymentExpiry *time.Time
+		if totalPrice.GreaterThan(decimal.Zero) {
+			initialStatus = bookingDomain.BookingStatusPendingPayment
+			expiry := time.Now().Add(15 * time.Minute)
+			paymentExpiry = &expiry
+		}
+
+		booking = &bookingDomain.Booking{
+			ID:            uuid.New(),
+			UserID:        userID,
+			FacilityID:    facilityID,
+			ClubID:        clubID,
+			StartTime:     dto.StartTime,
+			EndTime:       dto.EndTime,
+			TotalPrice:    totalPrice,
+			Status:        initialStatus,
+			GuestDetails:  dto.GuestDetails,
+			PaymentExpiry: paymentExpiry,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		}
+
+		// 2.6 Persistence
+		return uc.repo.Create(txCtx, booking)
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	// 2.1. Validate User Medical Certificate
-	if err := uc.validateUserHealth(ctx, clubID, userID.String()); err != nil {
-		return nil, err
-	}
-
-	// 2.2 Calculate Price (Using already fetched facility)
-	dtoDuration := dto.EndTime.Sub(dto.StartTime).Hours()
-	basePrice := decimal.NewFromFloat(facility.HourlyRate).Mul(decimal.NewFromFloat(dtoDuration))
-	guestPrice := decimal.NewFromFloat(facility.GuestFee).Mul(decimal.NewFromFloat(float64(len(dto.GuestDetails))))
-	totalPrice := basePrice.Add(guestPrice)
-
-	// 3. Entity Construction
-	// Determine initial status based on whether payment is required
-	initialStatus := bookingDomain.BookingStatusConfirmed
-	var paymentExpiry *time.Time
-	if totalPrice.GreaterThan(decimal.Zero) {
-		initialStatus = bookingDomain.BookingStatusPendingPayment
-		// SECURITY FIX (VUL-001): Set payment expiry to 15 minutes
-		expiry := time.Now().Add(15 * time.Minute)
-		paymentExpiry = &expiry
-	}
-
-	booking := &bookingDomain.Booking{
-		ID:            uuid.New(),
-		UserID:        userID,
-		FacilityID:    facilityID,
-		ClubID:        clubID,
-		StartTime:     dto.StartTime,
-		EndTime:       dto.EndTime,
-		TotalPrice:    totalPrice,
-		Status:        initialStatus,
-		GuestDetails:  dto.GuestDetails,
-		PaymentExpiry: paymentExpiry,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-	}
-
-	// 4. Persistence
-	if err := uc.repo.Create(ctx, booking); err != nil {
-		return nil, err
-	}
-
-	// 5. Side Effects (Notifications) - Only send confirmation if no payment required
-	if initialStatus == bookingDomain.BookingStatusConfirmed {
+	// 3. Side Effects (Notifications) - Only send confirmation if no payment required
+	// Done outside transaction to avoid latency
+	if booking.Status == bookingDomain.BookingStatusConfirmed {
 		uc.notifyAsync(userID.String(), booking.ID.String())
 	}
 
@@ -197,6 +218,26 @@ func (uc *BookingUseCases) CancelBooking(ctx context.Context, clubID, bookingID,
 		return errors.New("unauthorized to cancel this booking")
 	}
 
+	// 1. Business Rule: 24h Cancellation Window
+	// Hardcoded policy for now, as per standard club rules.
+	timeUntilStart := time.Until(booking.StartTime)
+	cancellationWindow := 24 * time.Hour
+
+	if timeUntilStart < cancellationWindow {
+		return errors.New("cannot cancel booking: less than 24 hours before start time")
+	}
+
+	// 2. Process Refund FIRST (Transactional Safety)
+	// If refund fails, we should NOT cancel the booking to avoid financial discrepancies.
+	if booking.TotalPrice.GreaterThan(decimal.Zero) && booking.Status == bookingDomain.BookingStatusConfirmed && uc.refundSvc != nil {
+		if err := uc.refundSvc.Refund(ctx, clubID, booking.ID, "BOOKING"); err != nil {
+			// Log the specific error ideally, but for now we return it to the user
+			// so they know why it failed (e.g., "Payment provider error")
+			return errors.New("failed to process refund: " + err.Error())
+		}
+	}
+
+	// 3. Update Status
 	booking.Status = bookingDomain.BookingStatusCancelled
 	booking.UpdatedAt = time.Now()
 
@@ -204,10 +245,7 @@ func (uc *BookingUseCases) CancelBooking(ctx context.Context, clubID, bookingID,
 		return err
 	}
 
-	// Refund Logic (if reference is paid)
-	if uc.refundSvc != nil {
-		_ = uc.refundSvc.Refund(ctx, clubID, booking.ID, "BOOKING")
-	}
+	// Refund logic moved before update for safety
 
 	// Waitlist Logic
 	next, err := uc.repo.GetNextInLine(ctx, clubID, booking.FacilityID, booking.StartTime)
@@ -414,6 +452,19 @@ func (uc *BookingUseCases) GetAvailability(ctx context.Context, clubID, facility
 
 	// 2. Calculate Slots
 
+	// Fetch Club Timezone
+	club, err := uc.clubRepo.GetByID(ctx, clubID)
+	if err != nil {
+		return nil, err
+	}
+	if club == nil {
+		return nil, errors.New("club not found")
+	}
+	loc, err := time.LoadLocation(club.Timezone)
+	if err != nil {
+		loc = time.UTC // Fallback
+	}
+
 	// Parse Opening Times
 	startH, startM := parseTimeStr(facility.OpeningTime, 8, 0)
 	endH, endM := parseTimeStr(facility.ClosingTime, 23, 0)
@@ -422,13 +473,14 @@ func (uc *BookingUseCases) GetAvailability(ctx context.Context, clubID, facility
 
 	// Iterate by hour from Opening Time until Closing Time
 	// We construct daily dates based on the passed 'date'
+	// Use Club Location for these times
+	y, m, d := date.Date() // date passed in might be UTC or Local, but we extract y,m,d
 
-	// Start Time for the day
-	// Start Time for the day
-	loopStart := time.Date(date.Year(), date.Month(), date.Day(), startH, startM, 0, 0, date.Location())
+	// Start Time for the day (Local)
+	loopStart := time.Date(y, m, d, startH, startM, 0, 0, loc)
 
-	// End Time for the day
-	loopEnd := time.Date(date.Year(), date.Month(), date.Day(), endH, endM, 0, 0, date.Location())
+	// End Time for the day (Local)
+	loopEnd := time.Date(y, m, d, endH, endM, 0, 0, loc)
 
 	// Loop in 1-hour increments
 	for t := loopStart; t.Before(loopEnd); t = t.Add(1 * time.Hour) {
@@ -563,38 +615,26 @@ func parseBookingIDs(dto CreateBookingDTO) (uuid.UUID, uuid.UUID, error) {
 	return usrID, facID, nil
 }
 
-func (uc *BookingUseCases) validateBookingRules(ctx context.Context, clubID, facilityIDStr string, facilityID uuid.UUID, start, end time.Time) (*facilityDomain.Facility, error) {
-	// 1. Check Facility Existence & Status
-	facility, err := uc.facilityRepo.GetByID(ctx, clubID, facilityIDStr)
-	if err != nil {
-		return nil, err
-	}
-	if facility == nil {
-		return nil, errors.New("facility not found")
-	}
-	if facility.Status != facilityDomain.FacilityStatusActive {
-		return nil, errors.New("facility is not active (current status: " + string(facility.Status) + ")")
-	}
-
-	// 2. Check Existing Bookings
+func (uc *BookingUseCases) checkBookingConflicts(ctx context.Context, clubID string, facilityID uuid.UUID, start, end time.Time) error {
+	// 1. Check Existing Bookings
 	conflict, err := uc.repo.HasTimeConflict(ctx, clubID, facilityID, start, end)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if conflict {
-		return nil, errors.New("booking time conflict: facility is already booked for this requested time")
+		return errors.New("booking time conflict: facility is already booked for this requested time")
 	}
 
-	// 3. Check Maintenance Schedules
-	maintConflict, err := uc.facilityRepo.HasConflict(ctx, clubID, facilityIDStr, start, end)
+	// 2. Check Maintenance Schedules
+	maintConflict, err := uc.facilityRepo.HasConflict(ctx, clubID, facilityID.String(), start, end)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if maintConflict {
-		return nil, errors.New("booking time conflict: facility is scheduled for maintenance during this time")
+		return errors.New("booking time conflict: facility is scheduled for maintenance during this time")
 	}
 
-	return facility, nil
+	return nil
 }
 
 func (uc *BookingUseCases) validateUserHealth(ctx context.Context, clubID, userID string) error {

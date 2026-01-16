@@ -94,6 +94,11 @@ func NewApp() (*App, error) {
 	// 3. Setup Health Check (Basic) - We can move this to a module if it grows
 	server.Engine.GET("/health", healthCheckHandler(infra))
 
+	// Static Files for Uploads
+	// Ensure "uploads" directory exists or create it on startup if needed,
+	// but usually handled by deployment. For now just serve it.
+	server.Engine.Static("/uploads", "./uploads")
+
 	// 4. Register Modules
 	v1 := server.Engine.Group("/api/v1")
 
@@ -224,10 +229,13 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	paymentGw := paymentGateway.NewMercadoPagoGateway()
 	paymentUseCases := paymentApp.NewPaymentUseCases(paymentRepository, paymentGw)
 
+	// --- Module: Club (Shared Repo) ---
+	clubRepository := clubRepo.NewPostgresClubRepository(db)
+
 	// --- Module: Booking ---
 	bookingRepository := bookingRepo.NewPostgresBookingRepository(db)
 	recurringRepository := bookingRepo.NewPostgresRecurringRepository(db)
-	bookingUseCase := bookingApplication.NewBookingUseCases(bookingRepository, recurringRepository, facilityRepository, userRepository, notifier, paymentUseCases)
+	bookingUseCase := bookingApplication.NewBookingUseCases(bookingRepository, recurringRepository, facilityRepository, clubRepository, userRepository, notifier, paymentUseCases)
 	bookingHandler := bookingHTTP.NewBookingHandler(bookingUseCase)
 
 	bookingHTTP.RegisterRoutes(api, bookingHandler, authMiddleware, tenantMiddleware)
@@ -261,7 +269,7 @@ func registerModules(api *gin.RouterGroup, infra *Infrastructure, tenantMiddlewa
 	paymentHttp.RegisterRoutes(api, paymentHandler, authMiddleware, tenantMiddleware)
 
 	// --- Module: Club (Super Admin) ---
-	clubRepository := clubRepo.NewPostgresClubRepository(db)
+	// clubRepository already initialized above
 	clubUseCase := clubApp.NewClubUseCases(clubRepository, clubRepository, clubRepository, notifier)
 	clubHandler := clubHttp.NewClubHandler(clubUseCase)
 

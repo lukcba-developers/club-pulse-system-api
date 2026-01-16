@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Calendar, Building2, Settings, LogOut, Menu, User as UserIcon, CreditCard, Globe, Users, ShoppingBag, Trophy } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useBrand } from "@/components/providers/BrandProvider";
 import { NotificationToast } from "@/components/notification-toast";
+import Image from "next/image";
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -16,6 +18,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const { club, isLoading } = useBrand();
 
     // Define menus per role
     const menus = {
@@ -71,12 +74,31 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="flex flex-col h-full">
                     {/* Logo */}
                     <div className="h-16 flex items-center px-6 border-b border-gray-100 dark:border-zinc-800">
-                        <div className="flex items-center gap-2 font-bold text-xl text-brand-600 dark:text-brand-400">
-                            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
-                                CP
+                        {isLoading ? (
+                            <div className="flex items-center gap-2 animate-pulse">
+                                <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-zinc-800"></div>
+                                <div className="h-4 w-24 bg-gray-200 dark:bg-zinc-800 rounded"></div>
                             </div>
-                            <span>Club Pulse</span>
-                        </div>
+                        ) : (
+                            <div className="flex items-center gap-2 font-bold text-xl text-brand-600 dark:text-brand-400">
+                                {club?.logo_url ? (
+                                    <div className="relative w-8 h-8">
+                                        <Image
+                                            src={club.logo_url}
+                                            alt={club.name}
+                                            fill
+                                            className="object-contain rounded-lg"
+                                            unoptimized
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
+                                        {club?.name ? club.name.substring(0, 2).toUpperCase() : 'CP'}
+                                    </div>
+                                )}
+                                <span className="truncate max-w-[150px]">{club?.name || 'Club Pulse'}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Navigation */}
@@ -135,10 +157,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 {/* Top Header (Mobile Only for Menu) + Page Title area if needed */}
                 <header className="h-16 lg:hidden flex items-center justify-between px-4 bg-white dark:bg-zinc-950 border-b border-gray-200 dark:border-zinc-800 sticky top-0 z-30">
                     <div className="flex items-center gap-2 font-bold text-lg text-brand-600 dark:text-brand-400">
-                        <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center text-white text-xs">
-                            CP
-                        </div>
-                        <span>Club Pulse</span>
+                        {club?.logo_url ? (
+                            <div className="relative w-7 h-7">
+                                <Image
+                                    src={club.logo_url}
+                                    alt={club.name}
+                                    fill
+                                    className="object-contain rounded-md"
+                                    unoptimized
+                                />
+                            </div>
+                        ) : (
+                            <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center text-white text-xs">
+                                {club?.name ? club.name.substring(0, 2).toUpperCase() : 'CP'}
+                            </div>
+                        )}
+                        <span>{club?.name || 'Club Pulse'}</span>
                     </div>
                     <div className="flex items-center gap-2 relative">
                         <NotificationToast />
@@ -157,7 +191,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         {children}
                     </div>
                 </main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

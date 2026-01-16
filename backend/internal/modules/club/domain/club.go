@@ -20,16 +20,22 @@ type ClubSettings struct {
 }
 
 type Club struct {
-	ID          string     `json:"id" gorm:"primaryKey"`
-	Name        string     `json:"name" gorm:"not null"`
-	Slug        string     `json:"slug" gorm:"uniqueIndex;not null"`
-	LogoURL     string     `json:"logo_url,omitempty"`
-	ThemeConfig string     `json:"theme_config" gorm:"type:jsonb;serializer:json"` // JSON with colors, fonts
-	Domain      string     `json:"domain,omitempty"`
-	Status      ClubStatus `json:"status" gorm:"default:'ACTIVE'"`
-	Settings    string     `json:"settings" gorm:"type:jsonb;serializer:json"` // JSON settings
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID             string     `json:"id" gorm:"primaryKey"`
+	Name           string     `json:"name" gorm:"not null"`
+	Slug           string     `json:"slug" gorm:"uniqueIndex;not null"`
+	LogoURL        string     `json:"logo_url,omitempty"`
+	PrimaryColor   string     `json:"primary_color,omitempty"`
+	SecondaryColor string     `json:"secondary_color,omitempty"`
+	ContactEmail   string     `json:"contact_email,omitempty"`
+	ContactPhone   string     `json:"contact_phone,omitempty"`
+	SocialLinks    string     `json:"social_links" gorm:"type:jsonb;serializer:json"` // JSON with social links
+	Timezone       string     `json:"timezone" gorm:"default:'UTC'"`
+	ThemeConfig    string     `json:"theme_config" gorm:"type:jsonb;serializer:json"` // JSON with colors, fonts
+	Domain         string     `json:"domain,omitempty"`
+	Status         ClubStatus `json:"status" gorm:"default:'ACTIVE'"`
+	Settings       string     `json:"settings" gorm:"type:jsonb;serializer:json"` // JSON settings
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 type ClubRepository interface {

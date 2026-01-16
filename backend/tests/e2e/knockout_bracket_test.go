@@ -74,7 +74,7 @@ func TestKnockoutBracketGeneration(t *testing.T) {
 	recurringR := bookingRepo.NewPostgresRecurringRepository(db)
 	familyR := userRepo.NewPostgresFamilyGroupRepository(db)
 	userUC := userApp.NewUserUseCases(userR, familyR)
-	bookingUC := bookingApp.NewBookingUseCases(bookingR, recurringR, facR, userR, nil, nil)
+	bookingUC := bookingApp.NewBookingUseCases(bookingR, recurringR, facR, clubRepository, userR, nil, nil)
 	bookingAdapter := champSvc.NewChampionshipBookingAdapter(bookingUC)
 
 	champUC := champApp.NewChampionshipUseCases(champRepository, bookingAdapter, userUC)

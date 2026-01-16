@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -104,18 +105,30 @@ func (uc *ClubUseCases) GetPublicNews(ctx context.Context, slug string) ([]domai
 
 // --- Club Management (Super Admin) ---
 
-func (uc *ClubUseCases) CreateClub(ctx context.Context, name, slug, domainStr, logoURL, themeConfig, settings string) (*domain.Club, error) {
+func (uc *ClubUseCases) CreateClub(ctx context.Context, name, slug, domainStr, logoURL, primaryColor, secondaryColor, contactEmail, contactPhone, themeConfig, settings string) (*domain.Club, error) {
+	if slug == "" {
+		// Simple slug generation: lower case, replace spaces with hyphens, remove non-alphanumeric
+		// In production, checking for uniqueness loop might be needed or let DB fail
+		slug = strings.ToLower(name)
+		slug = strings.ReplaceAll(slug, " ", "-")
+		// Remove special chars could be done with regex, keeping it simple for now or relying on DB constraint
+	}
+
 	club := &domain.Club{
-		ID:          uuid.New().String(),
-		Name:        name,
-		Slug:        slug,
-		Domain:      domainStr,
-		LogoURL:     logoURL,
-		ThemeConfig: themeConfig,
-		Status:      domain.ClubStatusActive,
-		Settings:    settings,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:             uuid.New().String(),
+		Name:           name,
+		Slug:           slug,
+		Domain:         domainStr,
+		LogoURL:        logoURL,
+		PrimaryColor:   primaryColor,
+		SecondaryColor: secondaryColor,
+		ContactEmail:   contactEmail,
+		ContactPhone:   contactPhone,
+		ThemeConfig:    themeConfig,
+		Status:         domain.ClubStatusActive,
+		Settings:       settings,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 	if err := uc.clubRepo.Create(ctx, club); err != nil {
 		return nil, err
@@ -135,7 +148,7 @@ func (uc *ClubUseCases) ListClubs(ctx context.Context, limit, offset int) ([]dom
 	return uc.clubRepo.List(ctx, limit, offset)
 }
 
-func (uc *ClubUseCases) UpdateClub(ctx context.Context, id string, name, domainStr, settings string, status domain.ClubStatus) (*domain.Club, error) {
+func (uc *ClubUseCases) UpdateClub(ctx context.Context, id string, name, domainStr, logoURL, primaryColor, secondaryColor, contactEmail, contactPhone, themeConfig, settings string, status domain.ClubStatus) (*domain.Club, error) {
 	club, err := uc.clubRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -149,6 +162,24 @@ func (uc *ClubUseCases) UpdateClub(ctx context.Context, id string, name, domainS
 	}
 	if domainStr != "" {
 		club.Domain = domainStr
+	}
+	if logoURL != "" {
+		club.LogoURL = logoURL
+	}
+	if primaryColor != "" {
+		club.PrimaryColor = primaryColor
+	}
+	if secondaryColor != "" {
+		club.SecondaryColor = secondaryColor
+	}
+	if contactEmail != "" {
+		club.ContactEmail = contactEmail
+	}
+	if contactPhone != "" {
+		club.ContactPhone = contactPhone
+	}
+	if themeConfig != "" {
+		club.ThemeConfig = themeConfig
 	}
 	if settings != "" {
 		club.Settings = settings
